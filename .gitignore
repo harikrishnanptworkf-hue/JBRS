@@ -1,0 +1,29 @@
+# Laravel
+/vendor/
+/node_modules/
+/public/storage
+/storage/*.key
+.env
+Homestead.json
+Homestead.yaml
+npm-debug.log
+.DS_Store
+.idea/
+.vscode/
+/.trash/
+/resources/js/pages/.trash/
+# OS generated
+Thumbs.db
+.DS_Store
+# Log files
+*.log
+# Compiled source #
+/public/build/
+/public/hot
+/public/css/
+/public/js/
+# Test coverage
+coverage/
+# Misc
+*.sublime-workspace
+*.sublime-project
