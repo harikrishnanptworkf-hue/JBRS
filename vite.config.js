@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import react from '@vitejs/plugin-react';
-import reactRefresh from '@vitejs/plugin-react-refresh';
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
     build: {
@@ -46,6 +46,5 @@ export default defineConfig({
             ],
         }),
         react(),
-        reactRefresh()
     ],
 });
