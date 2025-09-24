@@ -9,7 +9,7 @@ import {
   Container,
 } from "reactstrap";
 
-import { Editor } from '@tinymce/tinymce-react';
+// import { Editor } from '@tinymce/tinymce-react';
 
 //Import Breadcrumb
 import Breadcrumbs from "../../components/Common/Breadcrumb";

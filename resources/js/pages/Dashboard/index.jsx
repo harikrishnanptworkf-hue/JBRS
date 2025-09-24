@@ -15,25 +15,10 @@ import {
   Table,
 } from "reactstrap";
 import { Link } from "react-router-dom";
-
 import classNames from "classnames";
-
-//import Charts
-import StackedColumnChart from "./StackedColumnChart";
 
 //import action
 import { getChartsData as onGetChartsData } from "../../store/actions";
-
-import modalimage1 from "../../../images/product/img-7.png";
-import modalimage2 from "../../../images/product/img-4.png";
-
-// Pages Components
-import WelcomeComp from "./WelcomeComp";
-import MonthlyEarning from "./MonthlyEarning";
-import SocialSource from "./SocialSource";
-import ActivityComp from "./ActivityComp";
-import TopCities from "./TopCities";
-import LatestTranaction from "./LatestTranaction";
 
 //Import Breadcrumb
 import Breadcrumbs from "../../components/Common/Breadcrumb";
@@ -45,13 +30,13 @@ import { withTranslation } from "react-i18next";
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from "reselect";
 
-const Dashboard = props => {
+const Dashboard = (props) => {
   const [modal, setmodal] = useState(false);
   const [subscribemodal, setSubscribemodal] = useState(false);
 
   const dashboardSelector = createSelector(
-    state => state.Dashboard,
-    dashboard => ({
+    (state) => state.Dashboard,
+    (dashboard) => ({
       chartsData: dashboard.chartsData,
     })
   );
@@ -81,7 +66,7 @@ const Dashboard = props => {
     setPeriodData(chartsData);
   }, [chartsData]);
 
-  const onChangeChartPeriod = pType => {
+  const onChangeChartPeriod = (pType) => {
     setPeriodType(pType);
     dispatch(onGetChartsData(pType));
   };
@@ -97,11 +82,9 @@ const Dashboard = props => {
   return (
     <React.Fragment>
       <div className="page-content">
-          <Row>
-            <Col lg="12">
-              <LatestTranaction />
-            </Col>
-          </Row>
+        <Row>
+          <Col lg="12"></Col>
+        </Row>
       </div>
     </React.Fragment>
   );

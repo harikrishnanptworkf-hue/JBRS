@@ -15,17 +15,12 @@ import {
     Form,
 } from "reactstrap";
 import { Link } from "react-router-dom";
-import {
-    GoogleMap,
-    LoadScript,
-    Marker,
-    InfoWindow,
-} from "@react-google-maps/api";
+
 // import { connect } from "react-redux";
 
 //Lightbox
-import Lightbox from "yet-another-react-lightbox";
-import "yet-another-react-lightbox/styles.css";
+// import Lightbox from "yet-another-react-lightbox";
+// import "yet-another-react-lightbox/styles.css";
 
 // import image
 import img1 from "../../../images/small/img-1.jpg";

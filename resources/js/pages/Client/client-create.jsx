@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Row,
@@ -15,16 +15,8 @@ import {
   ModalBody,
   ModalFooter
 } from "reactstrap";
-
-// Import Editor
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
-
-//Import Date Picker
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
-
-//Import Breadcrumb
 import Breadcrumbs from "../../components/Common/Breadcrumb"
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -35,37 +27,21 @@ import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 
 const ClientCreate = () => {
-
-  //meta title
-  document.title="Client";
-
-  const editorRef = useRef();
-  const [editor, setEditor] = useState(false);
-  const [data, setData] = useState(''); // Declare the "data" state variable
+  document.title = "Client";
   const [agents, setAgents] = useState([]);
   const [users, setUsers] = useState([]);
   const [timezones, setTimezones] = useState([]);
   const [examCodeOptions, setExamCodeOptions] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const submitTypeRef = useRef('');
   const [submitType, setSubmitType] = useState('');
-  const [formType, setFormType] = useState('schedule'); // 'schedule' or 'enquiry'
-
-  // For warning modal
+  const [formType, setFormType] = useState('schedule');
   const [showCheckModal, setShowCheckModal] = useState(false);
   const [checkMessage, setCheckMessage] = useState('');
   const [checkReason, setCheckReason] = useState('');
   const [pendingSubmitValues, setPendingSubmitValues] = useState(null);
-  const [ISTDisplay, setISTDisplay] = useState(''); // Add IST display state
-
-  useEffect(() => {
-    editorRef.current = {
-      CKEditor: CKEditor,
-      ClassicEditor: ClassicEditor,
-    };
-    setEditor(true);
-  }, []);
+  const [ISTDisplay, setISTDisplay] = useState('');
+  const [startDate, setstartDate] = useState(null);
 
   useEffect(() => {
     api.get('/enquiries/filter-managed-data').then(res => {
@@ -75,7 +51,6 @@ const ClientCreate = () => {
     api.get('/timezone/get-full-timezones').then(res => {
       setTimezones(res.data || []);
     });
-    // Fetch exam codes for autocomplete
     api.get('/examcodes', { params: { pageSize: 100 } }).then(res => {
       const options = Array.isArray(res.data.data)
         ? res.data.data.map(ec => ({ value: ec.ex_code, label: ec.ex_code }))
@@ -84,36 +59,11 @@ const ClientCreate = () => {
     });
   }, []);
 
-  const inpRow = [{ name: "", file: "" }]
-  const [startDate, setstartDate] = useState(null)
-  const [endDate, setendDate] = useState(new Date())
-  const [inputFields, setinputFields] = useState(inpRow)
-
-  const startDateChange = date => {
-    setstartDate(date)
-  }
-
-  const endDateChange = date => {
-    setendDate(date)
-  }
-
-  // Function for Create Input Fields
-  function handleAddFields() {
-    const item1 = { name: "", file: "" }
-    setinputFields([...inputFields, item1])
-  }
-
-  // Function for Remove Input Fields
-  function handleRemoveFields(idx) {
-    document.getElementById("nested" + idx).style.display = "none"
-  }
-
-  // Validation schema
   const validation = useFormik({
     initialValues: {
       group_name: '',
       exam_code: '',
-      date: '', // No default value
+      date: '',
       support_fee: '',
       voucher_fee: '',
       total_fee: '',
@@ -146,7 +96,6 @@ const ClientCreate = () => {
     }),
     onSubmit: async (values) => {
       try {
-        // Save new exam code if not exist
         if (values.exam_code) {
           const checkRes = await api.get('/examcodes', { params: { search: values.exam_code } });
           const exists = Array.isArray(checkRes.data.data) && checkRes.data.data.some(e => e.ex_code === values.exam_code);
@@ -156,7 +105,6 @@ const ClientCreate = () => {
             });
           }
         }
-        // If editing an enquiry and saving as schedule
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
           await api.post('/schedule', values);
           await api.delete(`/enquiries/${location.state.editId}`);
@@ -168,13 +116,10 @@ const ClientCreate = () => {
           await api.post('/schedule', values);
           navigate('/schedule');
         } else if (location.state?.editType === 'schedule') {
-          // If editing a schedule, update logic can go here if needed
           await api.post('/schedule', values);
           navigate('/schedule');
         }
-      } catch (err) {
-        // Optionally show error toast
-      }
+      } catch (err) {}
       return
     },
   });
@@ -182,7 +127,6 @@ const ClientCreate = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     let checkDate = validation.values.date;
-    // Format date as local time string before check (only for schedule)
     if (formType === 'schedule' && validation.values.date) {
       const localDate = new Date(validation.values.date);
       const yyyy = localDate.getFullYear();
@@ -200,7 +144,6 @@ const ClientCreate = () => {
           timezone: validation.values.timezone
         });
         if (checkRes.data && checkRes.data.warning) {
-          // Format the date for display in the popup
           const localDate = new Date(validation.values.date);
           const dd = String(localDate.getDate()).padStart(2, '0');
           const mm = String(localDate.getMonth() + 1).padStart(2, '0');
@@ -209,16 +152,13 @@ const ClientCreate = () => {
           const minutes = String(localDate.getMinutes()).padStart(2, '0');
           const ampm = hours >= 12 ? 'PM' : 'AM';
           hours = hours % 12;
-          hours = hours ? hours : 12; // the hour '0' should be '12'
+          hours = hours ? hours : 12;
           const timeStr = `${hours}:${minutes} ${ampm}`;
           const formattedDisplayDate = `${dd}/${mm}/${yyyy} ${timeStr}`;
-
-          // Use IST from API if present
           let formattedIST = '';
           if (checkRes.data.ist) {
             formattedIST = checkRes.data.ist;
           } else {
-            // fallback: calculate IST in browser
             const istDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
             const ist_dd = String(istDate.getDate()).padStart(2, '0');
             const ist_mm = String(istDate.getMonth() + 1).padStart(2, '0');
@@ -230,7 +170,6 @@ const ClientCreate = () => {
             ist_hours = ist_hours ? ist_hours : 12;
             formattedIST = `${ist_dd}/${ist_mm}/${ist_yyyy} ${ist_hours}:${ist_minutes} ${ist_ampm}`;
           }
-
           let message = checkRes.data.warning.replace(/\(.*?\)/, `(${formattedDisplayDate})`);
           setCheckMessage(message);
           setCheckReason(checkRes.data.reason || '');
@@ -239,11 +178,8 @@ const ClientCreate = () => {
           setISTDisplay(formattedIST);
           return;
         }
-      } catch (err) {
-        // Optionally show error toast
-      }
+      } catch (err) {}
     }
-    // Format date as local time string before submit (only for schedule)
     if (formType === 'schedule' && validation.values.date) {
       const localDate = new Date(validation.values.date);
       const yyyy = localDate.getFullYear();
@@ -261,7 +197,6 @@ const ClientCreate = () => {
   const handleCheckModalOk = async () => {
     setShowCheckModal(false);
     if (pendingSubmitValues) {
-      // Format date as local time string before submit (only for schedule)
       if (formType === 'schedule' && pendingSubmitValues.date) {
         const localDate = new Date(pendingSubmitValues.date);
         const yyyy = localDate.getFullYear();
@@ -282,7 +217,6 @@ const ClientCreate = () => {
     setPendingSubmitValues(null);
   };
 
-  // Update total fee when support or voucher fee changes
   useEffect(() => {
     const s = parseFloat(validation.values.support_fee) || 0;
     const v = parseFloat(validation.values.voucher_fee) || 0;
@@ -290,7 +224,6 @@ const ClientCreate = () => {
     validation.setFieldValue('total_fee', total);
   }, [validation.values.support_fee, validation.values.voucher_fee]);
 
-  // For react-select timezone
   const timezoneOptions = Array.isArray(timezones)
     ? timezones.map(tz => ({
         value: tz.area || tz.id,
@@ -316,7 +249,6 @@ const ClientCreate = () => {
     }),
   };
 
-  // Clear date and timezone when type is changed to enquiry
   useEffect(() => {
     if (formType === 'enquiry') {
       validation.setFieldValue('date', '', false);
@@ -324,7 +256,6 @@ const ClientCreate = () => {
     }
   }, [formType]);
 
-  // Detect edit mode and prepopulate
   useEffect(() => {
     async function fetchAndPopulate() {
       if (location.state && location.state.editType && location.state.editId) {
@@ -339,7 +270,6 @@ const ClientCreate = () => {
             const res = await api.get(apiUrl);
             const data = res.data;
             if (location.state.editType === 'schedule') {
-              // Prepopulate all fields for schedule
               let dateValue = '';
               let timezone = '';
               if (data.s_date) {
@@ -377,11 +307,10 @@ const ClientCreate = () => {
               });
               setFormType('schedule');
             } else if (location.state.editType === 'enquiry') {
-              // Prepopulate all fields for enquiry, leave date/timezone blank
               validation.setValues({
                 group_name: data.e_group_name || '',
                 exam_code: data.e_exam_code || '',
-                date: '', // blank for enquiry
+                date: '',
                 support_fee: data.e_support_fee || '',
                 voucher_fee: data.e_voucher_fee || '',
                 total_fee: data.total_fee || '',
@@ -389,36 +318,30 @@ const ClientCreate = () => {
                 phone: data.e_phone || '',
                 agent: data.e_agent_id || '',
                 user: data.e_user_id || '',
-                timezone: '', // blank for enquiry
+                timezone: '',
                 location: data.e_location || '',
                 comment: data.e_comment || '',
                 remind_date: data.e_remind_date || '',
                 remind_remark: data.e_remind_remark || '',
               });
-              setFormType('schedule'); // Force schedule mode for enquiry edit
+              setFormType('schedule');
             }
-          } catch (err) {
-            // Optionally show error toast
-          }
+          } catch (err) {}
         }
       }
     }
     fetchAndPopulate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run on mount
+  }, []);
 
   return (
     <>
       <div className="page-content">
-
           <Row>
             <Col lg="12">
               <Card>
                 <CardBody>
                   <CardTitle className="mb-4" style={{fontSize: "1.5rem", }}>Client Create</CardTitle>
-                  {/* Remove onSubmit from form */}
                   <form className="outer-repeater" onSubmit={handleFormSubmit}>
-                    {/* Type select - hide if editing */}
                     {!(location.state && location.state.editType) && (
                       <FormGroup className="mb-4" row>
                         <Label className="col-form-label col-lg-2">Type <span style={{color:'red'}}>*</span></Label>
@@ -430,11 +353,9 @@ const ClientCreate = () => {
                         </Col>
                       </FormGroup>
                     )}
-
                     <div data-repeater-list="outer-group" className="outer">
                       <div data-repeater-item className="outer">
-
-                         <FormGroup className="mb-4" row>
+                        <FormGroup className="mb-4" row>
                           <Label
                             htmlFor="agent"
                             className="col-form-label col-lg-2"
@@ -508,7 +429,6 @@ const ClientCreate = () => {
                               options={examCodeOptions}
                               value={examCodeOptions.find(opt => opt.value === validation.values.exam_code) || (validation.values.exam_code ? { value: validation.values.exam_code, label: validation.values.exam_code } : null)}
                               onChange={opt => {
-                                // Set the value only, do not save to backend here
                                 validation.setFieldValue('exam_code', opt ? opt.value : '');
                               }}
                               isClearable
@@ -522,7 +442,6 @@ const ClientCreate = () => {
                           </Col>
                         </FormGroup>
 
-                        {/* Only show Timezone and Date if editing (any type) or type is schedule */}
                         {(location.state?.editType || formType === 'schedule') && (
                           <>
                             <FormGroup className="mb-4" row>
@@ -762,7 +681,6 @@ const ClientCreate = () => {
                             Save Schedule
                           </Button>
                         )}
-                        {/* Only show Save Enquiry button if not editing */}
                         {!location.state?.editType && formType === 'enquiry' && (
                           <Button type="submit" className="btn btn-success">
                             Save Enquiry
@@ -771,8 +689,6 @@ const ClientCreate = () => {
                       </Col>
                     </Row>
                   </form>
-
-                  {/* Modal for office time/holiday check */}
                   <Modal isOpen={showCheckModal} toggle={handleCheckModalCancel}>
                     <ModalHeader toggle={handleCheckModalCancel}>Warning</ModalHeader>
                     <ModalBody>
@@ -790,7 +706,6 @@ const ClientCreate = () => {
                       <Button color="secondary" onClick={handleCheckModalCancel}>Cancel</Button>
                     </ModalFooter>
                   </Modal>
-
                 </CardBody>
               </Card>
             </Col>
