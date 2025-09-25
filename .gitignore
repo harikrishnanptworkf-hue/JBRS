@@ -4,6 +4,9 @@
 /public/storage
 /storage/*.key
 .env
+package.json
+vite.config.js
+/resources/js/helpers/api.js
 Homestead.json
 Homestead.yaml
 npm-debug.log
