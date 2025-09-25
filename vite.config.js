@@ -4,23 +4,24 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+    base: '/build/',
     build: {
         manifest: true,
-        rtl: true,
-        outDir: 'public/build/',
+        outDir: 'public/build',
         cssCodeSplit: true,
         rollupOptions: {
             output: {
-                assetFileNames: (css) => {
-                    if (css.name.split('.').pop() == 'css') {
-                      return 'css/' + `[name]` + '.min.' + 'css';
-                    } else if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(css.name.split('.').pop())) {
-                      return 'images/' + css.name;
+                assetFileNames: (assetInfo) => {
+                    const ext = assetInfo.name.split('.').pop();
+                    if (ext === 'css') {
+                        return 'css/[name].min.css';
+                    } else if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+                        return 'images/' + assetInfo.name;
                     } else {
-                      return 'others/' + css.name;
+                        return 'others/' + assetInfo.name;
                     }
-                  },
-                  entryFileNames: 'js/' + `[name]` + `.js`,
+                },
+                entryFileNames: 'js/[name].js',
             },
         },
     },
@@ -34,16 +35,11 @@ export default defineConfig({
         }),
         viteStaticCopy({
             targets: [
-                {
-                    src: 'resources/fonts',
-                    dest: ''
-                },
-                {
-                    src: 'resources/images',
-                    dest: ''
-                },
+                { src: 'resources/fonts', dest: '' },
+                { src: 'resources/images', dest: '' },
             ],
         }),
         react(),
     ],
 });
+
