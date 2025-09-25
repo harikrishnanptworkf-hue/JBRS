@@ -231,7 +231,7 @@ const TableContainer = ({
           <th
             key={header.id}
             colSpan={header.colSpan}
-            style={{ backgroundColor: "#0271b9", color: "white", border: "1px solid #ccc" }}
+              style={{ backgroundColor: "#0271b9", color: "white", border: "1px solid #ccc" , textAlign : "center"}}
             className={`${header.column.columnDef.enableSorting ? "sorting sorting_desc" : ""}`}
             onClick={() => {
               if (header.column.columnDef.enableSorting && onSortChange) {
@@ -269,7 +269,7 @@ const TableContainer = ({
       getRowModel().rows.map(row => (
         <tr key={row.id}>
           {row.getVisibleCells().map(cell => (
-            <td key={cell.id} className={row.original._rowClass || ''} style={{ border: "1px solid #ccc" }}>
+            <td key={cell.id} className={row.original._rowClass || ''} style={{ border: "1px solid #ccc", textAlign: "center" }}>
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </td>
           ))}

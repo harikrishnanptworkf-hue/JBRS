@@ -335,144 +335,162 @@ const ClientCreate = () => {
 
   return (
     <>
-      <div className="page-content">
-          <Row>
-            <Col lg="12">
-              <Card>
-                <CardBody>
-                  <CardTitle className="mb-4" style={{fontSize: "1.5rem", }}>Client Create</CardTitle>
-                  <form className="outer-repeater" onSubmit={handleFormSubmit}>
-                    {!(location.state && location.state.editType) && (
-                      <FormGroup className="mb-4" row>
-                        <Label className="col-form-label col-lg-2">Type <span style={{color:'red'}}>*</span></Label>
-                        <Col lg="5">
-                          <select className="form-control" value={formType} onChange={e => setFormType(e.target.value)}>
-                            <option value="schedule">Schedule</option>
-                            <option value="enquiry">Enquiry</option>
-                          </select>
-                        </Col>
-                      </FormGroup>
-                    )}
-                    <div data-repeater-list="outer-group" className="outer">
-                      <div data-repeater-item className="outer">
+      <style>{`
+        .client-create-center-container {
+          min-height: 100vh;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          background: #f6f8fa;
+          padding-top: 40px;
+        }
+        .client-create-card {
+          width: 100vw;
+          max-width: 100vw;
+          margin: 0;
+          border-radius: 24px;
+          box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);
+        }
+        .client-create-card .card {
+          border-radius: 24px !important;
+          box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08) !important;
+        }
+        .client-create-label {
+          font-size: 1.18rem;
+          font-weight: 600;
+        }
+        .client-create-input, .client-create-card .form-control, .client-create-card .react-select__control {
+          font-size: 1.13rem !important;
+          min-height: 54px !important;
+          padding: 14px 22px !important;
+          border-radius: 30px !important;
+        }
+      `}</style>
+      <div className="client-create-center-container">
+        <div className="client-create-card">
+          <div className="page-content">
+            <Row>
+              <Col lg="12">
+                <Card className="shadow rounded border-0">
+                  <CardBody>
+                    <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
+                    <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div>
+                    <form className="outer-repeater" onSubmit={handleFormSubmit} autoComplete="off">
+                      {!(location.state && location.state.editType) && (
                         <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="agent"
-                            className="col-form-label col-lg-2"
-                          >
-                            Agent <span style={{color:'red'}}>*</span>
-                          </Label>
+                          <Label className="col-form-label col-lg-2 fw-semibold">Type <span style={{color:'red'}}>*</span></Label>
                           <Col lg="5">
-                             <select className="form-control select2 mb-3 mb-xxl-0" value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
+                            <select className="form-control rounded-pill px-3 py-2" value={formType} onChange={e => setFormType(e.target.value)}>
+                              <option value="schedule">Schedule</option>
+                              <option value="enquiry">Enquiry</option>
+                            </select>
+                          </Col>
+                        </FormGroup>
+                      )}
+                      <div data-repeater-list="outer-group" className="outer">
+                        <div data-repeater-item className="outer">
+                          {/* Agent */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="agent" className="col-form-label col-lg-2 fw-semibold client-create-label">Agent <span style={{color:'red'}}>*</span></Label>
+                            <Col lg="5">
+                              <select className="form-control rounded-pill px-3 py-2 client-create-input" value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
                                 <option value="">Select Agent</option>
                                 {agents.map(agent => (
                                   <option key={agent.id} value={agent.id}>{agent.name}</option>
                                 ))}
-                            </select>
-                            {validation.touched.agent && validation.errors.agent && (
-                              <div className="text-danger">{validation.errors.agent}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="user"
-                            className="col-form-label col-lg-2"
-                          >
-                            User <span style={{color:'red'}}>*</span>
-                          </Label>
-                          <Col lg="5">
-                             <select className="form-control select2 mb-3 mb-xxl-0" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
+                              </select>
+                              {validation.touched.agent && validation.errors.agent && (
+                                <div className="text-danger small mt-1">{validation.errors.agent}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* User */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="user" className="col-form-label col-lg-2 fw-semibold client-create-label">User <span style={{color:'red'}}>*</span></Label>
+                            <Col lg="5">
+                              <select className="form-control rounded-pill px-3 py-2 client-create-input" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
                                 <option value="">Select User</option>
                                 {users.map(user => (
                                   <option key={user.id} value={user.id}>{user.name}</option>
                                 ))}
-                            </select>
-                            {validation.touched.user && validation.errors.user && (
-                              <div className="text-danger">{validation.errors.user}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-
-                        <FormGroup className="mb-4" row>
-                          <Label htmlFor="group_name" className="col-form-label col-lg-2">
-                            Group Name <span style={{color:'red'}}>*</span>
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="group_name"
-                              name="group_name"
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter group name..."
-                              value={validation.values.group_name}
-                              onChange={validation.handleChange}
-                              onBlur={validation.handleBlur}
-                              invalid={validation.touched.group_name && !!validation.errors.group_name}
-                            />
-                            {validation.touched.group_name && validation.errors.group_name && (
-                              <div className="text-danger">{validation.errors.group_name}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label htmlFor="exam_code" className="col-form-label col-lg-2">
-                            Exam code <span style={{color:'red'}}>*</span>
-                          </Label>
-                          <Col lg="5">
-                            <CreatableSelect
-                              id="exam_code"
-                              name="exam_code"
-                              options={examCodeOptions}
-                              value={examCodeOptions.find(opt => opt.value === validation.values.exam_code) || (validation.values.exam_code ? { value: validation.values.exam_code, label: validation.values.exam_code } : null)}
-                              onChange={opt => {
-                                validation.setFieldValue('exam_code', opt ? opt.value : '');
-                              }}
-                              isClearable
-                              placeholder="Select or type exam code..."
-                              styles={customSelectStyles}
-                              isSearchable
-                            />
-                            {validation.touched.exam_code && validation.errors.exam_code && (
-                              <div className="text-danger">{validation.errors.exam_code}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        {(location.state?.editType || formType === 'schedule') && (
-                          <>
-                            <FormGroup className="mb-4" row>
-                              <Label htmlFor="timezone" className="col-form-label col-lg-2">
-                                Timezone <span style={{color:'red'}}>*</span> 
-                              </Label>
-                              <Col lg="5">
-                                <Select
-                                  id="timezone"
-                                  name="timezone"
-                                  options={timezoneOptions}
-                                  value={timezoneOptions.find(opt => opt.value === validation.values.timezone) || null}
-                                  onChange={opt => validation.setFieldValue('timezone', opt ? opt.value : '')}
-                                  isClearable
-                                  placeholder="Select or search timezone..."
-                                  styles={customSelectStyles}
-                                />
-                                {validation.touched.timezone && validation.errors.timezone && (
-                                  <div className="text-danger">{validation.errors.timezone}</div>
-                                )}
-                              </Col>
-                            </FormGroup>
+                              </select>
+                              {validation.touched.user && validation.errors.user && (
+                                <div className="text-danger small mt-1">{validation.errors.user}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Group Name */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="group_name" className="col-form-label col-lg-2 fw-semibold client-create-label">Group Name <span style={{color:'red'}}>*</span></Label>
+                            <Col lg="5">
+                              <Input
+                                id="group_name"
+                                name="group_name"
+                                type="text"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter group name..."
+                                value={validation.values.group_name}
+                                onChange={validation.handleChange}
+                                onBlur={validation.handleBlur}
+                                invalid={validation.touched.group_name && !!validation.errors.group_name}
+                              />
+                              {validation.touched.group_name && validation.errors.group_name && (
+                                <div className="text-danger small mt-1">{validation.errors.group_name}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Exam Code */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="exam_code" className="col-form-label col-lg-2 fw-semibold client-create-label">Exam code <span style={{color:'red'}}>*</span></Label>
+                            <Col lg="5">
+                              <CreatableSelect
+                                id="exam_code"
+                                name="exam_code"
+                                options={examCodeOptions}
+                                value={examCodeOptions.find(opt => opt.value === validation.values.exam_code) || (validation.values.exam_code ? { value: validation.values.exam_code, label: validation.values.exam_code } : null)}
+                                onChange={opt => {
+                                  validation.setFieldValue('exam_code', opt ? opt.value : '');
+                                }}
+                                isClearable
+                                placeholder="Select or type exam code..."
+                                styles={customSelectStyles}
+                                isSearchable
+                                classNamePrefix="react-select"
+                              />
+                              {validation.touched.exam_code && validation.errors.exam_code && (
+                                <div className="text-danger small mt-1">{validation.errors.exam_code}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Timezone & Date */}
+                          {(location.state?.editType || formType === 'schedule') && (
+                            <>
                               <FormGroup className="mb-4" row>
-                                <Label className="col-form-label col-lg-2">
-                                  Date <span style={{color:'red'}}>*</span>
-                                </Label>
+                                <Label htmlFor="timezone" className="col-form-label col-lg-2 fw-semibold client-create-label">Timezone <span style={{color:'red'}}>*</span></Label>
+                                <Col lg="5">
+                                  <Select
+                                    id="timezone"
+                                    name="timezone"
+                                    options={timezoneOptions}
+                                    value={timezoneOptions.find(opt => opt.value === validation.values.timezone) || null}
+                                    onChange={opt => validation.setFieldValue('timezone', opt ? opt.value : '')}
+                                    isClearable
+                                    placeholder="Select or search timezone..."
+                                    styles={customSelectStyles}
+                                    classNamePrefix="react-select"
+                                  />
+                                  {validation.touched.timezone && validation.errors.timezone && (
+                                    <div className="text-danger small mt-1">{validation.errors.timezone}</div>
+                                  )}
+                                </Col>
+                              </FormGroup>
+                              <FormGroup className="mb-4" row>
+                                <Label className="col-form-label col-lg-2 fw-semibold client-create-label">Date <span style={{color:'red'}}>*</span></Label>
                                 <Col lg="10">
                                   <Row>
                                     <Col md={6} className="pr-0">
                                       <DatePicker
-                                        className="form-control"
+                                        className="form-control rounded-pill px-3 py-2 client-create-input"
                                         selected={validation.values.date || null}
                                         onChange={date => {
                                           setstartDate(date);
@@ -482,234 +500,211 @@ const ClientCreate = () => {
                                         dateFormat="dd/MM/yyyy h:mm aa"
                                         showTimeSelect
                                         timeFormat="HH:mm"
+                                        placeholderText="Select date and time..."
                                       />
                                       {validation.touched.date && validation.errors.date && (
-                                        <div className="text-danger">{validation.errors.date}</div>
+                                        <div className="text-danger small mt-1">{validation.errors.date}</div>
                                       )}
                                     </Col>
                                   </Row>
                                 </Col>
                               </FormGroup>
-                          </>
-                        )}
-
-                        <FormGroup className="mb-4" row>
-                          <Label htmlFor="support_fee" className="col-form-label col-lg-2">
-                            Support fee
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="support_fee"
-                              name="support_fee"
-                              type="number"
-                              className="form-control"
-                              placeholder="Enter support fee..."
-                              value={validation.values.support_fee}
-                              onChange={validation.handleChange}
-                              onBlur={validation.handleBlur}
-                              invalid={validation.touched.support_fee && !!validation.errors.support_fee}
-                            />
-                            {validation.touched.support_fee && validation.errors.support_fee && (
-                              <div className="text-danger">{validation.errors.support_fee}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label htmlFor="voucher_fee" className="col-form-label col-lg-2">
-                            Voucher fee
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="voucher_fee"
-                              name="voucher_fee"
-                              type="number"
-                              className="form-control"
-                              placeholder="Enter voucher fee..."
-                              value={validation.values.voucher_fee}
-                              onChange={validation.handleChange}
-                              onBlur={validation.handleBlur}
-                              invalid={validation.touched.voucher_fee && !!validation.errors.voucher_fee}
-                            />
-                            {validation.touched.voucher_fee && validation.errors.voucher_fee && (
-                              <div className="text-danger">{validation.errors.voucher_fee}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label htmlFor="total_fee" className="col-form-label col-lg-2">
-                            Total Fee
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="total_fee"
-                              name="total_fee"
-                              type="number"
-                              className="form-control"
-                              placeholder="Enter total fee..."
-                              value={validation.values.total_fee}
-                              readOnly
-                              onBlur={validation.handleBlur}
-                              invalid={validation.touched.total_fee && !!validation.errors.total_fee}
-                            />
-                            {validation.touched.total_fee && validation.errors.total_fee && (
-                              <div className="text-danger">{validation.errors.total_fee}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="taskname"
-                            className="col-form-label col-lg-2"
-                          >
-                            Comment
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="comment"
-                              name="comment"
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter comment..."
-                              value={validation.values.comment}
-                              onChange={validation.handleChange}
-                            />
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="email" className="col-form-label col-lg-2"
-                          >
-                            Email 
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="email"
-                              name="email"
-                              type="email"
-                              className="form-control"
-                              placeholder="Enter email..."
-                              value={validation.values.email}
-                              onChange={validation.handleChange}
-                              onBlur={validation.handleBlur}
-                              invalid={validation.touched.email && !!validation.errors.email}
-                            />
-                            {validation.touched.email && validation.errors.email && (
-                              <div className="text-danger">{validation.errors.email}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="phone" className="col-form-label col-lg-2"
-                          >
-                            Phone
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="phone"
-                              name="phone"
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter phone..."
-                              value={validation.values.phone}
-                              onChange={validation.handleChange}
-                              onBlur={validation.handleBlur}
-                              onKeyDown={e => !(/[0-9]/.test(e.key) || (e.key === '+' && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes('+')) || ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) || e.ctrlKey) && e.preventDefault()}
-                              onPaste={e => !/^\+?[0-9]*$/.test(e.clipboardData.getData("text")) && e.preventDefault()}                              invalid={validation.touched.phone && !!validation.errors.phone}
-                            />
-                            {validation.touched.phone && validation.errors.phone && (
-                              <div className="text-danger">{validation.errors.phone}</div>
-                            )}
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label className="col-form-label col-lg-2">
-                            Remind Date
-                          </Label>
-                          <Col lg="10">
-                            <Row>
-                              <Col md={6} className="pr-0">
-                                <DatePicker
-                                  className="form-control"
-                                  selected={validation.values.remind_date}
-                                  onChange={date => validation.setFieldValue('remind_date', date)}
-                                />
-                              </Col>
-                            </Row>
-                          </Col>
-                        </FormGroup>
-
-                        <FormGroup className="mb-4" row>
-                          <Label
-                            htmlFor="taskname"
-                            className="col-form-label col-lg-2"
-                          >
-                            Remind remark
-                          </Label>
-                          <Col lg="5">
-                            <Input
-                              id="remind_remark"
-                              name="remind_remark"
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter remind remark..."
-                              value={validation.values.remind_remark}
-                              onChange={validation.handleChange}
-                            />
-                          </Col>
-                        </FormGroup>
-
-                        
-               
+                            </>
+                          )}
+                          {/* Support Fee */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="support_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Support fee</Label>
+                            <Col lg="5">
+                              <Input
+                                id="support_fee"
+                                name="support_fee"
+                                type="number"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter support fee..."
+                                value={validation.values.support_fee}
+                                onChange={validation.handleChange}
+                                onBlur={validation.handleBlur}
+                                invalid={validation.touched.support_fee && !!validation.errors.support_fee}
+                              />
+                              {validation.touched.support_fee && validation.errors.support_fee && (
+                                <div className="text-danger small mt-1">{validation.errors.support_fee}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Voucher Fee */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="voucher_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Voucher fee</Label>
+                            <Col lg="5">
+                              <Input
+                                id="voucher_fee"
+                                name="voucher_fee"
+                                type="number"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter voucher fee..."
+                                value={validation.values.voucher_fee}
+                                onChange={validation.handleChange}
+                                onBlur={validation.handleBlur}
+                                invalid={validation.touched.voucher_fee && !!validation.errors.voucher_fee}
+                              />
+                              {validation.touched.voucher_fee && validation.errors.voucher_fee && (
+                                <div className="text-danger small mt-1">{validation.errors.voucher_fee}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Total Fee */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="total_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Total Fee</Label>
+                            <Col lg="5">
+                              <Input
+                                id="total_fee"
+                                name="total_fee"
+                                type="number"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter total fee..."
+                                value={validation.values.total_fee}
+                                readOnly
+                                onBlur={validation.handleBlur}
+                                invalid={validation.touched.total_fee && !!validation.errors.total_fee}
+                              />
+                              {validation.touched.total_fee && validation.errors.total_fee && (
+                                <div className="text-danger small mt-1">{validation.errors.total_fee}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Comment */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="comment" className="col-form-label col-lg-2 fw-semibold client-create-label">Comment</Label>
+                            <Col lg="5">
+                              <Input
+                                id="comment"
+                                name="comment"
+                                type="text"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter comment..."
+                                value={validation.values.comment}
+                                onChange={validation.handleChange}
+                              />
+                            </Col>
+                          </FormGroup>
+                          {/* Email */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="email" className="col-form-label col-lg-2 fw-semibold client-create-label">Email</Label>
+                            <Col lg="5">
+                              <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter email..."
+                                value={validation.values.email}
+                                onChange={validation.handleChange}
+                                onBlur={validation.handleBlur}
+                                invalid={validation.touched.email && !!validation.errors.email}
+                              />
+                              {validation.touched.email && validation.errors.email && (
+                                <div className="text-danger small mt-1">{validation.errors.email}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Phone */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="phone" className="col-form-label col-lg-2 fw-semibold client-create-label">Phone</Label>
+                            <Col lg="5">
+                              <Input
+                                id="phone"
+                                name="phone"
+                                type="text"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter phone..."
+                                value={validation.values.phone}
+                                onChange={validation.handleChange}
+                                onBlur={validation.handleBlur}
+                                onKeyDown={e => !(/[0-9]/.test(e.key) || (e.key === '+' && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes('+')) || ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) || e.ctrlKey) && e.preventDefault()}
+                                onPaste={e => !/^\+?[0-9]*$/.test(e.clipboardData.getData("text")) && e.preventDefault()}                              invalid={validation.touched.phone && !!validation.errors.phone}
+                              />
+                              {validation.touched.phone && validation.errors.phone && (
+                                <div className="text-danger small mt-1">{validation.errors.phone}</div>
+                              )}
+                            </Col>
+                          </FormGroup>
+                          {/* Remind Date */}
+                          <FormGroup className="mb-4" row>
+                            <Label className="col-form-label col-lg-2 fw-semibold">Remind Date</Label>
+                            <Col lg="10">
+                              <Row>
+                                <Col md={6} className="pr-0">
+                                  <DatePicker
+                                    className="form-control rounded-pill px-3 py-2 client-create-input"
+                                    selected={validation.values.remind_date}
+                                    onChange={date => validation.setFieldValue('remind_date', date)}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="Select remind date..."
+                                  />
+                                </Col>
+                              </Row>
+                            </Col>
+                          </FormGroup>
+                          {/* Remind Remark */}
+                          <FormGroup className="mb-4" row>
+                            <Label htmlFor="remind_remark" className="col-form-label col-lg-2 fw-semibold">Remind remark</Label>
+                            <Col lg="5">
+                              <Input
+                                id="remind_remark"
+                                name="remind_remark"
+                                type="text"
+                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                placeholder="Enter remind remark..."
+                                value={validation.values.remind_remark}
+                                onChange={validation.handleChange}
+                              />
+                            </Col>
+                          </FormGroup>
+                        </div>
                       </div>
-                    </div>
-                    <Row className="justify-content-end">
-                      <Col lg="10">
-                        {location.state && location.state.editType && (
-                          <Button type="submit" className="btn btn-success">
-                            Save Schedule
-                          </Button>
+                      <Row className="justify-content-end mt-4">
+                        <Col lg="10">
+                          {location.state && location.state.editType && (
+                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                              Save Schedule
+                            </Button>
+                          )}
+                          {!location.state?.editType && formType === 'schedule' && (
+                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                              Save Schedule
+                            </Button>
+                          )}
+                          {!location.state?.editType && formType === 'enquiry' && (
+                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                              Save Enquiry
+                            </Button>
+                          )}
+                        </Col>
+                      </Row>
+                    </form>
+                    {/* Modal remains unchanged */}
+                    <Modal isOpen={showCheckModal} toggle={handleCheckModalCancel} centered>
+                      <ModalHeader toggle={handleCheckModalCancel}>Warning</ModalHeader>
+                      <ModalBody>
+                        {checkMessage}
+                        {checkReason && (
+                          <div className="mt-2"><b>Reason:</b> {checkReason}</div>
                         )}
-                        {!location.state?.editType && formType === 'schedule' && (
-                          <Button type="submit" className="btn btn-success">
-                            Save Schedule
-                          </Button>
+                        {ISTDisplay && (
+                          <div className="mt-2"><b>Indian Time:</b> {ISTDisplay}</div>
                         )}
-                        {!location.state?.editType && formType === 'enquiry' && (
-                          <Button type="submit" className="btn btn-success">
-                            Save Enquiry
-                          </Button>
-                        )}
-                      </Col>
-                    </Row>
-                  </form>
-                  <Modal isOpen={showCheckModal} toggle={handleCheckModalCancel}>
-                    <ModalHeader toggle={handleCheckModalCancel}>Warning</ModalHeader>
-                    <ModalBody>
-                      {checkMessage}
-                      {checkReason && (
-                        <div className="mt-2"><b>Reason:</b> {checkReason}</div>
-                      )}
-                      {ISTDisplay && (
-                        <div className="mt-2"><b>Indian Time:</b> {ISTDisplay}</div>
-                      )}
-                      <div className="mt-2">Do you want to proceed anyway?</div>
-                    </ModalBody>
-                    <ModalFooter>
-                      <Button color="primary" onClick={handleCheckModalOk}>OK</Button>{' '}
-                      <Button color="secondary" onClick={handleCheckModalCancel}>Cancel</Button>
-                    </ModalFooter>
-                  </Modal>
-                </CardBody>
-              </Card>
-            </Col>
-          </Row>
+                        <div className="mt-2">Do you want to proceed anyway?</div>
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button color="primary" onClick={handleCheckModalOk} className="rounded-pill px-4">OK</Button>{' '}
+                        <Button color="secondary" onClick={handleCheckModalCancel} className="rounded-pill px-4">Cancel</Button>
+                      </ModalFooter>
+                    </Modal>
+                  </CardBody>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        </div>
       </div>
     </>
   )

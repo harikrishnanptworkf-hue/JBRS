@@ -87,38 +87,77 @@ const Login = props => {
 
   return (
     <React.Fragment>
-      <div className="account-pages my-5 pt-sm-5">
+      <style>{`
+        .login-modern-bg {
+          min-height: 100vh;
+          background: #f6f8fa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .login-modern-card {
+          border-radius: 18px;
+          box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);
+          background: #fff;
+          padding: 0;
+        }
+        .login-modern-title {
+          font-size: 2.1rem;
+          font-weight: 700;
+          color: #1a2942;
+          margin-bottom: 0.5rem;
+          letter-spacing: 0.01em;
+          text-align: left;
+        }
+        .login-modern-divider {
+          width: 60px;
+          height: 4px;
+          background: #2ba8fb;
+          border-radius: 2px;
+          margin: 18px 0 0 0;
+          opacity: 0.8;
+        }
+        .login-modern-input {
+          border-radius: 10px !important;
+          border: 1.5px solid #e3e6ef !important;
+          box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
+          font-size: 1.05rem;
+          padding: 10px 16px;
+          background: #fafdff !important;
+          transition: border-color 0.2s;
+          height: 44px !important;
+        }
+        .login-modern-btn {
+          background: #2ba8fb;
+          color: #fff;
+          border: none;
+          border-radius: 100px;
+          font-weight: 600;
+          font-size: 1rem;
+          padding: 10px 0;
+          box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+        .login-modern-btn:hover {
+          background: #6fc5ff;
+          box-shadow: 0 0 12px #6fc5ff50;
+        }
+        .login-modern-btn:active {
+          background: #3d94cf;
+        }
+      `}</style>
+      <div className="login-modern-bg">
         <Container>
           <Row className="justify-content-center">
             <Col md={8} lg={6} xl={5}>
-              <Card className="overflow-hidden">
+              <Card className="login-modern-card overflow-hidden">
                 <div className="inner">
-                  <Row>
-                    <Col xs={7}>
-                      <div className=" p-4" style={{ color: "#0271b9", color: "#0271b9" }} >
-                        <h1><b>JBRS</b></h1>
-                      </div>
-                    </Col>
-                    <Col className="col-5 align-self-end">
-                      <img src={profile} alt="" className="img-fluid" />
-                    </Col>
-                  </Row>
+                  <div style={{ padding: '32px 32px 0 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+                    <div className="login-modern-title">JBRS</div>
+                    <div className="login-modern-divider"></div>
+                  </div>
                 </div>
                 <CardBody className="pt-0">
-                  <div>
-                    <Link to="/" className="logo-light-element">
-                      <div className="avatar-md profile-user-wid mb-4">
-                        <span className="avatar-title rounded-circle bg-light">
-                        <img
-                            src={logo}
-                            alt=""
-                            className="rounded-circle"
-                            height="34"
-                          />
-                        </span>
-                      </div>
-                    </Link>
-                  </div>
                   <div className="p-2">
                     <Form
                       className="form-horizontal"
@@ -129,12 +168,11 @@ const Login = props => {
                       }}
                     >
                       <ToastContainer closeButton={false} limit={1} />
-
                       <div className="mb-3">
                         <Label className="form-label">Username</Label>
                         <Input
                           name="username"
-                          className="form-control"
+                          className="login-modern-input"
                           placeholder="Enter username"
                           type="text"
                           onChange={validation.handleChange}
@@ -148,11 +186,11 @@ const Login = props => {
                           <FormFeedback type="invalid">{validation.errors.username}</FormFeedback>
                         ) : null}
                       </div>
-
                       <div className="mb-3">
                         <Label className="form-label">Password</Label>
                         <Input
                           name="password"
+                          className="login-modern-input"
                           value={validation.values.password || ""}
                           type="password"
                           placeholder="Enter Password"
@@ -166,36 +204,18 @@ const Login = props => {
                           <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
                         ) : null}
                       </div>
-
-                      <div className="form-check">
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          id="customControlInline"
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor="customControlInline"
-                        >
-                          Remember me
-                        </label>
-                      </div>
-
                       <div className="mt-3 d-grid">
                         <button
-                          className="btn btn-primary btn-block"
-                          style={{ backgroundColor: "#0271b9", borderColor: "#0271b9" }}
+                          className="login-modern-btn btn-block"
                           type="submit"
                         >
                           Log In
                         </button>
                       </div>
-                   
                     </Form>
                   </div>
                 </CardBody>
               </Card>
-             
             </Col>
           </Row>
         </Container>

@@ -6,6 +6,7 @@ use App\Models\Enquiry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Models\ExamCode;
 use Carbon\Carbon;
 
 class EnquiryController extends Controller
@@ -16,12 +17,58 @@ class EnquiryController extends Controller
     public function index(Request $request)
     {
         $pageSize = (int) $request->input('pageSize', 10);
-        $sortBy = 'e_id';
-        $sortOrder = 'desc';
+        $sortBy = $request->input('sortBy', 'e_id');
+        $sortOrder = $request->input('sortOrder', 'desc');
 
-        $enquiries = Enquiry::with(['user', 'agent'])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($pageSize);
+        $query = Enquiry::with(['user', 'agent']);
+
+        // Filtering
+        if ($request->filled('agent_id')) {
+            $query->where('e_agent_id', $request->input('agent_id'));
+        }
+        if ($request->filled('user_id')) {
+            $query->where('e_user_id', $request->input('user_id'));
+        }
+        if ($request->filled('group_id')) {
+            $query->where('e_group_name', $request->input('group_id'));
+        }
+        if ($request->filled('examcode_id')) {
+            $query->where('e_exam_code', $request->input('examcode_id'));
+        }
+        if ($request->filled('startdate')) {
+            $query->whereDate('e_date', '>=', $request->input('startdate'));
+        }
+        if ($request->filled('enddate')) {
+            $query->whereDate('e_date', '<=', $request->input('enddate'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('e_group_name', 'like', "%$search%")
+                  ->orWhere('e_exam_code', 'like', "%$search%")
+                  ->orWhere('e_location', 'like', "%$search%")
+                  ->orWhere('e_email', 'like', "%$search%")
+                  ->orWhere('e_phone', 'like', "%$search%")
+                  ->orWhere('e_comment', 'like', "%$search%")
+                  ->orWhereHas('user', function($uq) use ($search) {
+                      $uq->where('name', 'like', "%$search%")
+                         ->orWhere('email', 'like', "%$search%")
+                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  })
+                  ->orWhereHas('agent', function($aq) use ($search) {
+                      $aq->where('name', 'like', "%$search%")
+                         ->orWhere('email', 'like', "%$search%")
+                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  });
+            });
+        }
+
+        // Sorting
+        $query->orderBy($sortBy, $sortOrder);
+
+        $enquiries = $query->paginate($pageSize);
 
         return response()->json($enquiries);
     }
@@ -163,9 +210,18 @@ class EnquiryController extends Controller
     {
         $users  = User::select('id', 'name')->where('role_id', 3)->get();
         $agents = User::select('id', 'name')->where('role_id', 2)->get();
+        $groups = Enquiry::select('e_group_name as id', 'e_group_name as name')
+            ->whereNotNull('e_group_name')
+            ->where('e_group_name', '!=', '')
+            ->distinct()
+            ->get();
+        $examcodes = ExamCode::select('id', 'ex_code')->get();
+        
         return response()->json([
             'users' => $users,
             'agents' => $agents,
+            'groups' => $groups,
+            'examcodes' => $examcodes,
         ]);
     }
 }

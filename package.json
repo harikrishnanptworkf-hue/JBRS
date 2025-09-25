@@ -18,12 +18,16 @@
         "vite": "^5.4.11"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
         "@fullcalendar/bootstrap": "^6.1.15",
         "@fullcalendar/core": "^6.1.15",
         "@fullcalendar/daygrid": "^6.1.15",
         "@fullcalendar/interaction": "^6.1.15",
         "@fullcalendar/list": "^6.1.15",
         "@fullcalendar/react": "^6.1.15",
+        "@mui/material": "^7.3.2",
+        "@mui/x-date-pickers": "^8.11.3",
         "@reduxjs/toolkit": "^2.3.0",
         "@tanstack/match-sorter-utils": "^8.19.4",
         "@tanstack/react-table": "^8.20.5",

@@ -5,24 +5,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import TableContainer from '../../components/Common/TableContainer';
 import * as Yup from "yup";
 import { useFormik } from "formik";
-import axios from 'axios';
 import api from '../../helpers/api';
-
-//import components
 import DeleteModal from '../../components/Common/DeleteModal';
-
-import {
-    getJobList as onGetJobList,
-    addNewJobList as onAddNewJobList,
-    updateJobList as onUpdateJobList,
-    deleteJobList as onDeleteJobList,
-} from "../../store/actions";
-
-//redux
-import { useSelector, useDispatch } from "react-redux";
-
-import { Col, Row, UncontrolledTooltip, Modal, ModalHeader, ModalBody, Form, Input, FormFeedback, Label, Card, CardBody, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem, Badge } from "reactstrap";
-import { createSelector } from "reselect";
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { Row, Col, Modal, ModalHeader, ModalBody, Form, Input, FormFeedback, Label } from "reactstrap";
 import Spinners from "../../components/Common/Spinner";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -47,39 +34,66 @@ function EnquiryList() {
     const [users, setUsers] = useState([]);
     const [agents, setAgents] = useState([]);
 
+    // Add filter/search state for modern UI
+    const [search, setSearch] = useState("");
+    const [filterAgent, setFilterAgent] = useState("");
+    const [filterUser, setFilterUser] = useState("");
+    const [filterGroup, setFilterGroup] = useState("");
+    const [filterExamCode, setFilterExamCode] = useState("");
+    const [filterStartDate, setFilterStartDate] = useState(null);
+    const [filterEndDate, setFilterEndDate] = useState(null);
+    const [groupOptions, setGroupOptions] = useState([]);
+    const [examCodeOptions, setExamCodeOptions] = useState([]);
+
     const location = useLocation();
     const navigate = useNavigate();
 
-    const fetchEnquiries = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder) => {
+    // Fetch filter options
+    useEffect(() => {
+        api.get('/enquiries/filter-managed-data').then(res => {
+            setUsers(res.data.users || []);
+            setAgents(res.data.agents || []);
+            setGroupOptions(res.data.groups || []);
+            setExamCodeOptions(res.data.examcodes || []);
+        });
+    }, []);
+
+    // Fetch data with filters
+    const fetchEnquiries = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
-        api.get(`/enquiries?page=${page}&pageSize=${pageSize}&sortBy=${sortField}&sortOrder=${sortDir}`)
+        const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        api.get(`/enquiries`, {
+            params: {
+                page,
+                pageSize,
+                search: searchVal,
+                sortBy: sortField,
+                sortOrder: sortDir,
+                agent_id: filterAgent, // Ensure param names match backend
+                user_id: filterUser,
+                group_id: filterGroup,
+                examcode_id: filterExamCode,
+                startdate: formatDate(filterStartDate),
+                enddate: formatDate(filterEndDate)
+            }
+        })
             .then(res => {
                 setTotalRecords(res.data.total);
                 setCurrentPage(res.data.current_page);
-                setCustomPageSize(res.data.per_page); // sync page size with backend
+                setCustomPageSize(res.data.per_page);
                 setFromRecord(res.data.from);
                 setToRecord(res.data.to);
-                const mapped = res.data.data.map((item, idx) => ({
-                    id: item.e_id,
-                    jobTitle: item.agent.name, // or fetch agent name if available
-                    companyName: item.user.name, // or fetch user name if available
-                    location: item.e_group_name || '',
-                    experience: item.e_exam_code || '',
-                    position: item.formatted_e_date,
-                }));
-                setEnquiries(mapped);
+                setEnquiries(res.data.data || []);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
     };
 
+    // Only one useEffect for all dependencies
     useEffect(() => {
-        fetchEnquiries(currentPage, customPageSize, sortBy, sortOrder);
-        api.get('/enquiries/filter-managed-data').then(res => {
-            setUsers(res.data.users || []);
-            setAgents(res.data.agents || []);
-        });
-    }, [currentPage, customPageSize, sortBy, sortOrder]);
+        fetchEnquiries(currentPage, customPageSize, sortBy, sortOrder, search);
+        // eslint-disable-next-line
+    }, [currentPage, customPageSize, sortBy, sortOrder, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStartDate, filterEndDate]);
 
     // validation
     const validation = useFormik({  
@@ -126,7 +140,7 @@ function EnquiryList() {
                     status: values.status,
                 };
                 // update Job
-                dispatch(onUpdateJobList(updateJobList));
+                //dispatch(onUpdateJobList(updateJobList));
                 validation.resetForm();
             } else {
                 const newJobList = {
@@ -143,37 +157,21 @@ function EnquiryList() {
                     status: values["status"],
                 };
                 // save new Job
-                dispatch(onAddNewJobList(newJobList));
+                //dispatch(onAddNewJobList(newJobList));
                 validation.resetForm();
             }
             toggle();
         },
     });
 
-    const dispatch = useDispatch();
-    const jobsSelector = createSelector(
-        state => state.JobReducer,
-        (jobReducer) => ({
-            jobs: jobReducer.jobs,
-            loading: jobReducer.loading
-        })
-    );
-
-    const { jobs, loading } = useSelector(jobsSelector);
-    const [isDataLoading, setDataLoading] = useState(loading);
+    const [isDataLoading, setDataLoading] = useState(isLoading);
 
 
     useEffect(() => {
-        if (jobs && !jobs.length) {
-            dispatch(onGetJobList());
-        }
-    }, [dispatch, jobs]);
-
-    useEffect(() => {
-        if (!isEmpty(jobs) && !!isEdit) {
+        if (!isEmpty(enquiries) && !!isEdit) {
             setIsEdit(false);
         }
-    }, [jobs]);
+    }, [enquiries]);
 
     const toggle = () => {
         if (modal) {
@@ -203,14 +201,14 @@ function EnquiryList() {
         toggle();
     };
 
+    // Fix: Edit button logic
     const handleEditEnquiry = async (row) => {
-        // Always fetch the latest data from the API for prepopulation
         try {
+            // Always fetch latest data for edit
             const res = await api.get(`/enquiries/${row.id}`);
-            const data = res.data;
-            navigate('/client-create', { state: { editId: row.id, editType: 'enquiry' } });
+            navigate('/client-create', { state: { editId: row.id, editType: 'enquiry', enquiryData: res.data } });
         } catch (err) {
-            // Optionally show error toast
+            toast.error('Failed to fetch enquiry details.');
         }
     };
 
@@ -235,90 +233,142 @@ function EnquiryList() {
         }
     };
 
-    const columns = useMemo(
-        () => [
-            {
-                header: 'SNo',
-                accessorKey: "e_id",
-                enableColumnFilter: false,
-                enableSorting: true,
-                cell: (cellProps) => {
-                    return <Link to="#" className="text-body fw-bold">{cellProps.row.original.id}</Link>;
-                }
-            },
-            {
-                header: "Agent",
-                accessorKey: "jobTitle",
-                enableColumnFilter: false,
-                enableSorting: true,
-            },
-            {
-                header: 'User',
-                accessorKey: "companyName",
-                enableColumnFilter: false,
-                enableSorting: true,
-            },
-            {
-                header: 'Group Name',
-                enableColumnFilter: false,
-                enableSorting: true,
-                accessorKey: "location"
-            },
-            {
-                header: 'Exam code',
-                enableColumnFilter: false,
-                enableSorting: true,
-                accessorKey: "experience"
-            },
-            {
-                header: 'Date',
-                enableColumnFilter: false,
-                enableSorting: true,
-                accessorKey: "position"
-            },
-            {
-                header: 'Action',
-                enableColumnFilter: false,
-                enableSorting: false,
-                cell: (cellProps) => {
-                    return (
-                        <ul className="list-unstyled hstack gap-1 mb-0">
-                            <li>
-                                <button
-                                    type="button"
-                                    className="btn btn-sm btn-soft-info"
-                                    onClick={() => handleEditEnquiry(cellProps.row.original)}
-                                    id={`edittooltip-${cellProps.row.original.id}`}
-                                >
-                                    <i className="mdi mdi-pencil-outline" />
-                                    <UncontrolledTooltip placement="top" target={`edittooltip-${cellProps.row.original.id}`} >
-                                        Edit
-                                    </UncontrolledTooltip>
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    type="button"
-                                    className="btn btn-sm btn-soft-danger"
-                                    onClick={() => {
-                                        setJob(cellProps.row.original);
-                                        setDeleteModal(true);
-                                    }}
-                                    id={`deletetooltip-${cellProps.row.original.id}`}
-                                >
-                                    <i className="mdi mdi-delete-outline" />
-                                    <UncontrolledTooltip placement="top" target={`deletetooltip-${cellProps.row.original.id}`}>
-                                        Delete
-                                    </UncontrolledTooltip>
-                                </button>
-                            </li>
-                        </ul>
-                    );
-                }
-            },
-        ],
-        [handleEditEnquiry]
-    );
+    // Modern columns with clickable sort headers
+    const columns = useMemo(() => [
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
+                    Agent
+                    {sortBy === 'agent' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'agent',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
+                    User
+                    {sortBy === 'user' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'user',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.user?.name || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('groupname')}>
+                    Group Name
+                    {sortBy === 'groupname' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'groupname',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.e_group_name || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('examcode')}>
+                    Exam Code
+                    {sortBy === 'examcode' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'examcode',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.e_exam_code || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+                    Date
+                    {sortBy === 'date' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'date',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
+        },
+        {
+            header: 'Action',
+            accessorKey: 'action',
+            enableSorting: false,
+            cell: (cellProps) => {
+                // Use e_id as the unique identifier for edit/delete
+                const enquiryId = cellProps.row.original.e_id || cellProps.row.original.id;
+                return (
+                    <ul className="list-unstyled hstack gap-1 mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                        <li>
+                            <button
+                                type="button"
+                                className="examcode-action-btn edit"
+                                style={{ color: '#1a8cff', background: '#e6f2ff' }}
+                                onClick={() => handleEditEnquiry({ ...cellProps.row.original, id: enquiryId })}
+                                id={`edittooltip-${enquiryId}`}
+                            >
+                                <i className="mdi mdi-pencil-outline" style={{ color: '#1a8cff' }} />
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                className="examcode-action-btn"
+                                style={{ color: '#ff4d4f', background: '#fff1f0' }}
+                                onClick={() => {
+                                    setJob({ ...cellProps.row.original, id: enquiryId });
+                                    setDeleteModal(true);
+                                }}
+                                id={`deletetooltip-${enquiryId}`}
+                            >
+                                <i className="mdi mdi-delete-outline" style={{ color: '#ff4d4f' }} />
+                            </button>
+                        </li>
+                    </ul>
+                );
+            }
+        },
+    ], [sortBy, sortOrder, handleEditEnquiry]);
+
+    // Fix: Sorting logic should only update state, let useEffect handle API call
+    const handleSortChange = (columnId) => {
+        let newOrder = 'asc';
+        if (sortBy === columnId) {
+            newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+        }
+        setSortBy(columnId);
+        setSortOrder(newOrder);
+        setCurrentPage(1); // Reset to first page on sort
+    };
+
+    const handleClearFilters = () => {
+        setFilterAgent('');
+        setFilterUser('');
+        setFilterGroup('');
+        setFilterExamCode('');
+        setFilterStartDate(null);
+        setFilterEndDate(null);
+    };
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -329,11 +379,6 @@ function EnquiryList() {
         setCurrentPage(newPage);
     };
 
-    const handleSortChange = (field, order) => {
-        setSortBy(field);
-        setSortOrder(order);
-    };
-
     useEffect(() => {
         if (location.state && location.state.created) {
             toast.success('New enquiry created successfully!');
@@ -342,282 +387,314 @@ function EnquiryList() {
         }
     }, [location.state]);
 
+    // Reminder-style Delete Modal (smaller size)
+    const ReminderDeleteModal = ({ show, onDeleteClick, onCloseClick }) => (
+        <Modal isOpen={show} toggle={onCloseClick} centered contentClassName="reminder-delete-modal" style={{ maxWidth: 400 }}>
+            <ModalBody className="text-center p-3" style={{ maxWidth: 380, margin: '0 auto' }}>
+                <div className="mb-3">
+                    <i className="mdi mdi-alert-circle-outline" style={{ fontSize: 44, color: '#ff4d4f' }}></i>
+                </div>
+                <h4 className="mb-2">Are you sure?</h4>
+                <p className="mb-3">Do you really want to delete this enquiry? This process cannot be undone.</p>
+                <div className="d-flex justify-content-center gap-2">
+                    <button type="button" className="examcode-cancel-btn" onClick={onCloseClick}>
+                        Cancel
+                    </button>
+                    <button type="button" className="examcode-update-btn" style={{ background: '#ff4d4f', border: 'none' }} onClick={onDeleteClick}>
+                        Delete
+                    </button>
+                </div>
+            </ModalBody>
+        </Modal>
+    );
+
     return (
         <React.Fragment>
-            <DeleteModal
-                show={deleteModal}
-                onDeleteClick={handleDeleteEnquiry}
-                onCloseClick={() => setDeleteModal(false)}
-            />
-            <div className="page-content">
-                    {
-                        isDataLoading ? <Spinners setLoading={setLoading} />
-                            :
+            <style>{`
+                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
+                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
+                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
+                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
+                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 220px; width: 100%; box-sizing: border-box; }
+                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
+                .examcode-action-btn.edit { color: #2ba8fb; }
+                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
+                .examcode-action-btn:active { background: #d0e7fa; }
+                .examcode-action-btn .mdi { margin: 0; }
+                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
+                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
+                .examcode-update-btn:active { background: #3d94cf; }
+                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
+                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
+                .examcode-cancel-btn:active { background: #d0e7fa; }
+                @media (max-width: 700px) { .reminder-header-bar, .reminder-tablebar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
+            `}</style>
+            <ReminderDeleteModal show={deleteModal} onDeleteClick={handleDeleteEnquiry} onCloseClick={() => setDeleteModal(false)} />
+            <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+                {/* Header Bar */}
+                <div className="reminder-header-bar">
+                    <div>
+                        <div className="reminder-title-text">Enquiry</div>
+                        <div className="reminder-title-divider"></div>
+                    </div>
+                </div>
+                {/* Filter Bar */}
+                <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Agents</option>
+                        {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Users</option>
+                        {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Groups</option>
+                        {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Exam Codes</option>
+                        {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
+                    </select>
+                    <DatePicker
+                        className="reminder-input examcode-date"
+                        selected={filterStartDate}
+                        onChange={setFilterStartDate}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="Start Date"
+                        isClearable
+                        style={{ minWidth: 160 }}
+                        calendarStartDay={1}
+                        renderCustomHeader={(
+                            { date, changeYear, changeMonth, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                            <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                            </div>
+                        )}
+                    />
+                    <DatePicker
+                        className="reminder-input examcode-date"
+                        selected={filterEndDate}
+                        onChange={setFilterEndDate}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="End Date"
+                        isClearable
+                        style={{ minWidth: 160 }}
+                        calendarStartDay={1}
+                        renderCustomHeader={(
+                            { date, changeYear, changeMonth, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                            <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                            </div>
+                        )}
+                    />
+                    {(filterAgent || filterUser || filterGroup || filterExamCode || filterStartDate || filterEndDate) && (
+                        <button
+                            type="button"
+                            className="examcode-cancel-btn"
+                            style={{ marginLeft: 12, minWidth: 120, height: 44 }}
+                            onClick={handleClearFilters}
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
+                {/* Search + Page Size Controls */}
+                <div className="reminder-tablebar">
+                    <div>
+                        <Label className="me-2 fw-semibold">Page size</Label>
+                        <select
+                            className="form-select d-inline-block w-auto reminder-input"
+                            value={customPageSize}
+                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                            style={{ minWidth: 80 }}
+                        >
+                            {[5, 10, 20, 50, 100].map(size => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <Input
+                            type="search"
+                            className="form-control d-inline-block w-auto reminder-input"
+                            style={{ minWidth: 280, maxWidth: 340, width: 320 }}
+                            placeholder="Search..."
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                        />
+                    </div>
+                </div>
+                {/* Table Section */}
+                <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
+                    {isLoading ? <Spinners setLoading={setLoading} /> :
+                        <>
+                            <div style={{ fontWeight: 500, fontSize: 15, color: '#1a2942', marginBottom: 8 }}>
+                                {totalRecords > 0 ? (
+                                    <>Showing {fromRecord} - {toRecord} of {totalRecords} Results</>
+                                ) : (
+                                    <>No Results</>
+                                )}
+                            </div>
                             <Row>
-                                <Col lg="12">
-                                    <Card>
-                                        <CardBody className="border-bottom">
-                                            <div className="d-flex align-items-center">
-                                                <h5 className="mb-0 card-title flex-grow-1" style={{fontSize: "1.5rem"}}>Enquiry Register</h5>
-                                            </div>
-                                        </CardBody>
-                                        <CardBody>
-                                            <TableContainer
-                                                columns={columns}
-                                                data={enquiries || []}
-                                                isCustomPageSize={true}
-                                                isGlobalFilter={true}
-                                                isJobListGlobalFilter={true}
-                                                isPagination={true}
-                                                SearchPlaceholder="Search ..."
-                                                tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
-                                                pagination="pagination"
-                                                paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                                                customPageSize={customPageSize}
-                                                onPageSizeChange={handlePageSizeChange}
-                                                currentPage={currentPage}
-                                                totalRecords={totalRecords}
-                                                onPageChange={handlePageChange}
-                                                fromRecord={fromRecord}
-                                                toRecord={toRecord}
-                                                onSortChange={handleSortChange}
-                                                users={users}
-                                                agents={agents}
-                                            />
-                      
-                                        </CardBody>
-                                    </Card>
+                                <Col xs={12} className="reminder-table-shadow">
+                                    <TableContainer
+                                        columns={columns}
+                                        data={enquiries || []}
+                                        isCustomPageSize={false}
+                                        isGlobalFilter={false}
+                                        isJobListGlobalFilter={false}
+                                        isPagination={true}
+                                        tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
+                                        pagination="pagination"
+                                        paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
+                                        customPageSize={customPageSize}
+                                        currentPage={currentPage}
+                                        totalRecords={totalRecords}
+                                        onPageSizeChange={handlePageSizeChange}
+                                        onPageChange={handlePageChange}
+                                        fromRecord={fromRecord}
+                                        toRecord={toRecord}
+                                        onSortChange={handleSortChange}
+                                        sortBy={sortBy}
+                                        sortDirection={sortOrder}
+                                        noDataComponent={<tr><td colSpan={5} className="text-center">No enquiries found</td></tr>}
+                                    />
                                 </Col>
                             </Row>
+                        </>
                     }
-                    <Modal isOpen={modal} toggle={toggle}>
-                        <ModalHeader toggle={toggle} tag="h4">
-                            {!!isEdit ? "Edit Job" : "Add Job"}
-                        </ModalHeader>
-                        <ModalBody>
-                            <Form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    validation.handleSubmit();
-                                    return false;
-                                }}
-                            >
-                                <Row>
-                                    <Col className="col-12">
-                                        <div className="mb-3">
-                                            <Label className="form-label"> Job Id</Label>
-                                            <Input
-                                                name="jobId"
-                                                type="text"
-                                                placeholder="Insert Job Id"
-                                                validate={{
-                                                    required: { value: true },
-                                                }}
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.jobId || ""}
-                                                invalid={
-                                                    validation.touched.jobId && validation.errors.jobId
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.jobId && validation.errors.jobId ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.jobId}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Job Title</Label>
-                                            <Input
-                                                name="jobTitle"
-                                                type="text"
-                                                placeholder="Insert Job Title"
-                                                validate={{
-                                                    required: { value: true },
-                                                }}
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.jobTitle || ""}
-                                                invalid={
-                                                    validation.touched.jobTitle &&
-                                                        validation.errors.jobTitle
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.jobTitle &&
-                                                validation.errors.jobTitle ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.jobTitle}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Company Name</Label>
-                                            <Input
-                                                name="companyName"
-                                                type="text"
-                                                placeholder="Insert Company Name"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.companyName || ""}
-                                                invalid={
-                                                    validation.touched.companyName &&
-                                                        validation.errors.companyName
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.companyName &&
-                                                validation.errors.companyName ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.companyName}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Location</Label>
-                                            <Input
-                                                name="location"
-                                                type="text"
-                                                placeholder="Insert Location"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.location || ""}
-                                                invalid={
-                                                    validation.touched.location &&
-                                                        validation.errors.location
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.location &&
-                                                validation.errors.location ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.location}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Experience</Label>
-                                            <Input
-                                                name="experience"
-                                                type="text"
-                                                placeholder="Insert Experience"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.experience || ""}
-                                                invalid={
-                                                    validation.touched.experience &&
-                                                        validation.errors.experience
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.experience &&
-                                                validation.errors.experience ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.experience}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Position</Label>
-                                            <Input
-                                                name="position"
-                                                type="text"
-                                                placeholder="Insert Position"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.position || ""}
-                                                invalid={
-                                                    validation.touched.position &&
-                                                        validation.errors.position
-                                                        ? true
-                                                        : false
-                                                }
-                                            />
-                                            {validation.touched.position &&
-                                                validation.errors.position ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.position}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Type</Label>
-                                            <Input
-                                                name="type"
-                                                type="select"
-                                                className="form-select"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.type || ""}
-                                                invalid={
-                                                    validation.touched.type && validation.errors.type
-                                                        ? true
-                                                        : false
-                                                }
-                                            >
-                                                <option>Full Time</option>
-                                                <option>Part Time</option>
-                                                <option>Freelance</option>
-                                                <option>Internship</option>
-                                            </Input>
-                                            {validation.touched.type && validation.errors.type ? (
-                                                <FormFeedback type="invalid">
-                                                    {validation.errors.type}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                        <div className="mb-3">
-                                            <Label className="form-label">Status</Label>
-                                            <Input
-                                                name="status"
-                                                type="select"
-                                                onChange={validation.handleChange}
-                                                onBlur={validation.handleBlur}
-                                                value={validation.values.status || ""}
-                                                invalid={
-                                                    validation.touched.status && validation.errors.status
-                                                        ? true
-                                                        : false
-                                                }
-                                            >
-                                                <option>Active</option>
-                                                <option>New</option>
-                                                <option>Close</option>
-                                            </Input>
-                                            {validation.touched.status && validation.errors.status ? (
-                                                <FormFeedback status="invalid">
-                                                    {validation.errors.status}
-                                                </FormFeedback>
-                                            ) : null}
-                                        </div>
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col>
-                                        <div className="text-end">
-                                            <button
-                                                type="submit"
-                                                className="btn btn-success save-user"
-                                            >
-                                                Save
-                                            </button>
-                                        </div>
-                                    </Col>
-                                </Row>
-                            </Form>
-                        </ModalBody>
-                    </Modal>
+                </div>
+                {/* Modal and ToastContainer remain unchanged */}
+                <Modal isOpen={modal} toggle={toggle}>
+                    <ModalHeader toggle={toggle} tag="h4">
+                        {!!isEdit ? "Edit Job" : "Add Job"}
+                    </ModalHeader>
+                    <ModalBody>
+                        <Form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                validation.handleSubmit();
+                                return false;
+                            }}
+                        >
+                            <div className="mb-3">
+                                <Label className="form-label">Job ID</Label>
+                                <Input
+                                    name="jobId"
+                                    placeholder="Enter Job ID"
+                                    value={validation.values.jobId}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.jobId && !!validation.errors.jobId}
+                                />
+                                <FormFeedback>{validation.errors.jobId}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Job Title</Label>
+                                <Input
+                                    name="jobTitle"
+                                    placeholder="Enter Job Title"
+                                    value={validation.values.jobTitle}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.jobTitle && !!validation.errors.jobTitle}
+                                />
+                                <FormFeedback>{validation.errors.jobTitle}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Company Name</Label>
+                                <Input
+                                    name="companyName"
+                                    placeholder="Enter Company Name"
+                                    value={validation.values.companyName}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.companyName && !!validation.errors.companyName}
+                                />
+                                <FormFeedback>{validation.errors.companyName}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Location</Label>
+                                <Input
+                                    name="location"
+                                    placeholder="Enter Location"
+                                    value={validation.values.location}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.location && !!validation.errors.location}
+                                />
+                                <FormFeedback>{validation.errors.location}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Experience</Label>
+                                <Input
+                                    name="experience"
+                                    placeholder="Enter Experience"
+                                    value={validation.values.experience}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.experience && !!validation.errors.experience}
+                                />
+                                <FormFeedback>{validation.errors.experience}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Position</Label>
+                                <Input
+                                    name="position"
+                                    placeholder="Enter Position"
+                                    value={validation.values.position}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.position && !!validation.errors.position}
+                                />
+                                <FormFeedback>{validation.errors.position}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Type</Label>
+                                <Input
+                                    name="type"
+                                    placeholder="Enter Type"
+                                    value={validation.values.type}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.type && !!validation.errors.type}
+                                />
+                                <FormFeedback>{validation.errors.type}</FormFeedback>
+                            </div>
+                            <div className="mb-3">
+                                <Label className="form-label">Status</Label>
+                                <Input
+                                    name="status"
+                                    placeholder="Enter Status"
+                                    value={validation.values.status}
+                                    onChange={validation.handleChange}
+                                    onBlur={validation.handleBlur}
+                                    invalid={validation.touched.status && !!validation.errors.status}
+                                />
+                                <FormFeedback>{validation.errors.status}</FormFeedback>
+                            </div>
+                            <div className="d-flex justify-content-end">
+                                <button type="button" className="examcode-cancel-btn me-2" onClick={toggle}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="examcode-update-btn">
+                                    {!!isEdit ? "Update Job" : "Save Job"}
+                                </button>
+                            </div>
+                        </Form>
+                    </ModalBody>
+                </Modal>
+                <ToastContainer />
             </div>
-            <ToastContainer />
         </React.Fragment>
     );
 }
-
 
 export default EnquiryList;
