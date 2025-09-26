@@ -92,7 +92,7 @@ const JobListGlobalFilter = ({ setGlobalFilter, users = [], agents = [], selecte
                         <select
                             id="status"
                             name="status"
-                            className="form-select"
+                            className="form-select reminder-input"
                             style={{ minHeight: '38px', height: '38px', width: '100%', fontSize: '1rem' }}
                             value={selectedStatus || ''}
                             onChange={e => {

@@ -69,7 +69,7 @@ function ScheduleList() {
         });
     }, []);
 
-    // Fetch data with filters
+    // Fetch data with filters (Enquiry style)
     const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
         const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
@@ -95,7 +95,7 @@ function ScheduleList() {
                 setCustomPageSize(res.data.per_page);
                 setFromRecord(res.data.from);
                 setToRecord(res.data.to);
-                const mapped = res.data.data.map((item) => ({
+                setSchedules(res.data.data.map((item) => ({
                     s_id: item.s_id,
                     agent: item.agent?.name || "",
                     user: item.user?.name || "",
@@ -108,8 +108,7 @@ function ScheduleList() {
                     access_code: item.s_access_code,
                     done_by: item.s_done_by,
                     _rowClass: item.s_status && item.s_status.toUpperCase() === 'TAKEN' ? 'font-maroon' : '',
-                }));
-                setSchedules(mapped);
+                })));
                 setLoading(false);
             })
             .catch(() => setLoading(false));
@@ -262,7 +261,7 @@ function ScheduleList() {
             ref={inputRef}
             key={cellKey}
             type="text"
-            className="form-control form-control-sm"
+            className="form-control form-control-sm reminder-input "
             value={value}
             onChange={handleChange}
             onFocus={handleFocus}
@@ -271,13 +270,23 @@ function ScheduleList() {
       },
       (prevProps, nextProps) => prevProps.value === nextProps.value && prevProps.isFocused === nextProps.isFocused
     );
+const handleSortChange = React.useCallback((field) => {
+    if (sortBy === field) {
+        setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+        setSortBy(field);
+        setSortOrder('asc');
+    }
+    // setCurrentPage(1); // Optionally reset to first page on sort
+}, [sortBy]);
+
 const columns = useMemo(() => [
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id')}>
                 SNo
                 {sortBy === 's_id' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -289,10 +298,10 @@ const columns = useMemo(() => [
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
                 Agent
                 {sortBy === 'agent' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -304,10 +313,10 @@ const columns = useMemo(() => [
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
                 User
                 {sortBy === 'user' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -319,10 +328,10 @@ const columns = useMemo(() => [
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('group_name', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('group_name')}>
                 Group Name
                 {sortBy === 'group_name' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -334,10 +343,10 @@ const columns = useMemo(() => [
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code')}>
                 Exam Code
                 {sortBy === 'exam_code' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -349,10 +358,10 @@ const columns = useMemo(() => [
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time', sortOrder === 'asc' ? 'desc' : 'asc')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
                 Indian Time
                 {sortBy === 'indian_time' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
@@ -375,7 +384,7 @@ const columns = useMemo(() => [
                 <select
                     value={value}
                     onChange={e => handleStatusChange(row.s_id, e.target.value, row)}
-                    className="form-select form-select-sm"
+                    className="form-select form-select-sm reminder-input"
                     style={{ minWidth: 120 }}
                 >
                     <option value="REVOKE">SELECT</option>
@@ -402,6 +411,7 @@ const columns = useMemo(() => [
                     cellKey={cellKey}
                     isFocused={focusedCell === cellKey}
                     onFocusCell={setFocusedCell}
+                    
                 />
             );
         }
@@ -476,8 +486,8 @@ const columns = useMemo(() => [
                 </li>
             </ul>
         )
-    },
-], [sortBy, sortOrder, handleEditSchedule, rowEdits, focusedCell]);
+    },  
+], [sortBy, sortOrder, handleEditSchedule, rowEdits, focusedCell, handleSortChange]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -486,30 +496,27 @@ const columns = useMemo(() => [
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
     };
-    const handleSortChange = (field, order) => {
-        setSortBy(field);
-        setSortOrder(order);
-    };
+    // handleSortChange is now memoized above
 
+    // Examcode-style Delete Modal (matching Enquiry)
     const ReminderDeleteModal = ({ show, onDeleteClick, onCloseClick }) => (
-    <Modal isOpen={show} toggle={onCloseClick} centered contentClassName="reminder-delete-modal" style={{ maxWidth: 400 }}>
-        <ModalBody className="text-center p-3" style={{ maxWidth: 380, margin: '0 auto' }}>
-            <div className="mb-3">
-                <i className="mdi mdi-alert-circle-outline" style={{ fontSize: 44, color: '#ff4d4f' }}></i>
+        show ? (
+            <div className="examcode-modal-backdrop">
+                <div className="examcode-modal">
+                    <div className="examcode-modal-icon">
+                        <i className="mdi mdi-alert-circle-outline"></i>
+                    </div>
+                    <div className="examcode-modal-title">Delete Schedule?</div>
+                    <div className="examcode-modal-message">Are you sure you want to delete this schedule? This action cannot be undone.</div>
+                    <div className="examcode-modal-btns">
+                        <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
+                        <button className="examcode-delete-btn" onClick={onDeleteClick} type="button">Delete</button>
+                    </div>
+                </div>
             </div>
-            <h4 className="mb-2">Are you sure?</h4>
-            <p className="mb-3">Do you really want to delete this schedule? This process cannot be undone.</p>
-            <div className="d-flex justify-content-center gap-2">
-                <button type="button" className="examcode-cancel-btn" onClick={onCloseClick}>
-                    Cancel
-                </button>
-                <button type="button" className="examcode-update-btn" style={{ background: '#ff4d4f', border: 'none' }} onClick={onDeleteClick}>
-                    Delete
-                </button>
-            </div>
-        </ModalBody>
-    </Modal>
-);
+        ) : null
+    );
+
     useEffect(() => {
         if (location.state && location.state.created) {
             toast.success('New schedule created successfully!');
@@ -536,13 +543,13 @@ const columns = useMemo(() => [
     return (
         <React.Fragment>
             <style>{`
-                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);  padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
                 .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
                 .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
                 .reminder-filterbar { width: 100vw; background: #fff; display: flex; justify-content: center; align-items: flex-end; gap: 18px; padding: 18px 32px 0 32px; flex-wrap: wrap; flex-direction: row; }
                 .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 140px; max-width: 220px; width: 100%; box-sizing: border-box; }
                 .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44,62,80,0.10), 0 1.5px 4px rgba(44,62,80,0.08); border-radius: 18px; overflow: hidden; }
-                .reminder-table-shadow table { border-radius: 18px !important; overflow: hidden; background: #fff; }
+                .reminder-table-shadow table {overflow: hidden; background: #fff; }
                 .reminder-table-shadow th, .reminder-table-shadow td { border-radius: 0 !important; }
                 .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
                 .examcode-action-btn.edit { color: #2ba8fb; }
@@ -555,9 +562,76 @@ const columns = useMemo(() => [
                 .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
                 .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
                 .examcode-cancel-btn:active { background: #d0e7fa; }
-                .table-edit-input, .table-edit-select { border-radius: 8px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1rem; padding: 7px 12px; background: #fafdff !important; transition: border-color 0.2s; height: 36px !important; min-width: 80px; max-width: 180px; width: 100%; box-sizing: border-box; }
-                .table-edit-select { padding-right: 28px; }
-                @media (max-width: 700px) { .reminder-header-bar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
+                /* Examcode modal styles for delete modal */
+                .examcode-modal-backdrop {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(44,62,80,0.18);
+                    z-index: 1050;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .examcode-modal {
+                    background: #fff;
+                    border-radius: 18px;
+                    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+                    padding: 36px 32px 28px 32px;
+                    min-width: 340px;
+                    max-width: 90vw;
+                    text-align: center;
+                    z-index: 1060;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .examcode-modal-icon {
+                    font-size: 2.8rem;
+                    color: #ff4d4f;
+                    margin-bottom: 12px;
+                }
+                .examcode-modal-title {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: #1a2942;
+                    margin-bottom: 8px;
+                }
+                .examcode-modal-message {
+                    color: #5a5a5a;
+                    margin-bottom: 24px;
+                    font-size: 1.05rem;
+                }
+                .examcode-modal-btns {
+                    display: flex;
+                    gap: 16px;
+                    justify-content: center;
+                }
+                .examcode-delete-btn {
+                    background: #ff4d4f;
+                    color: #fff;
+                    border: none;
+                    border-radius: 100px;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    padding: 8px 28px;
+                    box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
+                    transition: background 0.2s, box-shadow 0.2s;
+                }
+                .examcode-delete-btn:hover {
+                    background: #ff7875;
+                    box-shadow: 0 0 12px #ff787550;
+                }
+                .examcode-delete-btn:active {
+                    background: #d9363e;
+                }
+                @media (max-width: 700px) {
+                    .reminder-header-bar, .reminder-filterbar, .examcode-modal {
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 16px;
+                    }
+                }
                 .font-maroon { color: Maroon !important; }
             `}</style>
             <ReminderDeleteModal
@@ -573,105 +647,136 @@ const columns = useMemo(() => [
                         <div className="reminder-title-divider"></div>
                     </div>
                 </div>
-                {/* Filter Bar */}
-                <div className="reminder-filterbar" style={{gap: 18, alignItems: 'flex-end', flexWrap: 'wrap'}}>
-                    <span style={{ fontWeight: 600, marginRight: 8, marginBottom: 0 }}>Filter</span>
-                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)}>
-                        <option value="">All Agents</option>
-                        {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
-                        <option value="">All Users</option>
-                        {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)}>
-                        <option value="">All Groups</option>
-                        {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)}>
-                        <option value="">All Exam Codes</option>
-                        {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                        <option value="">All Status</option>
-                        <option value="TAKEN">TAKEN</option>
-                        <option value="REVOKE">REVOKE</option>
-                        <option value="DONE">DONE</option>
-                        <option value="RESCHEDULE">RESCHEDULE</option>
-                    </select>
-                    <DatePicker
-                        className="reminder-input examcode-date"
-                        selected={filterStartDate}
-                        onChange={setFilterStartDate}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="Start Date"
-                        isClearable
-                        style={{ minWidth: 140 }}
-                    />
-                    <DatePicker
-                        className="reminder-input examcode-date"
-                        selected={filterEndDate}
-                        onChange={setFilterEndDate}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="End Date"
-                        isClearable
-                        style={{ minWidth: 140 }}
-                    />
-                    {(!!filterAgent || !!filterUser || !!filterGroup || !!filterExamCode || !!filterStatus || !!filterStartDate || !!filterEndDate) && (
-                        <button className="examcode-cancel-btn" onClick={handleClearFilters} type="button">Clear</button>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 24, marginBottom: 0 }}>
-                        <span style={{ fontWeight: 500 }}>Page size</span>
-                        <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            className="reminder-input"
-                            style={{ width: 80, minWidth: 60, maxWidth: 100 }}
-                            value={customPageSize}
-                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                {/* Filter Bar (Enquiry style) */}
+                <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
+                        <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                        <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Agents</option>
+                            {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Users</option>
+                            {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Groups</option>
+                            {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Exam Codes</option>
+                            {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
+                        </select>
+                        <select className="reminder-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Status</option>
+                            <option value="TAKEN">TAKEN</option>
+                            <option value="REVOKE">REVOKE</option>
+                            <option value="DONE">DONE</option>
+                            <option value="RESCHEDULE">RESCHEDULE</option>
+                        </select>
+                        <DatePicker
+                            className="reminder-input examcode-date"
+                            selected={filterStartDate}
+                            onChange={setFilterStartDate}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Start Date"
+                            isClearable
+                            style={{ minWidth: 160 }}
+                            calendarStartDay={1}
+                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                </div>
+                            )}
                         />
+                        <DatePicker
+                            className="reminder-input examcode-date"
+                            selected={filterEndDate}
+                            onChange={setFilterEndDate}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="End Date"
+                            isClearable
+                            style={{ minWidth: 160 }}
+                            calendarStartDay={1}
+                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                </div>
+                            )}
+                        />
+                        {(filterAgent || filterUser || filterGroup || filterExamCode || filterStatus || filterStartDate || filterEndDate) && (
+                            <button
+                                type="button"
+                                className="examcode-cancel-btn"
+                                style={{ marginLeft: 12, minWidth: 120, height: 44 }}
+                                onClick={handleClearFilters}
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
-                    <input
-                        className="reminder-input"
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        style={{ maxWidth: 220, marginLeft: 0 }}
-                    />
+                    <div className="reminder-tablebar" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+                        <div>
+                            <Label className="me-2 fw-semibold">Page size</Label>
+                            <select
+                                className="form-select d-inline-block w-auto reminder-input"
+                                value={customPageSize}
+                                onChange={e => handlePageSizeChange(Number(e.target.value))}
+                                style={{ minWidth: 80 }}
+                            >
+                                {[5, 10, 20, 50, 100].map(size => (
+                                    <option key={size} value={size}>{size}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <Input
+                                type="search"
+                                className="form-control d-inline-block w-auto reminder-input"
+                                style={{ minWidth: 280, maxWidth: 340, width: 320 }}
+                                placeholder="Search..."
+                                value={search}
+                                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                            />
+                        </div>
+                    </div>
                 </div>
-                {/* Table */}
-                <Row>
-                    <Col lg="12">
-                        <Card className="reminder-table-shadow">
-                            <CardBody>
-                                <TableContainer
-                                    columns={columns}
-                                    data={tableData}
-                                    isCustomPageSize={true}
-                                    isGlobalFilter={false}
-                                    isJobListGlobalFilter={false}
-                                    isPagination={true}
-                                    SearchPlaceholder="Search ..."
-                                    tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
-                                    pagination="pagination"
-                                    paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                                    customPageSize={customPageSize}
-                                    onPageSizeChange={handlePageSizeChange}
-                                    currentPage={currentPage}
-                                    totalRecords={totalRecords}
-                                    onPageChange={handlePageChange}
-                                    fromRecord={fromRecord}
-                                    toRecord={toRecord}
-                                    onSortChange={handleSortChange}
-                                    editableInputClassName="table-edit-input"
-                                    editableSelectClassName="table-edit-select"
-                                />
-                            </CardBody>
-                        </Card>
-                    </Col>
-                </Row>
+                {/* Table Section (Enquiry style) */}
+                <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
+                    {isLoading ? <Spinners setLoading={setLoading} /> :
+                        <>
+                            <Row>
+                                <Col xs={12} className="reminder-table-shadow">
+                                    <TableContainer
+                                        columns={columns}
+                                        data={tableData}
+                                        isCustomPageSize={false}
+                                        isGlobalFilter={false}
+                                        isJobListGlobalFilter={false}
+                                        isPagination={true}
+                                        tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
+                                        pagination="pagination"
+                                        paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
+                                        customPageSize={customPageSize}
+                                        currentPage={currentPage}
+                                        totalRecords={totalRecords}
+                                        onPageSizeChange={handlePageSizeChange}
+                                        onPageChange={handlePageChange}
+                                        fromRecord={fromRecord}
+                                        toRecord={toRecord}
+                                        onSortChange={handleSortChange}
+                                        editableInputClassName="table-edit-input"
+                                        editableSelectClassName="table-edit-select"
+                                    />
+                                </Col>
+                            </Row>
+                        </>
+                    }
+                </div>
                 {/* Modal */}
                 <Modal isOpen={modal} toggle={toggle}>
                     <ModalHeader toggle={toggle} tag="h4">
@@ -770,23 +875,18 @@ const columns = useMemo(() => [
                                     </div>
                                 </Col>
                             </Row>
-                            <Row>
-                                <Col>
-                                    <div className="text-end">
-                                        <button
-                                            type="submit"
-                                            className="btn btn-success btn-lg save-user"
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                </Col>
-                            </Row>
+                            <div className="d-flex justify-content-end gap-2">
+                                <button type="button" className="examcode-cancel-btn" onClick={toggle}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="examcode-update-btn">
+                                    {!!isEdit ? "Update Schedule" : "Create Schedule"}
+                                </button>
+                            </div>
                         </Form>
                     </ModalBody>
                 </Modal>
             </div>
-            <ToastContainer />
         </React.Fragment>
     );
 }

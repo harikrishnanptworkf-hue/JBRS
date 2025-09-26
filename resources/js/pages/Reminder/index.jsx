@@ -99,7 +99,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
                     Agent
                     {sortBy === 'agent' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}
@@ -114,7 +114,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
                     User
                     {sortBy === 'user' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}
@@ -129,7 +129,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('groupname')}>
                     Group Name
                     {sortBy === 'groupname' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}
@@ -144,7 +144,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('examcode')}>
                     Exam Code
                     {sortBy === 'examcode' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}
@@ -159,7 +159,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
                     Date
                     {sortBy === 'date' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}
@@ -174,7 +174,7 @@ function ReminderList() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('reminddate')}>
                     Remind Date
                     {sortBy === 'reminddate' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
                     )}

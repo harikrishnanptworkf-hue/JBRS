@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { Link } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import TableContainer from '../../components/Common/TableContainer';
@@ -19,31 +21,44 @@ function ReportList() {
     const [toRecord, setToRecord] = useState(0);
     const [users, setUsers] = useState([]);
     const [agents, setAgents] = useState([]);
+    const [groupOptions, setGroupOptions] = useState([]);
+    const [examCodeOptions, setExamCodeOptions] = useState([]);
     const [selectedUser, setSelectedUser] = useState("");
     const [selectedAgent, setSelectedAgent] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [columnFilters, setColumnFilters] = useState([]);
+    const [selectedGroup, setSelectedGroup] = useState("");
+    const [selectedExamCode, setSelectedExamCode] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState("");
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState('s_id');
+    const [sortOrder, setSortOrder] = useState('desc');
 
-    const fetchReports = (page = 1, pageSize = customPageSize, user = selectedUser, agent = selectedAgent, start = startDate, end = endDate, filters = columnFilters) => {
+    const fetchReports = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
-        let url = `/report?page=${page}&pageSize=${pageSize}`;
-        if (user) url += `&user_id=${user}`;
-        if (agent) url += `&agent_id=${agent}`;
-        if (start) url += `&start_date=${start}`;
-        if (end) url += `&end_date=${end}`;
-        // Add backend filters for s_exam_code and s_status
-        filters.forEach(f => {
-            if (f.id === 's_exam_code' && f.value) url += `&s_exam_code=${encodeURIComponent(f.value)}`;
-            if (f.id === 's_status' && f.value) url += `&s_status=${encodeURIComponent(f.value)}`;
-        });
-        api.get(url)
+        const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        api.get(`/report`, {
+            params: {
+                page,
+                pageSize,
+                search: searchVal,
+                sortBy: sortField,
+                sortOrder: sortDir,
+                agent_id: selectedAgent,
+                user_id: selectedUser,
+                s_group_name: selectedGroup,
+                s_exam_code: selectedExamCode,
+                s_status: selectedStatus,
+                start_date: formatDate(startDate),
+                end_date: formatDate(endDate)
+            }
+        })
             .then(res => {
-                setTotalRecords(res.data.total || res.data.length || 0);
-                setCurrentPage(res.data.page || 1);
-                setCustomPageSize(res.data.pageSize || pageSize);
-                setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
-                setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
+                setTotalRecords(res.data.total);
+                setCurrentPage(res.data.current_page);
+                setCustomPageSize(res.data.per_page);
+                setFromRecord(res.data.from);
+                setToRecord(res.data.to);
                 setReports(res.data.data || []);
                 setLoading(false);
             })
@@ -51,106 +66,196 @@ function ReportList() {
     };
 
     useEffect(() => {
-        fetchReports(currentPage, customPageSize, selectedUser, selectedAgent, startDate, endDate, columnFilters);
-    }, [currentPage, customPageSize, selectedUser, selectedAgent, startDate, endDate, columnFilters]);
+        fetchReports(currentPage, customPageSize, sortBy, sortOrder, search);
+        // eslint-disable-next-line
+    }, [currentPage, customPageSize, sortBy, sortOrder, search, selectedAgent, selectedUser, selectedGroup, selectedExamCode, selectedStatus, startDate, endDate]);
 
     useEffect(() => {
-        // Fetch users and agents for dropdowns
+        // Fetch users, agents, groups, exam codes for dropdowns
         api.get('/enquiries/filter-managed-data').then(res => {
             setUsers(res.data.users || []);
             setAgents(res.data.agents || []);
+            setGroupOptions(res.data.groups || []);
+            setExamCodeOptions(res.data.examcodes || []);
         });
     }, []);
 
+    const handleSortChange = React.useCallback((field) => {
+        if (sortBy === field) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
+    }, [sortBy]);
+
     const columns = useMemo(() => [
         {
-            header: 'S No',
-            accessorKey: 'sno',
-            enableColumnFilter: false,
-            enableSorting: false,
-            cell: (cellProps) => <span>{cellProps.row.index + 1 + ((currentPage - 1) * customPageSize)}</span>
-        },
-        {
-            header: 'User',
-            accessorKey: 'user',
-            enableColumnFilter: false,
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id')}>
+                    SNo
+                    {sortBy === 's_id' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 's_id',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.user?.name || cellProps.row.original.user || ''}</span>
+            cell: (cellProps) => <span>{cellProps.row.original.s_id}</span>
         },
         {
-            header: 'Agent',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
+                    Agent
+                    {sortBy === 'agent' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'agent',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.agent?.name || cellProps.row.original.agent || ''}</span>
         },
         {
-            header: 'Group Name',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
+                    User
+                    {sortBy === 'user' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'user',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.user?.name || cellProps.row.original.user || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('group_name')}>
+                    Group Name
+                    {sortBy === 'group_name' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'group_name',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.group_name || cellProps.row.original.e_group_name || cellProps.row.original.s_group_name || ''}</span>
         },
         {
-            header: 'Exam Code',
-            accessorKey: 's_exam_code',
-            enableColumnFilter: true,
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code')}>
+                    Exam Code
+                    {sortBy === 'exam_code' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'exam_code',
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_exam_code || cellProps.row.original.exam_code || cellProps.row.original.e_exam_code || ''}</span>
         },
         {
-            header: 'Timezone',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('timezone')}>
+                    Timezone
+                    {sortBy === 'timezone' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'timezone',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_area || cellProps.row.original.timezone || ''}</span>
         },
         {
-            header: 'Date',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+                    Date
+                    {sortBy === 'date' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'date',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.formatted_s_date_original || cellProps.row.original.date || ''}</span>
         },
         {
-            header: 'Indian Time',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
+                    Indian Time
+                    {sortBy === 'indian_time' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'indian_time',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.formatted_s_date || cellProps.row.original.indian_time || ''}</span>
         },
         {
-            header: 'Comment',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('comment')}>
+                    Comment
+                    {sortBy === 'comment' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'comment',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_comment || cellProps.row.original.comment || ''}</span>
         },
         {
-            header: 'Done By',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('done_by')}>
+                    Done By
+                    {sortBy === 'done_by' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'done_by',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_done_by || cellProps.row.original.done_by || ''}</span>
         },
         {
-            header: 'Voucher Fee',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('voucher_fee')}>
+                    Voucher Fee
+                    {sortBy === 'voucher_fee' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'voucher_fee',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_voucher_fee || cellProps.row.original.voucher_fee || ''}</span>
         },
         {
-            header: 'Support Fee',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('support_fee')}>
+                    Support Fee
+                    {sortBy === 'support_fee' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'support_fee',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_support_fee || cellProps.row.original.support_fee || ''}</span>
         },
         {
-            header: 'Total Fees',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('total_fees')}>
+                    Total Fees
+                    {sortBy === 'total_fees' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 'total_fees',
-            enableColumnFilter: false,
             enableSorting: true,
             cell: (cellProps) => {
                 const voucher = parseFloat(cellProps.row.original.s_voucher_fee || cellProps.row.original.voucher_fee || 0);
@@ -159,21 +264,36 @@ function ReportList() {
             }
         },
         {
-            header: 'Status',
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_status')}>
+                    Status
+                    {sortBy === 's_status' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
             accessorKey: 's_status',
-            enableColumnFilter: true,
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_status || cellProps.row.original.status || cellProps.row.original.e_status || ''}</span>
         },
-    ], [currentPage, customPageSize]);
+    ], [sortBy, sortOrder, handleSortChange]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
         setCurrentPage(1);
     };
-
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
+    };
+    const handleClearFilters = () => {
+        setSelectedAgent("");
+        setSelectedUser("");
+        setSelectedGroup("");
+        setSelectedExamCode("");
+        setSelectedStatus("");
+        setStartDate(null);
+        setEndDate(null);
+        setSearch("");
     };
 
     return (
@@ -210,86 +330,137 @@ function ReportList() {
                         <div className="reminder-title-divider"></div>
                     </div>
                 </div>
-                {/* Filter/Search/Page Size Bar */}
-                <div className="reminder-filterbar" style={{gap: 18, alignItems: 'flex-end', flexWrap: 'wrap'}}>
-                    <span style={{ fontWeight: 600, marginRight: 8, marginBottom: 0 }}>Filter</span>
-                    <select className="reminder-input" value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)}>
-                        <option value="">All Agents</option>
-                        {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-                        <option value="">All Users</option>
-                        {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <input className="reminder-input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} placeholder="Start Date" />
-                    <input className="reminder-input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} placeholder="End Date" />
-                    {/* Add more filters as needed */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 24, marginBottom: 0 }}>
-                        <span style={{ fontWeight: 500 }}>Page size</span>
-                        <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            className="reminder-input"
-                            style={{ width: 80, minWidth: 60, maxWidth: 100 }}
-                            value={customPageSize}
-                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                {/* Filter Bar (Enquiry style) */}
+                <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
+                        <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                        <select className="reminder-input" value={selectedAgent} onChange={e => { setSelectedAgent(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
+                            <option value="">All Agents</option>
+                            {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
+                            <option value="">All Users</option>
+                            {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={selectedGroup} onChange={e => { setSelectedGroup(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
+                            <option value="">All Groups</option>
+                            {groupOptions.map(opt => <option key={opt.id} value={opt.name}>{opt.name}</option>)}
+                        </select>
+                        <select className="reminder-input" value={selectedExamCode} onChange={e => { setSelectedExamCode(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
+                            <option value="">All Exam Codes</option>
+                            {examCodeOptions.map(opt => <option key={opt.id} value={opt.ex_code}>{opt.ex_code}</option>)}
+                        </select>
+                        <select className="reminder-input" value={selectedStatus} onChange={e => { setSelectedStatus(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
+                            <option value="">All Status</option>
+                            <option value="TAKEN">TAKEN</option>
+                            <option value="REVOKE">REVOKE</option>
+                            <option value="DONE">DONE</option>
+                            <option value="RESCHEDULE">RESCHEDULE</option>
+                        </select>
+                        <DatePicker
+                            className="reminder-input examcode-date"
+                            selected={startDate}
+                            onChange={date => { setStartDate(date); setCurrentPage(1); }}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Start Date"
+                            isClearable
+                            style={{ minWidth: 160 }}
+                            calendarStartDay={1}
+                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                </div>
+                            )}
                         />
+                        <DatePicker
+                            className="reminder-input examcode-date"
+                            selected={endDate}
+                            onChange={date => { setEndDate(date); setCurrentPage(1); }}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="End Date"
+                            isClearable
+                            style={{ minWidth: 160 }}
+                            calendarStartDay={1}
+                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                </div>
+                            )}
+                        />
+                        {(selectedAgent || selectedUser || selectedGroup || selectedExamCode || selectedStatus || startDate || endDate || search) && (
+                            <button
+                                type="button"
+                                className="examcode-cancel-btn"
+                                style={{ marginLeft: 12, minWidth: 120, height: 44 }}
+                                onClick={handleClearFilters}
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
-                    <input
-                        className="reminder-input"
-                        type="text"
-                        placeholder="Search..."
-                        value={columnFilters.find(f => f.id === 'search')?.value || ''}
-                        onChange={e => setColumnFilters(prev => {
-                            const val = e.target.value;
-                            const others = prev.filter(f => f.id !== 'search');
-                            return val ? [...others, { id: 'search', value: val }] : others;
-                        })}
-                        style={{ maxWidth: 220, marginLeft: 0 }}
-                    />
+                    <div className="reminder-tablebar" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+                        <div>
+                            <Label className="me-2 fw-semibold">Page size</Label>
+                            <select
+                                className="form-select d-inline-block w-auto reminder-input"
+                                value={customPageSize}
+                                onChange={e => handlePageSizeChange(Number(e.target.value))}
+                                style={{ minWidth: 80 }}
+                            >
+                                {[5, 10, 20, 50, 100].map(size => (
+                                    <option key={size} value={size}>{size}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <Input
+                                type="search"
+                                className="form-control d-inline-block w-auto reminder-input"
+                                style={{ minWidth: 280, maxWidth: 340, width: 320 }}
+                                placeholder="Search..."
+                                value={search}
+                                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                            />
+                        </div>
+                    </div>
                 </div>
-                {/* Table Section */}
+                {/* Table Section (Enquiry/Examcode style) */}
                 <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                     {isLoading ? <Spinners setLoading={setLoading} /> :
-                        <Row>
-                            <Col xs={12} className="reminder-table-shadow">
-                                <TableContainer
-                                    columns={columns}
-                                    data={reports || []}
-                                    isCustomPageSize={true}
-                                    isGlobalFilter={false}
-                                    isJobListGlobalFilter={true}
-                                    isPagination={true}
-                                    SearchPlaceholder="Search ..."
-                                    tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
-                                    pagination="pagination"
-                                    paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                                    customPageSize={customPageSize}
-                                    onPageSizeChange={handlePageSizeChange}
-                                    currentPage={currentPage}
-                                    totalRecords={totalRecords}
-                                    onPageChange={handlePageChange}
-                                    fromRecord={fromRecord}
-                                    toRecord={toRecord}
-                                    noDataComponent={<tr><td colSpan={5} className="text-center">No report data found</td></tr>}
-                                    users={users}
-                                    agents={agents}
-                                    selectedUser={selectedUser}
-                                    setSelectedUser={setSelectedUser}
-                                    selectedAgent={selectedAgent}
-                                    setSelectedAgent={setSelectedAgent}
-                                    startDate={startDate}
-                                    setStartDate={setStartDate}
-                                    endDate={endDate}
-                                    setEndDate={setEndDate}
-                                    columnFilters={columnFilters}
-                                    setColumnFilters={setColumnFilters}
-                                    editableInputClassName="table-edit-input"
-                                    editableSelectClassName="table-edit-select"
-                                />
-                            </Col>
-                        </Row>
+                        <>
+                            <Row>
+                                <Col xs={12} className="reminder-table-shadow">
+                                    <TableContainer
+                                        columns={columns}
+                                        data={reports || []}
+                                        isCustomPageSize={false}
+                                        isGlobalFilter={false}
+                                        isJobListGlobalFilter={false}
+                                        isPagination={true}
+                                        tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
+                                        pagination="pagination"
+                                        paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
+                                        customPageSize={customPageSize}
+                                        currentPage={currentPage}
+                                        totalRecords={totalRecords}
+                                        onPageSizeChange={handlePageSizeChange}
+                                        onPageChange={handlePageChange}
+                                        fromRecord={fromRecord}
+                                        toRecord={toRecord}
+                                        onSortChange={handleSortChange}
+                                        // Add sortBy and sortDirection props for full parity if needed
+                                        sortBy={sortBy}
+                                        sortDirection={sortOrder}
+                                        // Optionally add noDataComponent for empty state
+                                        noDataComponent={<tr><td colSpan={columns.length} className="text-center">No reports found</td></tr>}
+                                    />
+                                </Col>
+                            </Row>
+                        </>
                     }
                 </div>
                 <ToastContainer />

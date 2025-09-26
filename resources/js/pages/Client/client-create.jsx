@@ -364,7 +364,7 @@ const ClientCreate = () => {
                   <CardBody>
                     <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
                     <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div>
-                    <form className="outer-repeater" onSubmit={handleFormSubmit} autoComplete="off">
+                    <form className="outer-repeater mx-auto" onSubmit={handleFormSubmit} autoComplete="off">
                       {!(location.state && location.state.editType) && (
                         <div className="mb-4 row mb-3 justify-content-center align-items-center">
                           <label className="col-form-label col-lg-2 fw-semibold form-label text-start">
@@ -675,23 +675,28 @@ const ClientCreate = () => {
                       </div>
                     </form>
                     {/* Modal remains unchanged */}
-                    <Modal isOpen={showCheckModal} toggle={handleCheckModalCancel} centered>
-                      <ModalHeader toggle={handleCheckModalCancel}>Warning</ModalHeader>
-                      <ModalBody>
-                        {checkMessage}
-                        {checkReason && (
-                          <div className="mt-2"><b>Reason:</b> {checkReason}</div>
-                        )}
-                        {ISTDisplay && (
-                          <div className="mt-2"><b>Indian Time:</b> {ISTDisplay}</div>
-                        )}
-                        <div className="mt-2">Do you want to proceed anyway?</div>
-                      </ModalBody>
-                      <ModalFooter>
-                        <Button color="primary" onClick={handleCheckModalOk} className="rounded-pill px-4">OK</Button>{' '}
-                        <Button color="secondary" onClick={handleCheckModalCancel} className="rounded-pill px-4">Cancel</Button>
-                      </ModalFooter>
-                    </Modal>
+                    {showCheckModal && (
+  <div className="examcode-modal-backdrop" style={{zIndex: 2000, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+    <div className="examcode-modal" style={{minWidth: 340, maxWidth: '90vw', borderRadius: 18, boxShadow: '0 8px 32px rgba(44,62,80,0.18)', padding: '24px 32px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div className="examcode-modal-icon" style={{fontSize: 48, color: '#ffb300', marginBottom: 12}}>
+        <i className="mdi mdi-alert-outline"></i>
+      </div>
+      <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Warning</div>
+      <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 12, textAlign: 'center'}}>{checkMessage}</div>
+      {checkReason && (
+        <div className="mb-2"><b>Reason:</b> {checkReason}</div>
+      )}
+      {ISTDisplay && (
+        <div className="mb-2"><b>Indian Time:</b> {ISTDisplay}</div>
+      )}
+      <div className="mb-3">Do you want to proceed anyway?</div>
+      <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
+        <button className="examcode-save-btn" style={{background:'#2ba8fb', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}} onClick={handleCheckModalOk} type="button">OK</button>
+        <button className="examcode-cancel-btn" onClick={handleCheckModalCancel} type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+)}
                   </CardBody>
                 </Card>
               </Col>

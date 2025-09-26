@@ -19,14 +19,83 @@ class ScheduleController extends Controller
         $sortBy = $request->input('sortBy', 's_id');
         $sortOrder = $request->input('sortOrder', 'desc');
 
-        $schedules = Schedule::with(['user', 'agent'])
-            ->where(function($query) {
-                $query->whereNull('s_status')
-                      ->orWhere('s_status', '!='
-                      , 'DONE');
-            })
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($pageSize);
+    $query = Schedule::with(['user', 'agent']);
+    // Exclude schedules with status 'done' from listing
+    $query->where('s_status', '!=', 'done');
+
+        // Filtering
+        if ($request->filled('agent_id')) {
+            $query->where('s_agent_id', $request->input('agent_id'));
+        }
+        if ($request->filled('user_id')) {
+            $query->where('s_user_id', $request->input('user_id'));
+        }
+        if ($request->filled('group_id')) {
+            $query->where('s_group_name', $request->input('group_id'));
+        }
+        if ($request->filled('examcode_id')) {
+            $query->where('s_exam_code', $request->input('examcode_id'));
+        }
+        if ($request->filled('status')) {
+            $query->where('s_status', $request->input('status'));
+        }
+        if ($request->filled('startdate')) {
+            $query->whereDate('s_date', '>=', $request->input('startdate'));
+        }
+        if ($request->filled('enddate')) {
+            $query->whereDate('s_date', '<=', $request->input('enddate'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('s_group_name', 'like', "%$search%")
+                  ->orWhere('s_exam_code', 'like', "%$search%")
+                  ->orWhere('s_location', 'like', "%$search%")
+                  ->orWhere('s_email', 'like', "%$search%")
+                  ->orWhere('s_phone', 'like', "%$search%")
+                  ->orWhere('s_comment', 'like', "%$search%")
+                  ->orWhereHas('user', function($uq) use ($search) {
+                      $uq->where('name', 'like', "%$search%")
+                         ->orWhere('email', 'like', "%$search%")
+                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  })
+                  ->orWhereHas('agent', function($aq) use ($search) {
+                      $aq->where('name', 'like', "%$search%")
+                         ->orWhere('email', 'like', "%$search%")
+                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  });
+            });
+        }
+
+        // Only allow sorting by known columns or relationships
+        $allowedSorts = [
+            's_id', 's_group_name', 's_exam_code', 's_date', 's_agent_id', 's_user_id', 's_status',
+            'group_name', 'exam_code', 'date', 'agent', 'user', 'status', 'indian_time', 'system_name', 'access_code', 'done_by'
+        ];
+        $sortByMap = [
+            'group_name' => 's_group_name',
+            'exam_code' => 's_exam_code',
+            'date' => 's_date',
+            'agent' => 's_agent_id',
+            'user' => 's_user_id',
+            'status' => 's_status',
+            'indian_time' => 's_date',
+            'system_name' => 's_system_name',
+            'access_code' => 's_access_code',
+            'done_by' => 's_done_by',
+        ];
+        if (isset($sortByMap[$sortBy])) {
+            $sortBy = $sortByMap[$sortBy];
+        }
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 's_id';
+        }
+        $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortOrder);
+
+        $schedules = $query->paginate($pageSize);
 
         return response()->json($schedules);
     }

@@ -50,7 +50,7 @@ function EnquiryList() {
 
     // Fetch filter options
     useEffect(() => {
-        api.get('/enquiries/filter-managed-data').then(res => {
+        api.get('/enquiries/filter-managed-data', { params: { enq: 1 } }).then(res => {
             setUsers(res.data.users || []);
             setAgents(res.data.agents || []);
             setGroupOptions(res.data.groups || []);
@@ -387,49 +387,118 @@ function EnquiryList() {
         }
     }, [location.state]);
 
-    // Reminder-style Delete Modal (smaller size)
+    // Examcode-style Delete Modal
     const ReminderDeleteModal = ({ show, onDeleteClick, onCloseClick }) => (
-        <Modal isOpen={show} toggle={onCloseClick} centered contentClassName="reminder-delete-modal" style={{ maxWidth: 400 }}>
-            <ModalBody className="text-center p-3" style={{ maxWidth: 380, margin: '0 auto' }}>
-                <div className="mb-3">
-                    <i className="mdi mdi-alert-circle-outline" style={{ fontSize: 44, color: '#ff4d4f' }}></i>
+        show ? (
+            <div className="examcode-modal-backdrop">
+                <div className="examcode-modal">
+                    <div className="examcode-modal-icon">
+                        <i className="mdi mdi-alert-circle-outline"></i>
+                    </div>
+                    <div className="examcode-modal-title">Delete Enquiry?</div>
+                    <div className="examcode-modal-message">Are you sure you want to delete this enquiry? This action cannot be undone.</div>
+                    <div className="examcode-modal-btns">
+                        <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
+                        <button className="examcode-delete-btn" onClick={onDeleteClick} type="button">Delete</button>
+                    </div>
                 </div>
-                <h4 className="mb-2">Are you sure?</h4>
-                <p className="mb-3">Do you really want to delete this enquiry? This process cannot be undone.</p>
-                <div className="d-flex justify-content-center gap-2">
-                    <button type="button" className="examcode-cancel-btn" onClick={onCloseClick}>
-                        Cancel
-                    </button>
-                    <button type="button" className="examcode-update-btn" style={{ background: '#ff4d4f', border: 'none' }} onClick={onDeleteClick}>
-                        Delete
-                    </button>
-                </div>
-            </ModalBody>
-        </Modal>
+            </div>
+        ) : null
     );
 
     return (
         <React.Fragment>
-            <style>{`
-                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
-                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
-                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
-                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
-                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
-                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 220px; width: 100%; box-sizing: border-box; }
-                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
-                .examcode-action-btn.edit { color: #2ba8fb; }
-                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
-                .examcode-action-btn:active { background: #d0e7fa; }
-                .examcode-action-btn .mdi { margin: 0; }
-                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
-                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
-                .examcode-update-btn:active { background: #3d94cf; }
-                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
-                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
-                .examcode-cancel-btn:active { background: #d0e7fa; }
-                @media (max-width: 700px) { .reminder-header-bar, .reminder-tablebar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
-            `}</style>
+                        <style>{`
+                                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
+                                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
+                                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
+                                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
+                                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 352px; width: 100%; box-sizing: border-box; }
+                                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
+                                .examcode-action-btn.edit { color: #2ba8fb; }
+                                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
+                                .examcode-action-btn:active { background: #d0e7fa; }
+                                .examcode-action-btn .mdi { margin: 0; }
+                                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
+                                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
+                                .examcode-update-btn:active { background: #3d94cf; }
+                                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
+                                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
+                                .examcode-cancel-btn:active { background: #d0e7fa; }
+                                /* Examcode modal styles for delete modal */
+                                .examcode-modal-backdrop {
+                                    position: fixed;
+                                    top: 0; left: 0; right: 0; bottom: 0;
+                                    background: rgba(44,62,80,0.18);
+                                    z-index: 1050;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                }
+                                .examcode-modal {
+                                    background: #fff;
+                                    border-radius: 18px;
+                                    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+                                    padding: 36px 32px 28px 32px;
+                                    min-width: 340px;
+                                    max-width: 90vw;
+                                    text-align: center;
+                                    z-index: 1060;
+                                    position: relative;
+                                    display: flex;
+                                    flex-direction: column;
+                                    align-items: center;
+                                }
+                                .examcode-modal-icon {
+                                    font-size: 2.8rem;
+                                    color: #ff4d4f;
+                                    margin-bottom: 12px;
+                                }
+                                .examcode-modal-title {
+                                    font-size: 1.25rem;
+                                    font-weight: 700;
+                                    color: #1a2942;
+                                    margin-bottom: 8px;
+                                }
+                                .examcode-modal-message {
+                                    color: #5a5a5a;
+                                    margin-bottom: 24px;
+                                    font-size: 1.05rem;
+                                }
+                                .examcode-modal-btns {
+                                    display: flex;
+                                    gap: 16px;
+                                    justify-content: center;
+                                }
+                                .examcode-delete-btn {
+                                    background: #ff4d4f;
+                                    color: #fff;
+                                    border: none;
+                                    border-radius: 100px;
+                                    font-weight: 600;
+                                    font-size: 1rem;
+                                    padding: 8px 28px;
+                                    box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
+                                    transition: background 0.2s, box-shadow 0.2s;
+                                }
+                                .examcode-delete-btn:hover {
+                                    background: #ff7875;
+                                    box-shadow: 0 0 12px #ff787550;
+                                }
+                                .examcode-delete-btn:active {
+                                    background: #d9363e;
+                                }
+                                @media (max-width: 700px) {
+                                    .examcode-header-bar, .examcode-tablebar, .examcode-form-row {
+                                        flex-direction: column;
+                                        align-items: stretch;
+                                        gap: 16px;
+                                    }
+                                }
+                        `}</style>
+
+
             <ReminderDeleteModal show={deleteModal} onDeleteClick={handleDeleteEnquiry} onCloseClick={() => setDeleteModal(false)} />
             <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
                 {/* Header Bar */}
@@ -535,13 +604,6 @@ function EnquiryList() {
                 <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                     {isLoading ? <Spinners setLoading={setLoading} /> :
                         <>
-                            <div style={{ fontWeight: 500, fontSize: 15, color: '#1a2942', marginBottom: 8 }}>
-                                {totalRecords > 0 ? (
-                                    <>Showing {fromRecord} - {toRecord} of {totalRecords} Results</>
-                                ) : (
-                                    <>No Results</>
-                                )}
-                            </div>
                             <Row>
                                 <Col xs={12} className="reminder-table-shadow">
                                     <TableContainer

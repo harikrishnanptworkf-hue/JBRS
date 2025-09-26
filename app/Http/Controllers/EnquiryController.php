@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\ExamCode;
+use App\Models\Schedule;
 use Carbon\Carbon;
 
 class EnquiryController extends Controller
@@ -65,7 +66,25 @@ class EnquiryController extends Controller
             });
         }
 
-        // Sorting
+        // Only allow sorting by known columns or relationships
+        $allowedSorts = [
+            'e_id', 'e_group_name', 'e_exam_code', 'e_date', 'e_agent_id', 'e_user_id',
+            'groupname', 'examcode', 'date', 'agent', 'user'
+        ];
+        $sortByMap = [
+            'groupname' => 'e_group_name',
+            'examcode' => 'e_exam_code',
+            'date' => 'e_date',
+            'agent' => 'e_agent_id',
+            'user' => 'e_user_id',
+        ];
+        if (isset($sortByMap[$sortBy])) {
+            $sortBy = $sortByMap[$sortBy];
+        }
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'e_id';
+        }
+        $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
         $enquiries = $query->paginate($pageSize);
@@ -206,17 +225,27 @@ class EnquiryController extends Controller
     }
 
 
-    public function filterManagedData()
+    public function filterManagedData(Request $request)
     {
         $users  = User::select('id', 'name')->where('role_id', 3)->get();
         $agents = User::select('id', 'name')->where('role_id', 2)->get();
-        $groups = Enquiry::select('e_group_name as id', 'e_group_name as name')
-            ->whereNotNull('e_group_name')
-            ->where('e_group_name', '!=', '')
-            ->distinct()
-            ->get();
-        $examcodes = ExamCode::select('id', 'ex_code')->get();
-        
+        $groups = collect();
+        $examcodes = collect();
+        if ($request->has('enq')) {
+            $groups = Enquiry::select('e_group_name as id', 'e_group_name as name')
+                ->whereNotNull('e_group_name')
+                ->where('e_group_name', '!=', '')
+                ->distinct()
+                ->get();
+            $examcodes = ExamCode::select('id', 'ex_code')->get();
+        } else {
+            $groups = Schedule::select('s_group_name as id', 's_group_name as name')
+                ->whereNotNull('s_group_name')
+                ->where('s_group_name', '!=', '')
+                ->distinct()
+                ->get();
+            $examcodes = Schedule::select('s_exam_code as ex_code')->whereNotNull('s_exam_code')->where('s_exam_code', '!=', '')->distinct()->get();
+        }
         return response()->json([
             'users' => $users,
             'agents' => $agents,
