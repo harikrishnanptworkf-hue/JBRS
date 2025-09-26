@@ -30,7 +30,7 @@ const CardInvoice = ({ data }) => {
                     </div>
                   )}
                   <h5 className="mb-1 font-size-15 text-truncate">{data.founder}</h5>
-                  <Link to="#" className="text-muted">@Skote </Link>
+                  <Link to="#" className="text-muted">@jbrs </Link>
                 </div>
               </Col>
 

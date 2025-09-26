@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Enquiry;
+// use App\Models\Enquiry;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,19 +16,6 @@ class ReminderController extends Controller
     {
         $pageSize = (int) $request->input('pageSize', 10);
 
-        // Get enquiries with remind date
-        $enquiries = Enquiry::with(['user', 'agent'])
-            ->whereNotNull('e_remind_date')
-            ->get();
-
-        // Get schedules with remind date
-        $schedules = Schedule::with(['user', 'agent'])
-            ->whereNotNull('s_remind_date')
-            ->get();
-
-        // Merge
-        $merged = $enquiries->concat($schedules);
-
         // Filtering
         $agent = $request->input('agent');
         $user = $request->input('user');
@@ -36,16 +23,8 @@ class ReminderController extends Controller
         $examcode = $request->input('examcode');
         $date = $request->input('date');
         $reminddate = $request->input('reminddate');
-
-        $enquiries = Enquiry::with(['user', 'agent'])
-            ->whereNotNull('e_remind_date');
-        if ($agent) $enquiries->where('e_agent_id', $agent);
-        if ($user) $enquiries->where('e_user_id', $user);
-        if ($group) $enquiries->where('e_group_name', $group);
-        if ($examcode) $enquiries->where('e_exam_code', $examcode);
-        if ($date) $enquiries->whereDate('e_date', $date);
-        if ($reminddate) $enquiries->whereDate('e_remind_date', $reminddate);
-        $enquiries = $enquiries->get();
+        $dateStart = $request->input('date_start');
+        $dateEnd = $request->input('date_end');
 
         $schedules = Schedule::with(['user', 'agent'])
             ->whereNotNull('s_remind_date');
@@ -53,12 +32,10 @@ class ReminderController extends Controller
         if ($user) $schedules->where('s_user_id', $user);
         if ($group) $schedules->where('s_group_name', $group);
         if ($examcode) $schedules->where('s_exam_code', $examcode);
-        if ($date) $schedules->whereDate('s_date', $date);
         if ($reminddate) $schedules->whereDate('s_remind_date', $reminddate);
-        $schedules = $schedules->get();
-
-        // Merge
-        $merged = $enquiries->concat($schedules);
+        if ($dateStart) $schedules->whereDate('s_date', '>=', $dateStart);
+        if ($dateEnd) $schedules->whereDate('s_date', '<=', $dateEnd);
+        $merged = $schedules->get();
 
         // Sorting
         $sortBy = $request->input('sortBy', 'reminddate');
@@ -70,14 +47,14 @@ class ReminderController extends Controller
                 case 'user':
                     return $item->user->name ?? '';
                 case 'groupname':
-                    return $item->e_group_name ?? $item->s_group_name ?? '';
+                    return $item->s_group_name ?? '';
                 case 'examcode':
-                    return $item->e_exam_code ?? $item->s_exam_code ?? '';
+                    return $item->s_exam_code ?? '';
                 case 'date':
-                    return $item->e_date ?? $item->s_date ?? null;
+                    return $item->s_date ?? null;
                 case 'reminddate':
                 default:
-                    return $item->e_remind_date ?? $item->s_remind_date ?? null;
+                    return $item->s_remind_date ?? null;
             }
         });
         if ($sortDirection === 'desc') {
@@ -103,9 +80,6 @@ class ReminderController extends Controller
     {
         // Agents
         $agents = [];
-        foreach (Enquiry::with('agent')->whereNotNull('e_remind_date')->get() as $e) {
-            if ($e->agent) $agents[$e->agent->id] = $e->agent->name;
-        }
         foreach (Schedule::with('agent')->whereNotNull('s_remind_date')->get() as $s) {
             if ($s->agent) $agents[$s->agent->id] = $s->agent->name;
         }
@@ -113,9 +87,6 @@ class ReminderController extends Controller
 
         // Users
         $users = [];
-        foreach (Enquiry::with('user')->whereNotNull('e_remind_date')->get() as $e) {
-            if ($e->user) $users[$e->user->id] = $e->user->name;
-        }
         foreach (Schedule::with('user')->whereNotNull('s_remind_date')->get() as $s) {
             if ($s->user) $users[$s->user->id] = $s->user->name;
         }
@@ -123,9 +94,6 @@ class ReminderController extends Controller
 
         // Groups
         $groups = [];
-        foreach (Enquiry::whereNotNull('e_remind_date')->get() as $e) {
-            if ($e->e_group_name) $groups[$e->e_group_name] = $e->e_group_name;
-        }
         foreach (Schedule::whereNotNull('s_remind_date')->get() as $s) {
             if ($s->s_group_name) $groups[$s->s_group_name] = $s->s_group_name;
         }
@@ -133,9 +101,6 @@ class ReminderController extends Controller
 
         // Exam Codes
         $examcodes = [];
-        foreach (Enquiry::whereNotNull('e_remind_date')->get() as $e) {
-            if ($e->e_exam_code) $examcodes[$e->e_exam_code] = $e->e_exam_code;
-        }
         foreach (Schedule::whereNotNull('s_remind_date')->get() as $s) {
             if ($s->s_exam_code) $examcodes[$s->s_exam_code] = $s->s_exam_code;
         }
@@ -147,5 +112,17 @@ class ReminderController extends Controller
             'groups' => $groups,
             'examcodes' => $examcodes,
         ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $schedule = Schedule::findOrFail($id);
+        $remindDate = $request->input('remind_date');
+        if (!$remindDate) {
+            return response()->json(['message' => 'remind_date is required'], 422);
+        }
+        $schedule->s_remind_date = $remindDate;
+        $schedule->save();
+        return response()->json(['message' => 'Remind date updated', 'data' => $schedule]);
     }
 }

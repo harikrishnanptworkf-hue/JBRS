@@ -335,65 +335,56 @@ const ClientCreate = () => {
 
   return (
     <>
-      <style>{`
-        .client-create-center-container {
-          min-height: 100vh;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-          background: #f6f8fa;
-          padding-top: 40px;
-        }
-        .client-create-card {
-          width: 100vw;
-          max-width: 100vw;
-          margin: 0;
-          border-radius: 24px;
-          box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);
-        }
-        .client-create-card .card {
-          border-radius: 24px !important;
-          box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08) !important;
-        }
-        .client-create-label {
-          font-size: 1.18rem;
-          font-weight: 600;
-        }
-        .client-create-input, .client-create-card .form-control, .client-create-card .react-select__control {
-          font-size: 1.13rem !important;
-          min-height: 54px !important;
-          padding: 14px 22px !important;
-          border-radius: 30px !important;
-        }
-      `}</style>
+<style>{`
+                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
+                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
+                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
+                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
+                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 352px; width: 100%; box-sizing: border-box; }
+                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
+                .examcode-action-btn.edit { color: #2ba8fb; }
+                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
+                .examcode-action-btn:active { background: #d0e7fa; }
+                .examcode-action-btn .mdi { margin: 0; }
+                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
+                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
+                .examcode-update-btn:active { background: #3d94cf; }
+                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
+                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
+                .examcode-cancel-btn:active { background: #d0e7fa; }
+                @media (max-width: 700px) { .reminder-header-bar, .reminder-tablebar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
+            `}</style>
       <div className="client-create-center-container">
         <div className="client-create-card">
-          <div className="page-content">
-            <Row>
-              <Col lg="12">
+          <div className="page-content" style={{marginTop:"63px",paddingBottom:"0px"}}>
+            <Row className="justify-content-center">
+              <Col lg="10" className="mx-auto">
                 <Card className="shadow rounded border-0">
                   <CardBody>
                     <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
                     <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div>
                     <form className="outer-repeater" onSubmit={handleFormSubmit} autoComplete="off">
                       {!(location.state && location.state.editType) && (
-                        <FormGroup className="mb-4" row>
-                          <Label className="col-form-label col-lg-2 fw-semibold">Type <span style={{color:'red'}}>*</span></Label>
-                          <Col lg="5">
-                            <select className="form-control rounded-pill px-3 py-2" value={formType} onChange={e => setFormType(e.target.value)}>
+                        <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                          <label className="col-form-label col-lg-2 fw-semibold form-label text-start">
+                            Type <span style={{ color: 'red' }}>*</span>
+                          </label>
+                          <div className="col-lg-6">
+                            <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={formType} onChange={e => setFormType(e.target.value)}>
                               <option value="schedule">Schedule</option>
                               <option value="enquiry">Enquiry</option>
                             </select>
-                          </Col>
-                        </FormGroup>
+                          </div>
+                        </div>
                       )}
                       <div data-repeater-list="outer-group" className="outer">
                         <div data-repeater-item className="outer">
                           {/* Agent */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="agent" className="col-form-label col-lg-2 fw-semibold client-create-label">Agent <span style={{color:'red'}}>*</span></Label>
-                            <Col lg="5">
-                              <select className="form-control rounded-pill px-3 py-2 client-create-input" value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="agent" className="col-form-label col-lg-2 fw-semibold form-label text-start">Agent <span style={{ color: 'red' }}>*</span></label>
+                            <div className="col-lg-6">
+                              <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
                                 <option value="">Select Agent</option>
                                 {agents.map(agent => (
                                   <option key={agent.id} value={agent.id}>{agent.name}</option>
@@ -402,13 +393,13 @@ const ClientCreate = () => {
                               {validation.touched.agent && validation.errors.agent && (
                                 <div className="text-danger small mt-1">{validation.errors.agent}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* User */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="user" className="col-form-label col-lg-2 fw-semibold client-create-label">User <span style={{color:'red'}}>*</span></Label>
-                            <Col lg="5">
-                              <select className="form-control rounded-pill px-3 py-2 client-create-input" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="user" className="col-form-label col-lg-2 fw-semibold form-label text-start">User <span style={{ color: 'red' }}>*</span></label>
+                            <div className="col-lg-6">
+                              <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
                                 <option value="">Select User</option>
                                 {users.map(user => (
                                   <option key={user.id} value={user.id}>{user.name}</option>
@@ -417,17 +408,18 @@ const ClientCreate = () => {
                               {validation.touched.user && validation.errors.user && (
                                 <div className="text-danger small mt-1">{validation.errors.user}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Group Name */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="group_name" className="col-form-label col-lg-2 fw-semibold client-create-label">Group Name <span style={{color:'red'}}>*</span></Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="group_name" className="col-form-label col-lg-2 fw-semibold form-label text-start">Group Name <span style={{ color: 'red' }}>*</span></label>
+                            <div className="col-lg-6">
                               <Input
                                 id="group_name"
                                 name="group_name"
                                 type="text"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter group name..."
                                 value={validation.values.group_name}
                                 onChange={validation.handleChange}
@@ -437,12 +429,12 @@ const ClientCreate = () => {
                               {validation.touched.group_name && validation.errors.group_name && (
                                 <div className="text-danger small mt-1">{validation.errors.group_name}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Exam Code */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="exam_code" className="col-form-label col-lg-2 fw-semibold client-create-label">Exam code <span style={{color:'red'}}>*</span></Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="exam_code" className="col-form-label col-lg-2 fw-semibold form-label text-start">Exam code <span style={{ color: 'red' }}>*</span></label>
+                            <div className="col-lg-6">
                               <CreatableSelect
                                 id="exam_code"
                                 name="exam_code"
@@ -453,21 +445,21 @@ const ClientCreate = () => {
                                 }}
                                 isClearable
                                 placeholder="Select or type exam code..."
-                                styles={customSelectStyles}
+                                styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
                                 isSearchable
                                 classNamePrefix="react-select"
                               />
                               {validation.touched.exam_code && validation.errors.exam_code && (
                                 <div className="text-danger small mt-1">{validation.errors.exam_code}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Timezone & Date */}
                           {(location.state?.editType || formType === 'schedule') && (
                             <>
-                              <FormGroup className="mb-4" row>
-                                <Label htmlFor="timezone" className="col-form-label col-lg-2 fw-semibold client-create-label">Timezone <span style={{color:'red'}}>*</span></Label>
-                                <Col lg="5">
+                              <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                                <label htmlFor="timezone" className="col-form-label col-lg-2 fw-semibold form-label text-start">Timezone <span style={{ color: 'red' }}>*</span></label>
+                                <div className="col-lg-6">
                                   <Select
                                     id="timezone"
                                     name="timezone"
@@ -476,50 +468,48 @@ const ClientCreate = () => {
                                     onChange={opt => validation.setFieldValue('timezone', opt ? opt.value : '')}
                                     isClearable
                                     placeholder="Select or search timezone..."
-                                    styles={customSelectStyles}
+                                    styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
                                     classNamePrefix="react-select"
                                   />
                                   {validation.touched.timezone && validation.errors.timezone && (
                                     <div className="text-danger small mt-1">{validation.errors.timezone}</div>
                                   )}
-                                </Col>
-                              </FormGroup>
-                              <FormGroup className="mb-4" row>
-                                <Label className="col-form-label col-lg-2 fw-semibold client-create-label">Date <span style={{color:'red'}}>*</span></Label>
-                                <Col lg="10">
-                                  <Row>
-                                    <Col md={6} className="pr-0">
-                                      <DatePicker
-                                        className="form-control rounded-pill px-3 py-2 client-create-input"
-                                        selected={validation.values.date || null}
-                                        onChange={date => {
-                                          setstartDate(date);
-                                          validation.setFieldValue('date', date);
-                                        }}
-                                        onBlur={validation.handleBlur}
-                                        dateFormat="dd/MM/yyyy h:mm aa"
-                                        showTimeSelect
-                                        timeFormat="HH:mm"
-                                        placeholderText="Select date and time..."
-                                      />
-                                      {validation.touched.date && validation.errors.date && (
-                                        <div className="text-danger small mt-1">{validation.errors.date}</div>
-                                      )}
-                                    </Col>
-                                  </Row>
-                                </Col>
-                              </FormGroup>
+                                </div>
+                              </div>
+                              <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                                <label className="col-form-label col-lg-2 fw-semibold form-label text-start">Date <span style={{ color: 'red' }}>*</span></label>
+                                <div className="col-lg-6">
+                                  <DatePicker
+                                    className="form-control rounded-pill px-3 py-2 reminder-input"
+                                    style={{maxWidth: 350}}
+                                    selected={validation.values.date || null}
+                                    onChange={date => {
+                                      setstartDate(date);
+                                      validation.setFieldValue('date', date);
+                                    }}
+                                    onBlur={validation.handleBlur}
+                                    dateFormat="dd/MM/yyyy h:mm aa"
+                                    showTimeSelect
+                                    timeFormat="HH:mm"
+                                    placeholderText="Select date and time..."
+                                  />
+                                  {validation.touched.date && validation.errors.date && (
+                                    <div className="text-danger small mt-1">{validation.errors.date}</div>
+                                  )}
+                                </div>
+                              </div>
                             </>
                           )}
                           {/* Support Fee */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="support_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Support fee</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="support_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Support fee</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="support_fee"
                                 name="support_fee"
                                 type="number"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter support fee..."
                                 value={validation.values.support_fee}
                                 onChange={validation.handleChange}
@@ -529,17 +519,18 @@ const ClientCreate = () => {
                               {validation.touched.support_fee && validation.errors.support_fee && (
                                 <div className="text-danger small mt-1">{validation.errors.support_fee}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Voucher Fee */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="voucher_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Voucher fee</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="voucher_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Voucher fee</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="voucher_fee"
                                 name="voucher_fee"
                                 type="number"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter voucher fee..."
                                 value={validation.values.voucher_fee}
                                 onChange={validation.handleChange}
@@ -549,17 +540,18 @@ const ClientCreate = () => {
                               {validation.touched.voucher_fee && validation.errors.voucher_fee && (
                                 <div className="text-danger small mt-1">{validation.errors.voucher_fee}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Total Fee */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="total_fee" className="col-form-label col-lg-2 fw-semibold client-create-label">Total Fee</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="total_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Total Fee</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="total_fee"
                                 name="total_fee"
                                 type="number"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter total fee..."
                                 value={validation.values.total_fee}
                                 readOnly
@@ -569,32 +561,34 @@ const ClientCreate = () => {
                               {validation.touched.total_fee && validation.errors.total_fee && (
                                 <div className="text-danger small mt-1">{validation.errors.total_fee}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Comment */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="comment" className="col-form-label col-lg-2 fw-semibold client-create-label">Comment</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="comment" className="col-form-label col-lg-2 fw-semibold form-label text-start">Comment</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="comment"
                                 name="comment"
                                 type="text"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter comment..."
                                 value={validation.values.comment}
                                 onChange={validation.handleChange}
                               />
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Email */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="email" className="col-form-label col-lg-2 fw-semibold client-create-label">Email</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="email" className="col-form-label col-lg-2 fw-semibold form-label text-start">Email</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="email"
                                 name="email"
                                 type="email"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter email..."
                                 value={validation.values.email}
                                 onChange={validation.handleChange}
@@ -604,17 +598,18 @@ const ClientCreate = () => {
                               {validation.touched.email && validation.errors.email && (
                                 <div className="text-danger small mt-1">{validation.errors.email}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Phone */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="phone" className="col-form-label col-lg-2 fw-semibold client-create-label">Phone</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="phone" className="col-form-label col-lg-2 fw-semibold form-label text-start">Phone</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="phone"
                                 name="phone"
                                 type="text"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter phone..."
                                 value={validation.values.phone}
                                 onChange={validation.handleChange}
@@ -625,44 +620,42 @@ const ClientCreate = () => {
                               {validation.touched.phone && validation.errors.phone && (
                                 <div className="text-danger small mt-1">{validation.errors.phone}</div>
                               )}
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                           {/* Remind Date */}
-                          <FormGroup className="mb-4" row>
-                            <Label className="col-form-label col-lg-2 fw-semibold">Remind Date</Label>
-                            <Col lg="10">
-                              <Row>
-                                <Col md={6} className="pr-0">
-                                  <DatePicker
-                                    className="form-control rounded-pill px-3 py-2 client-create-input"
-                                    selected={validation.values.remind_date}
-                                    onChange={date => validation.setFieldValue('remind_date', date)}
-                                    dateFormat="dd/MM/yyyy"
-                                    placeholderText="Select remind date..."
-                                  />
-                                </Col>
-                              </Row>
-                            </Col>
-                          </FormGroup>
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label className="col-form-label col-lg-2 fw-semibold form-label text-start">Remind Date</label>
+                            <div className="col-lg-6">
+                              <DatePicker
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
+                                selected={validation.values.remind_date}
+                                onChange={date => validation.setFieldValue('remind_date', date)}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="Select remind date..."
+                              />
+                            </div>
+                          </div>
                           {/* Remind Remark */}
-                          <FormGroup className="mb-4" row>
-                            <Label htmlFor="remind_remark" className="col-form-label col-lg-2 fw-semibold">Remind remark</Label>
-                            <Col lg="5">
+                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
+                            <label htmlFor="remind_remark" className="col-form-label col-lg-2 fw-semibold form-label text-start">Remind remark</label>
+                            <div className="col-lg-6">
                               <Input
                                 id="remind_remark"
                                 name="remind_remark"
                                 type="text"
-                                className="form-control rounded-pill px-3 py-2 client-create-input"
+                                className="form-control rounded-pill px-3 py-2 reminder-input"
+                                style={{maxWidth: 350}}
                                 placeholder="Enter remind remark..."
                                 value={validation.values.remind_remark}
                                 onChange={validation.handleChange}
                               />
-                            </Col>
-                          </FormGroup>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <Row className="justify-content-end mt-4">
-                        <Col lg="10">
+                      <div className="row justify-content-center mt-4">
+                        <div className="col-lg-4">
                           {location.state && location.state.editType && (
                             <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
                               Save Schedule
@@ -678,8 +671,8 @@ const ClientCreate = () => {
                               Save Enquiry
                             </Button>
                           )}
-                        </Col>
-                      </Row>
+                        </div>
+                      </div>
                     </form>
                     {/* Modal remains unchanged */}
                     <Modal isOpen={showCheckModal} toggle={handleCheckModalCancel} centered>

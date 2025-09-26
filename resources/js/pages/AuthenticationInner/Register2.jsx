@@ -66,7 +66,7 @@ const Register2 = () => {
                       <div>
                         <h5 className="text-primary">Register account</h5>
                         <p className="text-muted">
-                          Get your free Skote account now.
+                          Get your free jbrs account now.
                         </p>
                       </div>
 
@@ -136,7 +136,7 @@ const Register2 = () => {
 
                           <div>
                             <p className="mb-0">
-                              By registering you agree to the Skote{" "}
+                              By registering you agree to the jbrs{" "}
                               <a href="#" className="text-primary">
                                 Terms of Use
                               </a>
@@ -208,9 +208,9 @@ const Register2 = () => {
                       <p className="mb-0">
                         ©{" "}
                         {new Date().getFullYear()}
-                        Skote. Crafted with{" "}
+                        jbrs. Crafted with{" "}
                         <i className="mdi mdi-heart text-danger"></i> by
-                        Themesbrand
+                        jbrs
                       </p>
                     </div>
                   </div>

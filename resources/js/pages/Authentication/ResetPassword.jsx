@@ -70,7 +70,7 @@ const ResetPassword = (props) => {
                     <Col xs={7}>
                       <div className="text-primary p-4">
                         <h5 className="text-primary"> Reset Password</h5>
-                        <p>Reset Password with Skote.</p>
+                        <p>Reset Password with jbrs.</p>
                       </div>
                     </Col>
                     <Col xs={5} className="align-self-end">
@@ -200,8 +200,8 @@ const ResetPassword = (props) => {
                   </Link>{" "}
                 </p>
                 <p>
-                  © {new Date().getFullYear()} Skote. Crafted with{" "}
-                  <i className="mdi mdi-heart text-danger"></i> by Themesbrand
+                  © {new Date().getFullYear()} jbrs. Crafted with{" "}
+                  <i className="mdi mdi-heart text-danger"></i> by jbrs
                 </p>
               </div>
             </Col>

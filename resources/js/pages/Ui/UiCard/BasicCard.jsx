@@ -15,7 +15,7 @@ const BasicCard = () => {
             <Row>
                 <Col md={6} xl={3}>
                     <Card>
-                        <CardImg top className="img-fluid" src={img1} alt="Skote" />
+                        <CardImg top className="img-fluid" src={img1} alt="jbrs" />
                         <CardBody>
                             <CardTitle className="mt-0">Card title</CardTitle>
                             <CardText>
@@ -33,7 +33,7 @@ const BasicCard = () => {
                 </Col>
                 <Col md={6} xl={3}>
                     <Card>
-                        <CardImg top className="img-fluid" src={img2} alt="Skote" />
+                        <CardImg top className="img-fluid" src={img2} alt="jbrs" />
                         <CardBody>
                             <CardTitle className="mt-0">Card title</CardTitle>
                             <CardText>
@@ -58,7 +58,7 @@ const BasicCard = () => {
 
                 <Col md={6} xl={3}>
                     <Card>
-                        <CardImg top className="img-fluid" src={img3} alt="Skote" />
+                        <CardImg top className="img-fluid" src={img3} alt="jbrs" />
                         <CardBody>
                             <CardText>
                                 Some quick example text to build on the card title and make
@@ -75,7 +75,7 @@ const BasicCard = () => {
                                 Support card subtitle
                             </CardSubtitle>
                         </CardBody>
-                        <CardImg className="img-fluid" src={img4} alt="Skote" />
+                        <CardImg className="img-fluid" src={img4} alt="jbrs" />
                         <CardBody>
                             <CardText>
                                 Some quick example text to build on the card title and make

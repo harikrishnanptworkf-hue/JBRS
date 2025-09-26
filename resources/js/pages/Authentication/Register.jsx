@@ -84,7 +84,7 @@ const Register = props => {
                     <Col className="col-7">
                       <div className="text-primary p-4">
                         <h5 className="text-primary">Free Register</h5>
-                        <p>Get your free Skote account now.</p>
+                        <p>Get your free jbrs account now.</p>
                       </div>
                     </Col>
                     <Col className="col-5 align-self-end">
@@ -202,7 +202,7 @@ const Register = props => {
 
                       <div className="mt-4 text-center">
                         <p className="mb-0">
-                          By registering you agree to the Skote{" "}
+                          By registering you agree to the jbrs{" "}
                           <Link to="#" className="text-primary">
                             Terms of Use
                           </Link>
@@ -221,8 +221,8 @@ const Register = props => {
                   </Link>{" "}
                 </p>
                 <p>
-                  © {new Date().getFullYear()} Skote. Crafted with{" "}
-                  <i className="mdi mdi-heart text-danger" /> by Themesbrand
+                  © {new Date().getFullYear()} jbrs. Crafted with{" "}
+                  <i className="mdi mdi-heart text-danger" /> by jbrs
                 </p>
               </div>
             </Col>

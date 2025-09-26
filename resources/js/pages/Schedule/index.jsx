@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import TableContainer from '../../components/Common/TableContainer';
 import * as Yup from "yup";
 import { useFormik } from "formik";
 import api from '../../helpers/api';
 import DeleteModal from '../../components/Common/DeleteModal';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { Col, Row, UncontrolledTooltip, Modal, ModalHeader, ModalBody, Form, Input, FormFeedback, Label, Card, CardBody } from "reactstrap";
 import Spinners from "../../components/Common/Spinner";
 import { toast, ToastContainer } from 'react-toastify';
@@ -15,6 +17,7 @@ import debounce from 'lodash.debounce';
 function ScheduleList() {
     document.title = "Schedule";
 
+    // Main state
     const [modal, setModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [schedule, setSchedule] = useState(null);
@@ -32,12 +35,60 @@ function ScheduleList() {
     const [rowEdits, setRowEdits] = useState({});
     const [focusedCell, setFocusedCell] = useState(null);
 
+    // Filter/search state
+    const [search, setSearch] = useState("");
+    const [filterAgent, setFilterAgent] = useState("");
+    const [filterUser, setFilterUser] = useState("");
+    const [filterGroup, setFilterGroup] = useState("");
+    const [filterExamCode, setFilterExamCode] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterStartDate, setFilterStartDate] = useState(null);
+    const [filterEndDate, setFilterEndDate] = useState(null);
+    const [groupOptions, setGroupOptions] = useState([]);
+    const [examCodeOptions, setExamCodeOptions] = useState([]);
+    const [agentOptions, setAgentOptions] = useState([]);
+    const [userOptions, setUserOptions] = useState([]);
+
     const location = useLocation();
     const navigate = useNavigate();
 
-    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder) => {
+    // Fetch filter options for dropdowns
+    useEffect(() => {
+        api.get('/enquiries/filter-managed-data').then(res => {
+            setGroupOptions(res.data.groups || []);
+            setExamCodeOptions(res.data.examcodes || []);
+            setAgentOptions(res.data.agents || []);
+            setUserOptions(res.data.users || []);
+        });
+    }, []);
+
+    // Fetch timezones
+    useEffect(() => {
+        api.get('/timezone/get-full-timezones').then(res => {
+            setTimezones(res.data || []);
+        });
+    }, []);
+
+    // Fetch data with filters
+    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
-        api.get(`/schedule?page=${page}&pageSize=${pageSize}&sortBy=${sortField}&sortOrder=${sortDir}`)
+        const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        api.get(`/schedule`, {
+            params: {
+                page,
+                pageSize,
+                search: searchVal,
+                sortBy: sortField,
+                sortOrder: sortDir,
+                agent_id: filterAgent,
+                user_id: filterUser,
+                group_id: filterGroup,
+                examcode_id: filterExamCode,
+                status: filterStatus,
+                startdate: formatDate(filterStartDate),
+                enddate: formatDate(filterEndDate)
+            }
+        })
             .then(res => {
                 setTotalRecords(res.data.total);
                 setCurrentPage(res.data.current_page);
@@ -46,8 +97,8 @@ function ScheduleList() {
                 setToRecord(res.data.to);
                 const mapped = res.data.data.map((item) => ({
                     s_id: item.s_id,
-                    agent: item.agent.name,
-                    user: item.user.name,
+                    agent: item.agent?.name || "",
+                    user: item.user?.name || "",
                     group_name: item.s_group_name,
                     exam_code: item.s_exam_code,
                     timezone: item.s_area,
@@ -64,13 +115,13 @@ function ScheduleList() {
             .catch(() => setLoading(false));
     };
 
+    // Refetch on filter/search change
     useEffect(() => {
-        fetchSchedules(currentPage, customPageSize, sortBy, sortOrder);
-        api.get('/timezone/get-full-timezones').then(res => {
-            setTimezones(res.data || []);
-        });
-    }, [currentPage, customPageSize, sortBy, sortOrder]);
+        fetchSchedules(currentPage, customPageSize, sortBy, sortOrder, search);
+        // eslint-disable-next-line
+    }, [currentPage, customPageSize, sortBy, sortOrder, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStatus, filterStartDate, filterEndDate]);
 
+    // Formik for modal
     const validation = useFormik({
         enableReinitialize: true,
         initialValues: {
@@ -116,26 +167,11 @@ function ScheduleList() {
         }
     };
 
-    const handleScheduleClick = arg => {
-        setSchedule({
-            id: arg.id,
-            title: arg.title,
-            date: arg.date,
-            status: arg.status,
-        });
-        setIsEdit(true);
-        toggle();
-    };
-
     const handleEditSchedule = async (row) => {
-        // Always fetch the latest data from the API for prepopulation
         try {
             const res = await api.get(`/schedule/${row.s_id}`);
-            const data = res.data;
             navigate('/client-create', { state: { editId: row.s_id, editType: 'schedule' } });
-        } catch (err) {
-            // Optionally show error toast
-        }
+        } catch (err) {}
     };
 
     const onClickDelete = (schedule) => {
@@ -162,11 +198,9 @@ function ScheduleList() {
             await api.patch(`/schedule/${s_id}/fields`, {
                 [field]: value
             });
-            // Update the main schedules state for immediate UI feedback
             setSchedules(prev => prev.map(row =>
                 row.s_id === s_id ? { ...row, [field]: value } : row
             ));
-            // Clear the edit state for this field only, not the whole row
             setRowEdits(prev => {
                 if (!prev[s_id]) return prev;
                 const updated = { ...prev };
@@ -192,7 +226,6 @@ function ScheduleList() {
     };
 
     const handleStatusChange = (s_id, value, rowData) => {
-        // Update local state for instant feedback
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
@@ -203,20 +236,17 @@ function ScheduleList() {
         debouncedSaveField(s_id, 'status', value, rowData);
     };
 
-    // Inline editable cell with local state for fast typing and debounced save on typing stop
+    // Inline editable cell
     const EditableCell = React.memo(
       ({ value: initialValue, onSave, cellKey, isFocused, onFocusCell }) => {
         const [value, setValue] = React.useState(initialValue);
         const inputRef = React.useRef(null);
-        // Debounce the save so it triggers after typing stops
         const debouncedSave = React.useMemo(() => debounce(onSave, 500), [onSave]);
         React.useEffect(() => { setValue(initialValue); }, [initialValue]);
         React.useEffect(() => { return () => debouncedSave.cancel(); }, [debouncedSave]);
-        // Focus input if this is the focused cell
         React.useEffect(() => {
           if (isFocused && inputRef.current) {
             inputRef.current.focus();
-            // Optionally move caret to end
             inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
           }
         }, [isFocused]);
@@ -239,144 +269,215 @@ function ScheduleList() {
           />
         );
       },
-      (prevProps, nextProps) => prevProps.value === nextProps.value && prevProps.isFocused === nextProps.isFocused // Only rerender if value or focus changes
+      (prevProps, nextProps) => prevProps.value === nextProps.value && prevProps.isFocused === nextProps.isFocused
     );
-
-    const columns = useMemo(
-        () => [
-            { header: 'SNo', accessorKey: 's_id', enableColumnFilter: false, enableSorting: true },
-            { header: 'Agent', accessorKey: 'agent', enableColumnFilter: false, enableSorting: true },
-            { header: 'User', accessorKey: 'user', enableColumnFilter: false, enableSorting: true },
-            { header: 'Group Name', accessorKey: 'group_name', enableColumnFilter: false, enableSorting: true },
-            { header: 'Exam Code', accessorKey: 'exam_code', enableColumnFilter: false, enableSorting: true },
-            { header: 'Indian Time', accessorKey: 'indian_time', enableColumnFilter: false, enableSorting: true },
-            {
-                header: 'Status',
-                accessorKey: 'status',
-                enableColumnFilter: false,
-                enableSorting: true,
-                cell: (cellProps) => {
-                    const row = cellProps.row.original;
-                    const edits = rowEdits[row.s_id] || {};
-                    const value = edits.status !== undefined ? edits.status : row.status || '';
-                    const isTaken = value === 'TAKEN';
-                    return (
-                        <select
-                            value={value}
-                            onChange={e => handleStatusChange(row.s_id, e.target.value, row)}
-                            className="form-select form-select-sm"
-                            style={{ minWidth: 120 }}
-                        >
-                            <option value="REVOKE">SELECT</option>
-                            <option value="TAKEN" style={isTaken ? { color: 'maroon', fontWeight: 'bold' } : {}}>TAKEN</option>
-                            <option value="REVOKE">REVOKE</option>
-                            <option value="DONE">DONE</option>
-                            <option value="RESCHEDULE">RESCHEDULE</option>
-                        </select>
-                    );
-                }
-            },
-            {
-                header: 'System Name',
-                accessorKey: 'system_name',
-                enableColumnFilter: false,
-                enableSorting: true,
-                cell: (cellProps) => {
-                    const row = cellProps.row.original;
-                    const edits = rowEdits[row.s_id] || {};
-                    const cellKey = `${row.s_id}-system_name`;
-                    return (
-                        <EditableCell
-                          value={edits.system_name ?? row.system_name ?? ''}
-                          onSave={val => handleFieldEdit(row.s_id, 'system_name', val, row)}
-                          cellKey={cellKey}
-                          isFocused={focusedCell === cellKey}
-                          onFocusCell={setFocusedCell}
-                        />
-                    );
-                }
-            },
-            {
-                header: 'Access Code',
-                accessorKey: 'access_code',
-                enableColumnFilter: false,
-                enableSorting: true,
-                cell: (cellProps) => {
-                    const row = cellProps.row.original;
-                    const edits = rowEdits[row.s_id] || {};
-                    const cellKey = `${row.s_id}-access_code`;
-                    return (
-                        <EditableCell
-                          value={edits.access_code ?? row.access_code ?? ''}
-                          onSave={val => handleFieldEdit(row.s_id, 'access_code', val, row)}
-                          cellKey={cellKey}
-                          isFocused={focusedCell === cellKey}
-                          onFocusCell={setFocusedCell}
-                        />
-                    );
-                }
-            },
-            {
-                header: 'Done By',
-                accessorKey: 'done_by',
-                enableColumnFilter: false,
-                enableSorting: true,
-                cell: (cellProps) => {
-                    const row = cellProps.row.original;
-                    const edits = rowEdits[row.s_id] || {};
-                    const cellKey = `${row.s_id}-done_by`;
-                    return (
-                        <EditableCell
-                          value={edits.done_by ?? row.done_by ?? ''}
-                          onSave={val => handleFieldEdit(row.s_id, 'done_by', val, row)}
-                          cellKey={cellKey}
-                          isFocused={focusedCell === cellKey}
-                          onFocusCell={setFocusedCell}
-                        />
-                    );
-                }
-            },
-            {
-                header: 'Actions',
-                enableColumnFilter: false,
-                enableSorting: false,
-                cell: (cellProps) => (
-                    <ul className="list-unstyled hstack gap-1 mb-0">
-                        <li>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-soft-info"
-                                onClick={() => handleEditSchedule(cellProps.row.original)}
-                                id={`edittooltip-${cellProps.row.original.s_id}`}
-                            >
-                                <i className="mdi mdi-pencil-outline" />
-                                <UncontrolledTooltip placement="top" target={`edittooltip-${cellProps.row.original.s_id}`} >
-                                    Edit
-                                </UncontrolledTooltip>
-                            </button>
-                        </li>
-                        <li>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-soft-danger"
-                                onClick={() => {
-                                    setSchedule(cellProps.row.original);
-                                    setDeleteModal(true);
-                                }}
-                                id={`deletetooltip-${cellProps.row.original.s_id}`}
-                            >
-                                <i className="mdi mdi-delete-outline" />
-                                <UncontrolledTooltip placement="top" target={`deletetooltip-${cellProps.row.original.s_id}`}>
-                                    Delete
-                                </UncontrolledTooltip>
-                            </button>
-                        </li>
-                    </ul>
-                )
-            },
-        ],
-        [handleEditSchedule, rowEdits, focusedCell]
-    );
+const columns = useMemo(() => [
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                SNo
+                {sortBy === 's_id' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 's_id',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.s_id}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                Agent
+                {sortBy === 'agent' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 'agent',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.agent}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                User
+                {sortBy === 'user' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 'user',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.user}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('group_name', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                Group Name
+                {sortBy === 'group_name' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 'group_name',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.group_name}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                Exam Code
+                {sortBy === 'exam_code' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 'exam_code',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.exam_code}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time', sortOrder === 'asc' ? 'desc' : 'asc')}>
+                Indian Time
+                {sortBy === 'indian_time' && (
+                    <span style={{ marginLeft: 6, fontSize: 16, color: '#2ba8fb' }}>
+                        {sortOrder === 'asc' ? '▲' : '▼'}
+                    </span>
+                )}
+            </span>
+        ),
+        accessorKey: 'indian_time',
+        enableSorting: true,
+        cell: (cellProps) => <span>{cellProps.row.original.indian_time}</span>
+    },
+    {
+        header: 'Status',
+        accessorKey: 'status',
+        enableSorting: true,
+        cell: (cellProps) => {
+            const row = cellProps.row.original;
+            const edits = rowEdits[row.s_id] || {};
+            const value = edits.status !== undefined ? edits.status : row.status || '';
+            const isTaken = value === 'TAKEN';
+            return (
+                <select
+                    value={value}
+                    onChange={e => handleStatusChange(row.s_id, e.target.value, row)}
+                    className="form-select form-select-sm"
+                    style={{ minWidth: 120 }}
+                >
+                    <option value="REVOKE">SELECT</option>
+                    <option value="TAKEN" style={isTaken ? { color: 'maroon', fontWeight: 'bold' } : {}}>TAKEN</option>
+                    <option value="REVOKE">REVOKE</option>
+                    <option value="DONE">DONE</option>
+                    <option value="RESCHEDULE">RESCHEDULE</option>
+                </select>
+            );
+        }
+    },
+    {
+        header: 'System Name',
+        accessorKey: 'system_name',
+        enableSorting: true,
+        cell: (cellProps) => {
+            const row = cellProps.row.original;
+            const edits = rowEdits[row.s_id] || {};
+            const cellKey = `${row.s_id}-system_name`;
+            return (
+                <EditableCell
+                    value={edits.system_name ?? row.system_name ?? ''}
+                    onSave={val => handleFieldEdit(row.s_id, 'system_name', val, row)}
+                    cellKey={cellKey}
+                    isFocused={focusedCell === cellKey}
+                    onFocusCell={setFocusedCell}
+                />
+            );
+        }
+    },
+    {
+        header: 'Access Code',
+        accessorKey: 'access_code',
+        enableSorting: true,
+        cell: (cellProps) => {
+            const row = cellProps.row.original;
+            const edits = rowEdits[row.s_id] || {};
+            const cellKey = `${row.s_id}-access_code`;
+            return (
+                <EditableCell
+                    value={edits.access_code ?? row.access_code ?? ''}
+                    onSave={val => handleFieldEdit(row.s_id, 'access_code', val, row)}
+                    cellKey={cellKey}
+                    isFocused={focusedCell === cellKey}
+                    onFocusCell={setFocusedCell}
+                />
+            );
+        }
+    },
+    {
+        header: 'Done By',
+        accessorKey: 'done_by',
+        enableSorting: true,
+        cell: (cellProps) => {
+            const row = cellProps.row.original;
+            const edits = rowEdits[row.s_id] || {};
+            const cellKey = `${row.s_id}-done_by`;
+            return (
+                <EditableCell
+                    value={edits.done_by ?? row.done_by ?? ''}
+                    onSave={val => handleFieldEdit(row.s_id, 'done_by', val, row)}
+                    cellKey={cellKey}
+                    isFocused={focusedCell === cellKey}
+                    onFocusCell={setFocusedCell}
+                />
+            );
+        }
+    },
+    {
+        header: 'Actions',
+        enableSorting: false,
+        cell: (cellProps) => (
+            <ul className="list-unstyled hstack gap-1 mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                <li>
+                    <button
+                        type="button"
+                        className="examcode-action-btn edit"
+                        style={{ color: '#1a8cff', background: '#e6f2ff' }}
+                        onClick={() => handleEditSchedule(cellProps.row.original)}
+                        id={`edittooltip-${cellProps.row.original.s_id}`}
+                    >
+                        <i className="mdi mdi-pencil-outline" />
+                    </button>
+                </li>
+                <li>
+                    <button
+                        type="button"
+                        className="examcode-action-btn"
+                        style={{ color: '#ff4d4f', background: '#fff1f0' }}
+                        onClick={() => {
+                            setSchedule(cellProps.row.original);
+                            setDeleteModal(true);
+                        }}
+                        id={`deletetooltip-${cellProps.row.original.s_id}`}
+                    >
+                        <i className="mdi mdi-delete-outline" />
+                    </button>
+                </li>
+            </ul>
+        )
+    },
+], [sortBy, sortOrder, handleEditSchedule, rowEdits, focusedCell]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -390,6 +491,25 @@ function ScheduleList() {
         setSortOrder(order);
     };
 
+    const ReminderDeleteModal = ({ show, onDeleteClick, onCloseClick }) => (
+    <Modal isOpen={show} toggle={onCloseClick} centered contentClassName="reminder-delete-modal" style={{ maxWidth: 400 }}>
+        <ModalBody className="text-center p-3" style={{ maxWidth: 380, margin: '0 auto' }}>
+            <div className="mb-3">
+                <i className="mdi mdi-alert-circle-outline" style={{ fontSize: 44, color: '#ff4d4f' }}></i>
+            </div>
+            <h4 className="mb-2">Are you sure?</h4>
+            <p className="mb-3">Do you really want to delete this schedule? This process cannot be undone.</p>
+            <div className="d-flex justify-content-center gap-2">
+                <button type="button" className="examcode-cancel-btn" onClick={onCloseClick}>
+                    Cancel
+                </button>
+                <button type="button" className="examcode-update-btn" style={{ background: '#ff4d4f', border: 'none' }} onClick={onDeleteClick}>
+                    Delete
+                </button>
+            </div>
+        </ModalBody>
+    </Modal>
+);
     useEffect(() => {
         if (location.state && location.state.created) {
             toast.success('New schedule created successfully!');
@@ -397,7 +517,17 @@ function ScheduleList() {
         }
     }, [location.state]);
 
-    // Only depend on schedules for tableData, not liveTime
+    const handleClearFilters = () => {
+        setFilterAgent('');
+        setFilterUser('');
+        setFilterGroup('');
+        setFilterExamCode('');
+        setFilterStatus('');
+        setFilterStartDate(null);
+        setFilterEndDate(null);
+        setSearch("");
+    };
+
     const tableData = useMemo(() => schedules.map(row => ({
         ...row,
         _rowClass: (row.status && row.status.toUpperCase() === 'TAKEN' ? 'font-maroon' : '')
@@ -405,51 +535,144 @@ function ScheduleList() {
 
     return (
         <React.Fragment>
-            <style>{`.font-maroon { color: Maroon !important; }`}</style>
-            <DeleteModal
+            <style>{`
+                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
+                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
+                .reminder-filterbar { width: 100vw; background: #fff; display: flex; justify-content: center; align-items: flex-end; gap: 18px; padding: 18px 32px 0 32px; flex-wrap: wrap; flex-direction: row; }
+                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 140px; max-width: 220px; width: 100%; box-sizing: border-box; }
+                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44,62,80,0.10), 0 1.5px 4px rgba(44,62,80,0.08); border-radius: 18px; overflow: hidden; }
+                .reminder-table-shadow table { border-radius: 18px !important; overflow: hidden; background: #fff; }
+                .reminder-table-shadow th, .reminder-table-shadow td { border-radius: 0 !important; }
+                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
+                .examcode-action-btn.edit { color: #2ba8fb; }
+                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
+                .examcode-action-btn:active { background: #d0e7fa; }
+                .examcode-action-btn .mdi { margin: 0; }
+                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
+                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
+                .examcode-update-btn:active { background: #3d94cf; }
+                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
+                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
+                .examcode-cancel-btn:active { background: #d0e7fa; }
+                .table-edit-input, .table-edit-select { border-radius: 8px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1rem; padding: 7px 12px; background: #fafdff !important; transition: border-color 0.2s; height: 36px !important; min-width: 80px; max-width: 180px; width: 100%; box-sizing: border-box; }
+                .table-edit-select { padding-right: 28px; }
+                @media (max-width: 700px) { .reminder-header-bar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
+                .font-maroon { color: Maroon !important; }
+            `}</style>
+            <ReminderDeleteModal
                 show={deleteModal}
                 onDeleteClick={handleDeleteSchedule}
                 onCloseClick={() => setDeleteModal(false)}
             />
-            <div className="page-content">
-                {
-                    isLoading ? <Spinners setLoading={setLoading} />
-                        :
-                        <Row>
-                            <Col lg="12">
-                                <Card>
-                                    <CardBody className="border-bottom">
-                                        <div className="d-flex align-items-center">
-                                            <h5 className="mb-0 card-title flex-grow-1" style={{ fontSize: "1.5rem" }}>Schedule</h5>
-
-                                        </div>
-                                    </CardBody>
-                                    <CardBody>
-                                        <TableContainer
-                                            columns={columns}
-                                            data={tableData}
-                                            isCustomPageSize={true}
-                                            isGlobalFilter={true}
-                                            isJobListGlobalFilter={true}
-                                            isPagination={true}
-                                            SearchPlaceholder="Search ..."
-                                            tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
-                                            pagination="pagination"
-                                            paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                                            customPageSize={customPageSize}
-                                            onPageSizeChange={handlePageSizeChange}
-                                            currentPage={currentPage}
-                                            totalRecords={totalRecords}
-                                            onPageChange={handlePageChange}
-                                            fromRecord={fromRecord}
-                                            toRecord={toRecord}
-                                            onSortChange={handleSortChange}
-                                        />
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        </Row>
-                }
+            <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+                {/* Header Bar */}
+                <div className="reminder-header-bar">
+                    <div>
+                        <div className="reminder-title-text">Schedule</div>
+                        <div className="reminder-title-divider"></div>
+                    </div>
+                </div>
+                {/* Filter Bar */}
+                <div className="reminder-filterbar" style={{gap: 18, alignItems: 'flex-end', flexWrap: 'wrap'}}>
+                    <span style={{ fontWeight: 600, marginRight: 8, marginBottom: 0 }}>Filter</span>
+                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)}>
+                        <option value="">All Agents</option>
+                        {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
+                        <option value="">All Users</option>
+                        {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)}>
+                        <option value="">All Groups</option>
+                        {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)}>
+                        <option value="">All Exam Codes</option>
+                        {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                        <option value="">All Status</option>
+                        <option value="TAKEN">TAKEN</option>
+                        <option value="REVOKE">REVOKE</option>
+                        <option value="DONE">DONE</option>
+                        <option value="RESCHEDULE">RESCHEDULE</option>
+                    </select>
+                    <DatePicker
+                        className="reminder-input examcode-date"
+                        selected={filterStartDate}
+                        onChange={setFilterStartDate}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="Start Date"
+                        isClearable
+                        style={{ minWidth: 140 }}
+                    />
+                    <DatePicker
+                        className="reminder-input examcode-date"
+                        selected={filterEndDate}
+                        onChange={setFilterEndDate}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="End Date"
+                        isClearable
+                        style={{ minWidth: 140 }}
+                    />
+                    {(!!filterAgent || !!filterUser || !!filterGroup || !!filterExamCode || !!filterStatus || !!filterStartDate || !!filterEndDate) && (
+                        <button className="examcode-cancel-btn" onClick={handleClearFilters} type="button">Clear</button>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 24, marginBottom: 0 }}>
+                        <span style={{ fontWeight: 500 }}>Page size</span>
+                        <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            className="reminder-input"
+                            style={{ width: 80, minWidth: 60, maxWidth: 100 }}
+                            value={customPageSize}
+                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                        />
+                    </div>
+                    <input
+                        className="reminder-input"
+                        type="text"
+                        placeholder="Search..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ maxWidth: 220, marginLeft: 0 }}
+                    />
+                </div>
+                {/* Table */}
+                <Row>
+                    <Col lg="12">
+                        <Card className="reminder-table-shadow">
+                            <CardBody>
+                                <TableContainer
+                                    columns={columns}
+                                    data={tableData}
+                                    isCustomPageSize={true}
+                                    isGlobalFilter={false}
+                                    isJobListGlobalFilter={false}
+                                    isPagination={true}
+                                    SearchPlaceholder="Search ..."
+                                    tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
+                                    pagination="pagination"
+                                    paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
+                                    customPageSize={customPageSize}
+                                    onPageSizeChange={handlePageSizeChange}
+                                    currentPage={currentPage}
+                                    totalRecords={totalRecords}
+                                    onPageChange={handlePageChange}
+                                    fromRecord={fromRecord}
+                                    toRecord={toRecord}
+                                    onSortChange={handleSortChange}
+                                    editableInputClassName="table-edit-input"
+                                    editableSelectClassName="table-edit-select"
+                                />
+                            </CardBody>
+                        </Card>
+                    </Col>
+                </Row>
+                {/* Modal */}
                 <Modal isOpen={modal} toggle={toggle}>
                     <ModalHeader toggle={toggle} tag="h4">
                         {!!isEdit ? "Edit Schedule" : "Add Schedule"}
@@ -509,8 +732,10 @@ function ScheduleList() {
                                             invalid={validation.touched.status && validation.errors.status ? true : false}
                                         >
                                             <option value="">Select Status</option>
-                                            <option>Active</option>
-                                            <option>Inactive</option>
+                                            <option>TAKEN</option>
+                                            <option>REVOKE</option>
+                                            <option>DONE</option>
+                                            <option>RESCHEDULE</option>
                                         </Input>
                                         {validation.touched.status && validation.errors.status ? (
                                             <FormFeedback status="invalid">
@@ -550,7 +775,7 @@ function ScheduleList() {
                                     <div className="text-end">
                                         <button
                                             type="submit"
-                                            className="btn btn-success btn-lg   save-user"
+                                            className="btn btn-success btn-lg save-user"
                                         >
                                             Save
                                         </button>

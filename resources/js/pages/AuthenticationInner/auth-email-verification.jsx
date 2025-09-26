@@ -78,8 +78,8 @@ const EmailVerification = () => {
                   </a>{" "}
                 </p>
                 <p>
-                  © {new Date().getFullYear()} Skote. Crafted with{" "}
-                  <i className="mdi mdi-heart text-danger"></i> by Themesbrand
+                  © {new Date().getFullYear()} jbrs. Crafted with{" "}
+                  <i className="mdi mdi-heart text-danger"></i> by jbrs
                 </p>
               </div>
             </Col>

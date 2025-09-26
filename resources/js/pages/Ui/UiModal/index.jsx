@@ -21,7 +21,7 @@ import ToggleContent from "./ToggleContent";
 const UiModal = () => {
 
   //meta title
-  document.title = "Models | Skote - Vite React Admin & Dashboard Template";
+  document.title = "Models | jbrs - Vite React Admin & Dashboard Template";
 
 
   const [modal_large, setModal_large] = useState(false);

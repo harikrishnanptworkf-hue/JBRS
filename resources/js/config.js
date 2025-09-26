@@ -8,7 +8,7 @@ const api = {
     APP_ID: "",
   },
   api: {
-    API_URL: "https://api-node.themesbrand.website",
+    API_URL: "https://api-node.jbrs.website",
   }
 };
 

@@ -12,7 +12,7 @@ import LeftDropUp from "./LeftDropUp";
 const UiDropdown = () => {
 
   //meta title
-  document.title = "Dropdowns | Skote - Vite React Admin & Dashboard Template";
+  document.title = "Dropdowns | jbrs - Vite React Admin & Dashboard Template";
 
   return (
     <React.Fragment>

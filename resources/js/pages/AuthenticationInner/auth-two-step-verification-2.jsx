@@ -117,9 +117,9 @@ const TwostepVerification2 = () => {
 
                     <div className="mt-4 mt-md-5 text-center">
                       <p className="mb-0">
-                        © {new Date().getFullYear()} Skote. Crafted with{" "}
+                        © {new Date().getFullYear()} jbrs. Crafted with{" "}
                         <i className="mdi mdi-heart text-danger"></i> by
-                        Themesbrand
+                        jbrs
                       </p>
                     </div>
                   </div>

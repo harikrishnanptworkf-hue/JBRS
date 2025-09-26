@@ -12,7 +12,7 @@ import DatePicker from "./DatePicker";
 
 const FormAdvanced = () => {
   //meta title
-  document.title = "Form Advanced | Skote - Vite React Admin & Dashboard Template";
+  document.title = "JBRS";
 
   return (
     <React.Fragment>

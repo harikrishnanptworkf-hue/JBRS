@@ -13,7 +13,7 @@ const CardTitleImg = () => {
                     <Card>
                         <Row className="no-gutters align-items-center">
                             <Col md={4}>
-                                <img className="img-fluid" src={img2} alt="Skote" />
+                                <img className="img-fluid" src={img2} alt="jbrs" />
                             </Col>
                             <Col md={8}>
                                 <CardBody>
@@ -50,7 +50,7 @@ const CardTitleImg = () => {
                                 </CardBody>
                             </Col>
                             <Col md={4}>
-                                <img className="img-fluid" src={img3} alt="Skote" />
+                                <img className="img-fluid" src={img3} alt="jbrs" />
                             </Col>
                         </Row>
                     </Card>

@@ -130,14 +130,14 @@ const recentAddedJobsData = [
     {
         logo: weChat,
         jobTitle: "Marketing Director",
-        company: "Themesbrand, USA",
+        company: "jbrs, USA",
         postedTime: "53",
         postedText: "sec ago"
     },
     {
         logo: sass,
         jobTitle: "Frontend Developer",
-        company: "Themesbrand, Hong-Kong",
+        company: "jbrs, Hong-Kong",
         postedTime: "47",
         postedText: "min ago"
     },
@@ -151,7 +151,7 @@ const recentAddedJobsData = [
     {
         logo: airbnb,
         jobTitle: "NodeJs Developer",
-        company: "Skote Themes, Louisiana",
+        company: "jbrs Themes, Louisiana",
         postedTime: "2",
         postedText: "hrs ago"
     },
@@ -165,14 +165,14 @@ const recentAddedJobsData = [
     {
         logo: mailChimp,
         jobTitle: "Marketing Director",
-        company: "Skote Technology, Dominica",
+        company: "jbrs Technology, Dominica",
         postedTime: "1",
         postedText: "days ago"
     },
     {
         logo: spotify,
         jobTitle: "Business Associate",
-        company: "Themesbrand, Russia",
+        company: "jbrs, Russia",
         postedTime: "2",
         postedText: "days ago"
     },

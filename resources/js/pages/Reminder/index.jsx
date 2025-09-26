@@ -64,20 +64,23 @@ function ReminderList() {
                 user: filterUser,
                 group: filterGroup,
                 examcode: filterExamCode,
-                startdate: formatDate(filterStartDate),
-                enddate: formatDate(filterEndDate)
+                date_start: formatDate(filterStartDate),
+                date_end: formatDate(filterEndDate)
             }
         })
-            .then(res => {
-                setTotalRecords(res.data.total || res.data.length || 0);
-                setCurrentPage(res.data.page || 1);
-                setCustomPageSize(res.data.pageSize || pageSize);
-                setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
-                setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
-                setReminders(res.data.data || []);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
+                        .then(res => {
+                                setTotalRecords(res.data.total || res.data.length || 0);
+                                setCurrentPage(res.data.page || 1);
+                                setCustomPageSize(res.data.pageSize || pageSize);
+                                setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
+                                setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
+                                setReminders((res.data.data || []).map(r => ({
+                                    ...r,
+                                    id: r.s_id 
+                                })));
+                                setLoading(false);
+                        })
+                        .catch(() => setLoading(false));
     };
 
     useEffect(() => {
@@ -181,20 +184,68 @@ function ReminderList() {
             enableSorting: true,
             cell: (cellProps) => {
                 const rowId = cellProps.row.original.id;
+                // Robust date parser for DD/MM/YYYY and YYYY-MM-DD
+                                                function parseDate(str) {
+                                                    if (!str) return null;
+                                                    // Strict DD/MM/YYYY
+                                                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                                                        const [day, month, year] = str.split('/');
+                                                        return new Date(Number(year), Number(month) - 1, Number(day));
+                                                    }
+                                                    // Strict YYYY-MM-DD or ISO (YYYY-MM-DDTHH:mm:ss)
+                                                    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                                                    if (isoMatch) {
+                                                        const [_, year, month, day] = isoMatch;
+                                                        return new Date(Number(year), Number(month) - 1, Number(day));
+                                                    }
+                                                    return null;
+                                                }
+                                                function formatDMY(dateStr) {
+                                                    const d = parseDate(dateStr);
+                                                    if (!d) return '';
+                                                    const day = String(d.getDate()).padStart(2, '0');
+                                                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                                                    const year = d.getFullYear();
+                                                    return `${day}/${month}/${year}`;
+                                                }
                 if (editRowId === rowId) {
+                    // Use react-datepicker for editing, like Examcode
+                    let dateObj = null;
+                    if (editRemindDate instanceof Date && !isNaN(editRemindDate)) {
+                        dateObj = editRemindDate;
+                    } else if (typeof editRemindDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editRemindDate)) {
+                        const [year, month, day] = editRemindDate.split('-');
+                        dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+                    } else if (cellProps.row.original.s_remind_date) {
+                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(cellProps.row.original.s_remind_date)) {
+                            const [day, month, year] = cellProps.row.original.s_remind_date.split('/');
+                            dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(cellProps.row.original.s_remind_date)) {
+                            const [year, month, day] = cellProps.row.original.s_remind_date.split('-');
+                            dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+                        }
+                    }
+                    let displayDMY = '';
+                    if (dateObj instanceof Date && !isNaN(dateObj)) {
+                        const day = String(dateObj.getDate()).padStart(2, '0');
+                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const year = dateObj.getFullYear();
+                        displayDMY = `${day}/${month}/${year}`;
+                    }
                     return (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                            <input
-                                type="date"
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                            <DatePicker
                                 className="reminder-input"
-                                value={editRemindDate ? editRemindDate.toISOString().slice(0,10) : ''}
-                                onChange={e => setEditRemindDate(e.target.value ? new Date(e.target.value) : null)}
+                                selected={dateObj}
+                                onChange={date => setEditRemindDate(date)}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="Select remind date"
                                 style={{ minWidth: 160 }}
                             />
                         </div>
                     );
                 }
-                return cellProps.row.original.formatted_remind_date || '';
+                return formatDMY(cellProps.row.original.s_remind_date);
             }
         },
         {
@@ -242,20 +293,38 @@ function ReminderList() {
     // Edit handlers
     const handleEditClick = (row) => {
         setEditRowId(row.id);
-        setEditRemindDate(row.remind_date ? new Date(row.remind_date) : null);
+        // Set editRemindDate as Date object for react-datepicker
+        if (row.s_remind_date) {
+            let dateObj = null;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(row.s_remind_date)) {
+                const [day, month, year] = row.s_remind_date.split('/');
+                dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(row.s_remind_date)) {
+                const [year, month, day] = row.s_remind_date.split('-');
+                dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+            }
+            setEditRemindDate(dateObj);
+        } else {
+            setEditRemindDate(null);
+        }
     };
     const handleEditCancel = () => {
         setEditRowId(null);
         setEditRemindDate(null);
     };
     const handleEditSave = async (id) => {
-        if (!editRemindDate) {
+        if (!editRemindDate || !(editRemindDate instanceof Date) || isNaN(editRemindDate)) {
             toast.error('Please select remind date');
             return;
         }
         setLoading(true);
         try {
-            await api.put(`/reminders/${id}`, { remind_date: editRemindDate.toISOString().slice(0,10) });
+            // Convert to YYYY-MM-DD for API
+            const year = editRemindDate.getFullYear();
+            const month = String(editRemindDate.getMonth() + 1).padStart(2, '0');
+            const day = String(editRemindDate.getDate()).padStart(2, '0');
+            const apiDate = `${year}-${month}-${day}`;
+            await api.put(`/reminders/${id}`, { remind_date: apiDate });
             toast.success('Remind date updated');
             setEditRowId(null);
             setEditRemindDate(null);
@@ -418,48 +487,51 @@ function ReminderList() {
             {/* Filter Bar */}
             <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
                 <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
-                <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
-                    <option value="">All Agents</option>
-                    {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                </select>
-                <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
-                    <option value="">All Users</option>
-                    {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                </select>
-                <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
-                    <option value="">All Groups</option>
-                    {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                </select>
-                <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
-                    <option value="">All Exam Codes</option>
-                    {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.code}</option>)}
-                </select>
-                <DatePicker
-                  className="reminder-input examcode-date"
-                  selected={filterStartDate}
-                  onChange={setFilterStartDate}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="Start Date"
-                  isClearable
-                  style={{ minWidth: 160 }}
-                />
-                <DatePicker
-                  className="reminder-input examcode-date"
-                  selected={filterEndDate}
-                  onChange={setFilterEndDate}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="End Date"
-                  isClearable
-                  style={{ minWidth: 160 }}
-                />
-                <button
-                    type="button"
-                    className="examcode-cancel-btn"
-                    style={{ marginLeft: 12, minWidth: 120, height: 44 }}
-                    onClick={handleClearFilters}
-                >
-                    Clear
-                </button>
+                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Agents</option>
+                        {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Users</option>
+                        {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Groups</option>
+                        {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                    </select>
+                    <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
+                        <option value="">All Exam Codes</option>
+                        {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.code}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <DatePicker
+                                className="reminder-input examcode-date"
+                                selected={filterStartDate}
+                                onChange={setFilterStartDate}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="Start Date"
+                                isClearable
+                                style={{ minWidth: 140 }}
+                            />
+                          
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <DatePicker
+                                className="reminder-input examcode-date"
+                                selected={filterEndDate}
+                                onChange={setFilterEndDate}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="End Date"
+                                isClearable
+                                style={{ minWidth: 140 }}
+                            />
+                           
+                        </div>
+                    </div>
+                    {(!!filterAgent || !!filterUser || !!filterGroup || !!filterExamCode || !!filterStartDate || !!filterEndDate) && (
+                        <button className="examcode-cancel-btn" onClick={handleClearFilters} type="button">Clear</button>
+                    )}
             </div>
             {/* Search + Page Size Controls */}
             <div className="reminder-tablebar">

@@ -10,7 +10,7 @@ const CardTitles = () => {
             <Row>
                 <Col lg={4}>
                     <Card>
-                        <img className="card-img img-fluid" src={img5} alt="Skote" />
+                        <img className="card-img img-fluid" src={img5} alt="jbrs" />
                         <CardBody>
                             <CardTitle tag="h4" className="mt-0">Card title</CardTitle>
                             <CardText>
@@ -42,13 +42,13 @@ const CardTitles = () => {
                                 </small>
                             </CardText>
                         </CardBody>
-                        <img className="card-img img-fluid" src={img7} alt="Skote" />
+                        <img className="card-img img-fluid" src={img7} alt="jbrs" />
                     </Card>
                 </Col>
 
                 <Col lg={4}>
                     <Card>
-                        <img className="card-img img-fluid" src={img6} alt="Skote" />
+                        <img className="card-img img-fluid" src={img6} alt="jbrs" />
                         <div className="card-img-overlay">
                             <CardTitle tag="h4" className="text-white mt-0">Card title</CardTitle>
                             <CardText className="text-light">

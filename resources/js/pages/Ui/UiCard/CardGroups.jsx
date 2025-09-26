@@ -14,7 +14,7 @@ const CardGroups = () => {
                     <div className="card-deck-wrapper">
                         <div className="card-group">
                             <Card className="mb-4">
-                                <img className="card-img-top img-fluid" src={img4} alt="Skote" />
+                                <img className="card-img-top img-fluid" src={img4} alt="jbrs" />
                                 <CardBody>
                                     <CardTitle tag="h4" className="mt-0">Card title</CardTitle>
                                     <CardText>
@@ -28,7 +28,7 @@ const CardGroups = () => {
                                 </CardBody>
                             </Card>
                             <Card className="mb-4">
-                                <img className="card-img-top img-fluid" src={img5} alt="Skote" />
+                                <img className="card-img-top img-fluid" src={img5} alt="jbrs" />
                                 <CardBody>
                                     <CardTitle tag="h4" className="mt-0">Card title</CardTitle>
                                     <CardText>
@@ -43,7 +43,7 @@ const CardGroups = () => {
                                 </CardBody>
                             </Card>
                             <Card className="mb-4">
-                                <img className="card-img-top img-fluid" src={img6} alt="Skote" />
+                                <img className="card-img-top img-fluid" src={img6} alt="jbrs" />
                                 <CardBody>
                                     <CardTitle tag="h4" className="mt-0">Card title</CardTitle>
                                     <CardText>

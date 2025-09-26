@@ -138,7 +138,7 @@ const UiLightbox = (props) => {
                                                         setisFits(true);
                                                     }}
                                                     className="img-fluid"
-                                                    alt="Skote"
+                                                    alt="jbrs"
                                                     src={img2}
                                                     width="145"
                                                 />

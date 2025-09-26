@@ -17,7 +17,7 @@ import CardsMasonry from "./CardsMasonry";
 const UiCards = () => {
 
   //meta title
-  document.title = "Cards | Skote - Vite React Admin & Dashboard Template";
+  document.title = "Cards | jbrs - Vite React Admin & Dashboard Template";
 
   return (
     <React.Fragment>
