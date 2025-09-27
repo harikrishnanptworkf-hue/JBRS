@@ -74,17 +74,30 @@ class APIController extends Controller
         } catch (\Exception $e) {
             $decryptedPassword = $request->password;
         }
-        if (!Hash::check($decryptedPassword, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Incorrect password',
-            ], 401);
+        if (in_array($user->role_id, [2, 3])) {
+              if ($decryptedPassword != $user->password) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incorrect password',
+                ], 401);
+            }
+        }else{
+            if (!Hash::check($decryptedPassword, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incorrect password',
+                ], 401);
+            }
         }
+
+
+
         // $user->tokens()->delete(); // Allow multiple device/tab login
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
             'success' => true,
             'data' => $user,
+            'role_id' => $user->role_id, // <-- Add this line
             'token' => $token,
             'message' => 'success',
         ], 200);

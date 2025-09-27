@@ -24,6 +24,7 @@ function* loginUser({ payload: { user, history } }) {
         user_id: data.data.id,
         name: data.data.name,
         email: data.data.email,
+        role_id: data.data.role_id,
       };
       sessionStorage.setItem('authUser', JSON.stringify(logged_user));
       yield put(logoutUserSuccess(logged_user));

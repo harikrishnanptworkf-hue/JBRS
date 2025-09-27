@@ -21,8 +21,10 @@ class ScheduleController extends Controller
 
     $query = Schedule::with(['user', 'agent']);
     // Exclude schedules with status 'done' from listing
-    $query->where('s_status', '!=', 'done');
-
+    $query->where(function ($q) {
+        $q->where('s_status', '!=', 'DONE')
+        ->orWhereNull('s_status');
+    });
         // Filtering
         if ($request->filled('agent_id')) {
             $query->where('s_agent_id', $request->input('agent_id'));

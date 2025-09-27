@@ -543,7 +543,7 @@ const Settings = () => {
                           </Col>
                         </Row>
                         <div style={{ marginLeft: '500px', marginTop: '20px'}}>
-                          <button className="examcode-save-btn" style={{background:'#00C853',color:'#fff',border:'none',borderRadius:8,padding:'8px 28px',fontWeight:600,fontSize:16,boxShadow:'0 2px 8px 0 rgba(0,200,83,0.08)'}} onClick={handleSaveWeekHolidays} type="button">Save</button>
+                          <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Save</button>
                         </div>
                         </>
                       )}
@@ -570,7 +570,7 @@ const Settings = () => {
                           </Col>
                         </Row>
                         <div style={{ marginLeft: '500px', marginTop: '20px'}}>
-                          <button className="examcode-save-btn" style={{background:'#00C853',color:'#fff',border:'none',borderRadius:8,padding:'8px 28px',fontWeight:600,fontSize:16,boxShadow:'0 2px 8px 0 rgba(0,200,83,0.08)'}} onClick={handleSaveWeekHolidays} type="button">Save</button>
+                          <button className=" examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Save</button>
                         </div>
                         </>
                       )}

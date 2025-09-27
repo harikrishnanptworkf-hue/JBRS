@@ -45,8 +45,19 @@ function EnquiryList() {
     const [groupOptions, setGroupOptions] = useState([]);
     const [examCodeOptions, setExamCodeOptions] = useState([]);
 
+    // Add roleId state
+    const [roleId, setRoleId] = useState(null);
+
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Fetch role_id from sessionStorage on mount
+    useEffect(() => {
+        const obj = JSON.parse(sessionStorage.getItem("authUser"));
+        if (obj && obj.role_id) {
+            setRoleId(obj.role_id);
+        }
+    }, []);
 
     // Fetch filter options
     useEffect(() => {
@@ -234,8 +245,13 @@ function EnquiryList() {
     };
 
     // Modern columns with clickable sort headers
-    const columns = useMemo(() => [
-        {
+    const columns = useMemo(() => {
+        const cols = [];
+
+        if (roleId !== 2) {
+            cols.push({
+
+        
             header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
                     Agent
@@ -249,7 +265,10 @@ function EnquiryList() {
             accessorKey: 'agent',
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.agent?.name || ''}</span>
-        },
+        });
+    }
+
+        cols.push(
         {
             header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
@@ -346,9 +365,11 @@ function EnquiryList() {
                         </li>
                     </ul>
                 );
-            }
-        },
-    ], [sortBy, sortOrder, handleEditEnquiry]);
+            },
+        }
+    );
+    return cols;
+}, [roleId,sortBy, sortOrder, handleEditEnquiry]);
 
     // Fix: Sorting logic should only update state, let useEffect handle API call
     const handleSortChange = (columnId) => {
@@ -511,10 +532,12 @@ function EnquiryList() {
                 {/* Filter Bar */}
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
                     <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
-                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Agents</option>
-                        {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
+                    {   roleId !== 2 && roleId !== 3 && (
+                        <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Agents</option>
+                            {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                    )}
                     <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
                         <option value="">All Users</option>
                         {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}

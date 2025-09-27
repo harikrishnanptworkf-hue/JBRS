@@ -26,9 +26,16 @@ class ReminderController extends Controller
         $dateStart = $request->input('date_start');
         $dateEnd = $request->input('date_end');
 
+        $userObj = $request->user();
+        
         $schedules = Schedule::with(['user', 'agent'])
-            ->whereNotNull('s_remind_date');
-        if ($agent) $schedules->where('s_agent_id', $agent);
+        ->whereNotNull('s_remind_date');
+        if ($userObj && $userObj->role_id == 2) {
+            $schedules->where('s_agent_id', $userObj->id);
+        }else{
+            if ($agent) $schedules->where('s_agent_id', $agent);
+        }
+
         if ($user) $schedules->where('s_user_id', $user);
         if ($group) $schedules->where('s_group_name', $group);
         if ($examcode) $schedules->where('s_exam_code', $examcode);
@@ -65,9 +72,9 @@ class ReminderController extends Controller
 
         // Paginate manually
         $page = (int) $request->input('page', 1);
+        // echo $schedules->toSql();die;
         $paginated = $merged->slice(($page - 1) * $pageSize, $pageSize)->values();
         $total = $merged->count();
-
         return response()->json([
             'data' => $paginated,
             'total' => $total,

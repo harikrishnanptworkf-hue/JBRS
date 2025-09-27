@@ -20,13 +20,21 @@ class EnquiryController extends Controller
         $pageSize = (int) $request->input('pageSize', 10);
         $sortBy = $request->input('sortBy', 'e_id');
         $sortOrder = $request->input('sortOrder', 'desc');
+        $userObj = $request->user();
 
         $query = Enquiry::with(['user', 'agent']);
 
-        // Filtering
-        if ($request->filled('agent_id')) {
-            $query->where('e_agent_id', $request->input('agent_id'));
+
+        if ($userObj && $userObj->role_id == 2) {
+            $query->where('e_agent_id', $userObj->id);
+        }else{
+            if ($request->filled('agent_id')) {
+                $query->where('e_agent_id', $request->input('agent_id'));
+            }    
         }
+
+        // Filtering
+
         if ($request->filled('user_id')) {
             $query->where('e_user_id', $request->input('user_id'));
         }
@@ -227,7 +235,14 @@ class EnquiryController extends Controller
 
     public function filterManagedData(Request $request)
     {
-        $users  = User::select('id', 'name')->where('role_id', 3)->get();
+        if ($request->has('agent_id') && $request->input('agent_id')) {
+            $users = User::select('id', 'name')
+                ->where('role_id', 3)
+                ->where('agent_id', $request->input('agent_id'))
+                ->get();
+        } else {
+            $users = User::select('id', 'name')->where('role_id', 3)->get();
+        }
         $agents = User::select('id', 'name')->where('role_id', 2)->get();
         $groups = collect();
         $examcodes = collect();

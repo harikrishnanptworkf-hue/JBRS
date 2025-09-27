@@ -92,9 +92,26 @@ class AgentController extends Controller
 
     public function assignUsers(Request $request, User $agent)
     {
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id',
+        ]);
 
-        // Assign each user to this agent
-        User::whereIn('id', $validated['user_ids'])->update(['agent_id' => $agent->id]);
+        // Unassign users previously assigned to this agent but not in the new list
+        User::where('agent_id', $agent->id)
+            ->whereNotIn('id', $validated['user_ids'])
+            ->update(['agent_id' => null]);
+
+        // Assign selected users to this agent
+        User::whereIn('id', $validated['user_ids'])
+            ->update(['agent_id' => $agent->id]);
+
         return response()->json(['message' => 'Users assigned to agent']);
+    }
+
+    public function getAgentUsers($agentId)
+    {
+        $users = User::where('agent_id', $agentId)->get();
+        return response()->json(['data' => $users]);
     }
 }

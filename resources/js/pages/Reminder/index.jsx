@@ -39,6 +39,9 @@ function ReminderList() {
     const [editRowId, setEditRowId] = useState(null);
     const [editRemindDate, setEditRemindDate] = useState(null);
 
+    // Add roleId state
+    const [roleId, setRoleId] = useState(null);
+
     // Fetch filter options on mount (simulate API call)
     useEffect(() => {
         api.get('/reminders/filters').then(res => {
@@ -47,6 +50,14 @@ function ReminderList() {
             setGroupOptions(res.data.groups || []);
             setExamCodeOptions(res.data.examcodes || []);
         });
+    }, []);
+
+    useEffect(() => {
+        // Get role_id from sessionStorage
+        const obj = JSON.parse(sessionStorage.getItem("authUser"));
+        if (obj && obj.role_id) {
+            setRoleId(obj.role_id);
+        }
     }, []);
 
     // Add filter params to fetchReminders
@@ -93,10 +104,17 @@ function ReminderList() {
         fetchReminders(1, customPageSize, search, sortBy, sortDirection);
     }, [filterAgent, filterUser, filterGroup, filterExamCode, filterStartDate, filterEndDate]);
 
-    const columns = useMemo(() => [
-        {
+const columns = useMemo(() => {
+    const cols = [];
+
+    // Show Agent column only if roleId !== 2
+    if (roleId !== 2) {
+        cols.push({
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('agent')}
+                >
                     Agent
                     {sortBy === 'agent' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -107,11 +125,17 @@ function ReminderList() {
             ),
             accessorKey: 'agent',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || ''}</span>
-        },
+            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || ''}</span>,
+        });
+    }
+
+    cols.push(
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('user')}
+                >
                     User
                     {sortBy === 'user' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -122,11 +146,14 @@ function ReminderList() {
             ),
             accessorKey: 'user',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.user?.name || ''}</span>
+            cell: (cellProps) => <span>{cellProps.row.original.user?.name || ''}</span>,
         },
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('groupname')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('groupname')}
+                >
                     Group Name
                     {sortBy === 'groupname' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -137,11 +164,16 @@ function ReminderList() {
             ),
             accessorKey: 'groupname',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.e_group_name || cellProps.row.original.s_group_name || ''}</span>
+            cell: (cellProps) => (
+                <span>{cellProps.row.original.e_group_name || cellProps.row.original.s_group_name || ''}</span>
+            ),
         },
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('examcode')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('examcode')}
+                >
                     Exam Code
                     {sortBy === 'examcode' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -152,11 +184,16 @@ function ReminderList() {
             ),
             accessorKey: 'examcode',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.e_exam_code || cellProps.row.original.s_exam_code || ''}</span>
+            cell: (cellProps) => (
+                <span>{cellProps.row.original.e_exam_code || cellProps.row.original.s_exam_code || ''}</span>
+            ),
         },
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('date')}
+                >
                     Date
                     {sortBy === 'date' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -167,11 +204,16 @@ function ReminderList() {
             ),
             accessorKey: 'date',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || cellProps.row.original.formatted_s_date || ''}</span>
+            cell: (cellProps) => (
+                <span>{cellProps.row.original.formatted_e_date || cellProps.row.original.formatted_s_date || ''}</span>
+            ),
         },
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('reminddate')}>
+                <span
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSortChange('reminddate')}
+                >
                     Remind Date
                     {sortBy === 'reminddate' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
@@ -184,32 +226,31 @@ function ReminderList() {
             enableSorting: true,
             cell: (cellProps) => {
                 const rowId = cellProps.row.original.id;
-                // Robust date parser for DD/MM/YYYY and YYYY-MM-DD
-                                                function parseDate(str) {
-                                                    if (!str) return null;
-                                                    // Strict DD/MM/YYYY
-                                                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-                                                        const [day, month, year] = str.split('/');
-                                                        return new Date(Number(year), Number(month) - 1, Number(day));
-                                                    }
-                                                    // Strict YYYY-MM-DD or ISO (YYYY-MM-DDTHH:mm:ss)
-                                                    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                                                    if (isoMatch) {
-                                                        const [_, year, month, day] = isoMatch;
-                                                        return new Date(Number(year), Number(month) - 1, Number(day));
-                                                    }
-                                                    return null;
-                                                }
-                                                function formatDMY(dateStr) {
-                                                    const d = parseDate(dateStr);
-                                                    if (!d) return '';
-                                                    const day = String(d.getDate()).padStart(2, '0');
-                                                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                                                    const year = d.getFullYear();
-                                                    return `${day}/${month}/${year}`;
-                                                }
+
+                // Date formatter
+                function parseDate(str) {
+                    if (!str) return null;
+                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                        const [day, month, year] = str.split('/');
+                        return new Date(Number(year), Number(month) - 1, Number(day));
+                    }
+                    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (isoMatch) {
+                        const [_, year, month, day] = isoMatch;
+                        return new Date(Number(year), Number(month) - 1, Number(day));
+                    }
+                    return null;
+                }
+                function formatDMY(dateStr) {
+                    const d = parseDate(dateStr);
+                    if (!d) return '';
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    return `${day}/${month}/${year}`;
+                }
+
                 if (editRowId === rowId) {
-                    // Use react-datepicker for editing, like Examcode
                     let dateObj = null;
                     if (editRemindDate instanceof Date && !isNaN(editRemindDate)) {
                         dateObj = editRemindDate;
@@ -217,36 +258,24 @@ function ReminderList() {
                         const [year, month, day] = editRemindDate.split('-');
                         dateObj = new Date(Number(year), Number(month) - 1, Number(day));
                     } else if (cellProps.row.original.s_remind_date) {
-                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(cellProps.row.original.s_remind_date)) {
-                            const [day, month, year] = cellProps.row.original.s_remind_date.split('/');
-                            dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(cellProps.row.original.s_remind_date)) {
-                            const [year, month, day] = cellProps.row.original.s_remind_date.split('-');
-                            dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-                        }
+                        dateObj = parseDate(cellProps.row.original.s_remind_date);
                     }
-                    let displayDMY = '';
-                    if (dateObj instanceof Date && !isNaN(dateObj)) {
-                        const day = String(dateObj.getDate()).padStart(2, '0');
-                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                        const year = dateObj.getFullYear();
-                        displayDMY = `${day}/${month}/${year}`;
-                    }
+
                     return (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <DatePicker
                                 className="reminder-input"
                                 selected={dateObj}
-                                onChange={date => setEditRemindDate(date)}
+                                onChange={(date) => setEditRemindDate(date)}
                                 dateFormat="dd/MM/yyyy"
                                 placeholderText="Select remind date"
-                                style={{ minWidth: 160 }}
                             />
                         </div>
                     );
                 }
+
                 return formatDMY(cellProps.row.original.s_remind_date);
-            }
+            },
         },
         {
             header: 'Action',
@@ -257,8 +286,12 @@ function ReminderList() {
                 if (editRowId === rowId) {
                     return (
                         <div>
-                            <button className="examcode-update-btn" onClick={() => handleEditSave(rowId)} type="button">Update</button>
-                            <button className="examcode-cancel-btn" onClick={handleEditCancel} type="button">Cancel</button>
+                            <button className="examcode-update-btn" onClick={() => handleEditSave(rowId)} type="button">
+                                Update
+                            </button>
+                            <button className="examcode-cancel-btn" onClick={handleEditCancel} type="button">
+                                Cancel
+                            </button>
                         </div>
                     );
                 }
@@ -267,14 +300,20 @@ function ReminderList() {
                         type="button"
                         className="examcode-action-btn edit"
                         title="Edit Remind Date"
-                        onClick={e => { e.preventDefault(); handleEditClick(cellProps.row.original); }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            handleEditClick(cellProps.row.original);
+                        }}
                     >
                         <i className="mdi mdi-pencil-outline"></i>
                     </button>
                 );
-            }
-        },
-    ], [sortBy, sortDirection, currentPage, customPageSize, editRowId, editRemindDate]);
+            },
+        }
+    );
+
+    return cols;
+}, [roleId, sortBy, sortDirection, currentPage, customPageSize, editRowId, editRemindDate]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -487,10 +526,13 @@ function ReminderList() {
             {/* Filter Bar */}
             <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
                 <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
-                    <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Agents</option>
-                        {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
+                    {/* Hide All Agents filter if role_id is 2 or 3 */}
+                    {roleId !== 2 && roleId !== 3 && (
+                        <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Agents</option>
+                            {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                    )}
                     <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
                         <option value="">All Users</option>
                         {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}

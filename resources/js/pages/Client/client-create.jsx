@@ -80,10 +80,18 @@ const ClientCreate = () => {
     validationSchema: Yup.object({
       agent: Yup.string().required('Agent is required'),
       user: Yup.string().required('User is required'),
-      timezone: Yup.string().required('Timezone is required'),
+      timezone: Yup.string().when([], {
+        is: () => formType === 'schedule',
+        then: schema => schema.required('Timezone is required'),
+        otherwise: schema => schema.notRequired()
+      }),
       group_name: Yup.string().required('Group name is required'),
       exam_code: Yup.string().required('Exam code is required'),
-      date: Yup.date().required('Date is required'),
+      date: Yup.mixed().when([], {
+        is: () => formType === 'schedule',
+        then: schema => schema.required('Date is required').test('is-date', 'Date is required', val => !!val),
+        otherwise: schema => schema.notRequired()
+      }),
       support_fee: Yup.number()
         .typeError('Support fee must be a number')
         .min(0, 'Support fee cannot be negative'),
@@ -106,26 +114,45 @@ const ClientCreate = () => {
           }
         }
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
+          console.log('Branch: editType=enquiry & formType=schedule');
           await api.post('/schedule', values);
           await api.delete(`/enquiries/${location.state.editId}`);
           navigate('/schedule');
         } else if (!location.state?.editType && formType === 'enquiry') {
-          await api.post('/enquiries', values);
-          navigate('/enquiry', { state: { created: true } }); 
+          console.log('Branch: new enquiry');
+          try {
+            const res = await api.post('/enquiries', values);
+            console.log('Enquiry API response:', res);
+            navigate('/enquiry', { state: { created: true } });
+          } catch (err) {
+            console.error('Enquiry API error:', err);
+            alert('Failed to save enquiry: ' + (err?.message || 'Unknown error'));
+          }
         } else if (!location.state?.editType && formType === 'schedule') {
+          console.log('Branch: new schedule');
           await api.post('/schedule', values);
           navigate('/schedule');
         } else if (location.state?.editType === 'schedule') {
+          console.log('Branch: editType=schedule');
           await api.post('/schedule', values);
           navigate('/schedule');
         }
-      } catch (err) {}
-      return
+      } catch (err) {
+        console.error('General error in onSubmit:', err);
+        alert('Error: ' + (err?.message || 'Unknown error'));
+      }
+      return;
     },
   });
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    // Always call enquiry API if formType is 'enquiry'
+    if (formType === 'enquiry') {
+      validation.handleSubmit();
+      return;
+    }
+    // ...existing code for schedule...
     let checkDate = validation.values.date;
     if (formType === 'schedule' && validation.values.date) {
       const localDate = new Date(validation.values.date);
@@ -676,27 +703,27 @@ const ClientCreate = () => {
                     </form>
                     {/* Modal remains unchanged */}
                     {showCheckModal && (
-  <div className="examcode-modal-backdrop" style={{zIndex: 2000, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-    <div className="examcode-modal" style={{minWidth: 340, maxWidth: '90vw', borderRadius: 18, boxShadow: '0 8px 32px rgba(44,62,80,0.18)', padding: '24px 32px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div className="examcode-modal-icon" style={{fontSize: 48, color: '#ffb300', marginBottom: 12}}>
-        <i className="mdi mdi-alert-outline"></i>
-      </div>
-      <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Warning</div>
-      <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 12, textAlign: 'center'}}>{checkMessage}</div>
-      {checkReason && (
-        <div className="mb-2"><b>Reason:</b> {checkReason}</div>
-      )}
-      {ISTDisplay && (
-        <div className="mb-2"><b>Indian Time:</b> {ISTDisplay}</div>
-      )}
-      <div className="mb-3">Do you want to proceed anyway?</div>
-      <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
-        <button className="examcode-save-btn" style={{background:'#2ba8fb', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}} onClick={handleCheckModalOk} type="button">OK</button>
-        <button className="examcode-cancel-btn" onClick={handleCheckModalCancel} type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-)}
+                      <div className="examcode-modal-backdrop" style={{zIndex: 2000, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <div className="examcode-modal" style={{minWidth: 340, maxWidth: '90vw', borderRadius: 18, boxShadow: '0 8px 32px rgba(44,62,80,0.18)', padding: '24px 32px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                          <div className="examcode-modal-icon" style={{fontSize: 48, color: '#ffb300', marginBottom: 12}}>
+                            <i className="mdi mdi-alert-outline"></i>
+                          </div>
+                          <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Warning</div>
+                          <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 12, textAlign: 'center'}}>{checkMessage}</div>
+                          {checkReason && (
+                            <div className="mb-2"><b>Reason:</b> {checkReason}</div>
+                          )}
+                          {ISTDisplay && (
+                            <div className="mb-2"><b>Indian Time:</b> {ISTDisplay}</div>
+                          )}
+                          <div className="mb-3">Do you want to proceed anyway?</div>
+                          <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
+                            <button className="examcode-save-btn" style={{background:'#2ba8fb', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}} onClick={handleCheckModalOk} type="button">OK</button>
+                            <button className="examcode-cancel-btn" onClick={handleCheckModalCancel} type="button">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardBody>
                 </Card>
               </Col>

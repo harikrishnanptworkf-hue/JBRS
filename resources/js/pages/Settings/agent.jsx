@@ -362,12 +362,27 @@ const AgentList = () => {
     }
   };
 
-  const openAssignModal = (agent) => {
-    setAssigningAgent(agent);
+const openAssignModal = async (agent) => {
+  setAssigningAgent(agent);
+  setAssignModalOpen(true);
+
+  try {
+    // Fetch all users for the checkbox list
+    const allRes = await api.get('/users', { params: { role_id: 3 } });
+    const allUsers = Array.isArray(allRes.data.data) ? allRes.data.data : (Array.isArray(allRes.data) ? allRes.data : []);
+    setAvailableUsers(allUsers);
+
+    // Fetch users assigned to this agent
+    const assignedRes = await api.get(`/agents/${agent.id}/users`);
+    const assignedUsers = Array.isArray(assignedRes.data.data) ? assignedRes.data.data : (Array.isArray(assignedRes.data) ? assignedRes.data : []);
+    const assignedIds = assignedUsers.map(u => u.id);
+    setSelectedUserIds(assignedIds);
+  } catch (err) {
+    toast.error('Failed to load users for assignment');
+    setAvailableUsers([]);
     setSelectedUserIds([]);
-    setAssignModalOpen(true);
-    fetchAvailableUsers();
-  };
+  }
+};
 
   const handleAssignUsers = async () => {
     if (!assigningAgent || selectedUserIds.length === 0) return;

@@ -35,6 +35,16 @@ const Navbar = props => {
   const [auth, setauth] = useState(false);
   const [utility, setutility] = useState(false);
 
+  const [roleId, setRoleId] = useState(null);
+
+  useEffect(() => {
+    const obj = JSON.parse(sessionStorage.getItem("authUser"));
+    if (obj) {
+      setRoleId(obj.role_id); // Save role_id for conditional rendering
+    }
+    console.log(obj)
+  }, []);
+
   useEffect(() => {
     var matchingMenuItem = null;
     var ul = document.getElementById("navigation");
@@ -182,19 +192,19 @@ const Navbar = props => {
                   >
                     {props.t("Report")} {props.menuOpen}
                   </Link>
-
                 </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/settings"
-                  >
-                    {props.t("Settings")} {props.menuOpen}
-                  </Link>
-
-                </li>
+                {/* Hide Settings if role_id is 2 or 3 */}
+                {roleId !== 2 && roleId !== 3 && (
+                  <li className="nav-item dropdown">
+                    <Link
+                      className="nav-link dropdown-toggle"
+                      style={{fontSize: "1.2rem", padding: "16px 24px"}}
+                      to="/settings"
+                    >
+                      {props.t("Settings")} {props.menuOpen}
+                    </Link>
+                  </li>
+                )}
               </ul>
             </Collapse>
           </nav>

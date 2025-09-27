@@ -122,5 +122,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{agent}', [AgentController::class, 'update'])->name('update');
         Route::delete('/{agent}', [AgentController::class, 'destroy'])->name('destroy');
         Route::post('/{agent}/assign-users', [AgentController::class, 'assignUsers']);
+        Route::get('/{agent}/users', [AgentController::class, 'getAgentUsers']);
     });
 });
