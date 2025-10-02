@@ -47,13 +47,25 @@ const ClientCreate = () => {
     api.get('/enquiries/filter-managed-data').then(res => {
       setAgents(res.data.agents || []);
       setUsers(res.data.users || []);
+      // Auto-select agent if not already set and only one agent or roleId is 2
+      if (!validation.values.agent && res.data.agents && res.data.agents.length === 1) {
+        validation.setFieldValue('agent', res.data.agents[0].id);
+      } else if (!validation.values.agent && res.roleId === 2 && res.data.agents && res.data.agents.length > 0) {
+        validation.setFieldValue('agent', res.data.agents[0].id);
+      }
+      // Auto-select user if not already set and only one user or roleId is 3
+      if (!validation.values.user && res.data.users && res.data.users.length === 1) {
+        validation.setFieldValue('user', res.data.users[0].id);
+      } else if (!validation.values.user && res.roleId === 3 && res.data.users && res.data.users.length > 0) {
+        validation.setFieldValue('user', res.data.users[0].id);
+      }
     });
     api.get('/timezone/get-full-timezones').then(res => {
       setTimezones(res.data || []);
     });
     api.get('/examcodes', { params: { pageSize: 100 } }).then(res => {
       const options = Array.isArray(res.data.data)
-        ? res.data.data.map(ec => ({ value: ec.ex_code, label: ec.ex_code }))
+        ? res.data.data.map(ec => ({ value: ec.id, label: ec.ex_code }))
         : [];
       setExamCodeOptions(options);
     });
@@ -104,41 +116,53 @@ const ClientCreate = () => {
     }),
     onSubmit: async (values) => {
       try {
-        if (values.exam_code) {
+        let exam_code_id = '';
+        let exam_code_text = '';
+        // Find selected exam code option
+        const selectedOption = examCodeOptions.find(opt => opt.value === values.exam_code || opt.label === values.exam_code);
+        if (selectedOption) {
+          exam_code_id = selectedOption.value;
+          exam_code_text = selectedOption.label;
+        } else if (values.exam_code) {
+          // Check if exam code exists
           const checkRes = await api.get('/examcodes', { params: { search: values.exam_code } });
-          const exists = Array.isArray(checkRes.data.data) && checkRes.data.data.some(e => e.ex_code === values.exam_code);
-          if (!exists) {
-            await api.post('/examcodes', {
-              exam_code: values.exam_code
-            });
+          const found = Array.isArray(checkRes.data.data) && checkRes.data.data.find(e => e.ex_code === values.exam_code);
+          if (found) {
+            exam_code_id = found.id;
+            exam_code_text = found.ex_code;
+          } else {
+            // Create new exam code and get its ID
+            const createRes = await api.post('/examcodes', { exam_code: values.exam_code });
+            if (createRes.data && createRes.data.id) {
+              exam_code_id = createRes.data.id;
+              exam_code_text = values.exam_code;
+            } else if (createRes.data && createRes.data.data && createRes.data.data.id) {
+              exam_code_id = createRes.data.data.id;
+              exam_code_text = values.exam_code;
+            }
           }
         }
+        // Prepare payload with exam_code_id
+        const payload = { ...values, exam_code_id, exam_code: exam_code_text };
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
-          console.log('Branch: editType=enquiry & formType=schedule');
-          await api.post('/schedule', values);
+          await api.post('/schedule', payload);
           await api.delete(`/enquiries/${location.state.editId}`);
           navigate('/schedule');
         } else if (!location.state?.editType && formType === 'enquiry') {
-          console.log('Branch: new enquiry');
           try {
-            const res = await api.post('/enquiries', values);
-            console.log('Enquiry API response:', res);
+            const res = await api.post('/enquiries', payload);
             navigate('/enquiry', { state: { created: true } });
           } catch (err) {
-            console.error('Enquiry API error:', err);
             alert('Failed to save enquiry: ' + (err?.message || 'Unknown error'));
           }
         } else if (!location.state?.editType && formType === 'schedule') {
-          console.log('Branch: new schedule');
-          await api.post('/schedule', values);
+          await api.post('/schedule', payload);
           navigate('/schedule');
         } else if (location.state?.editType === 'schedule') {
-          console.log('Branch: editType=schedule');
-          await api.post('/schedule', values);
+          await api.post('/schedule', payload);
           navigate('/schedule');
         }
       } catch (err) {
-        console.error('General error in onSubmit:', err);
         alert('Error: ' + (err?.message || 'Unknown error'));
       }
       return;
@@ -386,299 +410,255 @@ const ClientCreate = () => {
         <div className="client-create-card">
           <div className="page-content" style={{marginTop:"63px",paddingBottom:"0px"}}>
             <Row className="justify-content-center">
-              <Col lg="10" className="mx-auto">
+              <Col lg="10" className="mx-auto" style={{width:"100%"}}>
                 <Card className="shadow rounded border-0">
                   <CardBody>
                     <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
                     <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div>
-                    <form className="outer-repeater mx-auto" onSubmit={handleFormSubmit} autoComplete="off">
-                      {!(location.state && location.state.editType) && (
-                        <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                          <label className="col-form-label col-lg-2 fw-semibold form-label text-start">
-                            Type <span style={{ color: 'red' }}>*</span>
-                          </label>
-                          <div className="col-lg-6">
-                            <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={formType} onChange={e => setFormType(e.target.value)}>
-                              <option value="schedule">Schedule</option>
-                              <option value="enquiry">Enquiry</option>
-                            </select>
+                    <form className="container" onSubmit={handleFormSubmit} autoComplete="off">
+                      {/* Type & Support Fee */}
+                      <div className="row">
+                        <div className="col-md-8 col-12">
+                            <div>
+                              <label className="col-form-label fw-semibold form-label text-start">
+                                Type <span style={{ color: 'red' }}>*</span>
+                              </label>
+                              <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
+                                <option value="schedule">Schedule</option>
+                                 {!(location.state && location.state.editType) && (
+                                   <option value="enquiry">Enquiry</option>
+                                 )}
+                              </select>
+                            </div>
+                        </div>
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="support_fee" className="col-form-label fw-semibold form-label text-start">Support fee</label>
+                          <Input
+                            id="support_fee"
+                            name="support_fee"
+                            type="number"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter support fee..."
+                            value={validation.values.support_fee}
+                            onChange={validation.handleChange}
+                            onBlur={validation.handleBlur}
+                            invalid={validation.touched.support_fee && !!validation.errors.support_fee}
+                          />
+                          {validation.touched.support_fee && validation.errors.support_fee && (
+                            <div className="text-danger small mt-1">{validation.errors.support_fee}</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Agent & Voucher Fee */}
+                      <div className="row">
+                        <div className="col-md-8 col-12">
+                          <label htmlFor="agent" className="col-form-label fw-semibold form-label text-start">Agent <span style={{ color: 'red' }}>*</span></label>
+                          <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
+                            {agents.length !== 1 && <option value="">Select Agent</option>}
+                            {agents.map(agent => (
+                              <option key={agent.id} value={agent.id}>{agent.name}</option>
+                            ))}
+                          </select>
+                          {validation.touched.agent && validation.errors.agent && (
+                            <div className="text-danger small mt-1">{validation.errors.agent}</div>
+                          )}
+                        </div>
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="voucher_fee" className="col-form-label fw-semibold form-label text-start">Voucher fee</label>
+                          <Input
+                            id="voucher_fee"
+                            name="voucher_fee"
+                            type="number"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter voucher fee..."
+                            value={validation.values.voucher_fee}
+                            onChange={validation.handleChange}
+                            onBlur={validation.handleBlur}
+                            invalid={validation.touched.voucher_fee && !!validation.errors.voucher_fee}
+                          />
+                          {validation.touched.voucher_fee && validation.errors.voucher_fee && (
+                            <div className="text-danger small mt-1">{validation.errors.voucher_fee}</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* User & Total Fee */}
+                      <div className="row">
+                        <div className="col-md-8 col-12">
+                          <label htmlFor="user" className="col-form-label fw-semibold form-label text-start">User <span style={{ color: 'red' }}>*</span></label>
+                          <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
+                            {users.length !== 1 && <option value="">Select Agent</option>}
+                            {users.map(user => (
+                              <option key={user.id} value={user.id}>{user.name}</option>
+                            ))}
+                          </select>
+                          {validation.touched.user && validation.errors.user && (
+                            <div className="text-danger small mt-1">{validation.errors.user}</div>
+                          )}
+                        </div>
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="total_fee" className="col-form-label fw-semibold form-label text-start">Total Fee</label>
+                          <Input
+                            id="total_fee"
+                            name="total_fee"
+                            type="number"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter total fee..."
+                            value={validation.values.total_fee}
+                            readOnly
+                            onBlur={validation.handleBlur}
+                            invalid={validation.touched.total_fee && !!validation.errors.total_fee}
+                          />
+                          {validation.touched.total_fee && validation.errors.total_fee && (
+                            <div className="text-danger small mt-1">{validation.errors.total_fee}</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Group Name & Comment */}
+                      <div className="row">
+                        <div className="col-md-8 col-12">
+                          <label htmlFor="group_name" className="col-form-label fw-semibold form-label text-start">Group Name <span style={{ color: 'red' }}>*</span></label>
+                          <Input
+                            id="group_name"
+                            name="group_name"
+                            type="text"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter group name..."
+                            value={validation.values.group_name}
+                            onChange={validation.handleChange}
+                            onBlur={validation.handleBlur}
+                            invalid={validation.touched.group_name && !!validation.errors.group_name}
+                          />
+                          {validation.touched.group_name && validation.errors.group_name && (
+                            <div className="text-danger small mt-1">{validation.errors.group_name}</div>
+                          )}
+                        </div>
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="comment" className="col-form-label fw-semibold form-label text-start">Comment</label>
+                          <Input
+                            id="comment"
+                            name="comment"
+                            type="text"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter comment..."
+                            value={validation.values.comment}
+                            onChange={validation.handleChange}
+                          />
+                        </div>
+                      </div>
+                      {/* Exam Code & Phone */}
+                      <div className="row">
+                        <div className="col-md-8 col-12">
+                          <label htmlFor="exam_code" className="col-form-label fw-semibold form-label text-start">Exam code <span style={{ color: 'red' }}>*</span></label>
+                          <CreatableSelect
+                            id="exam_code"
+                            name="exam_code"
+                            options={examCodeOptions}
+                            value={examCodeOptions.find(opt => opt.value === validation.values.exam_code) || (validation.values.exam_code ? { value: validation.values.exam_code, label: validation.values.exam_code } : null)}
+                            onChange={opt => {
+                              validation.setFieldValue('exam_code', opt ? opt.value : '');
+                            }}
+                            isClearable
+                            placeholder="Select or type exam code..."
+                            styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
+                            isSearchable
+                            classNamePrefix="react-select"
+                          />
+                          {validation.touched.exam_code && validation.errors.exam_code && (
+                            <div className="text-danger small mt-1">{validation.errors.exam_code}</div>
+                          )}
+                        </div>
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="phone" className="col-form-label fw-semibold form-label text-start">Phone</label>
+                          <Input
+                            id="phone"
+                            name="phone"
+                            type="text"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter phone..."
+                            value={validation.values.phone}
+                            onChange={validation.handleChange}
+                            onBlur={validation.handleBlur}
+                            onKeyDown={e => !(/[0-9]/.test(e.key) || (e.key === '+' && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes('+')) || ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) || e.ctrlKey) && e.preventDefault()}
+                            onPaste={e => !/^\+?[0-9]*$/.test(e.clipboardData.getData("text")) && e.preventDefault()}                              invalid={validation.touched.phone && !!validation.errors.phone}
+                          />
+                          {validation.touched.phone && validation.errors.phone && (
+                            <div className="text-danger small mt-1">{validation.errors.phone}</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Timezone & Email */}
+                        <div className="row">
+                      {(location.state?.editType || formType === 'schedule') ? (
+                          <div className="col-md-8 col-12">
+                            <label htmlFor="timezone" className="col-form-label fw-semibold form-label text-start">Timezone <span style={{ color: 'red' }}>*</span></label>
+                            <Select
+                              id="timezone"
+                              name="timezone"
+                              options={timezoneOptions}
+                              value={timezoneOptions.find(opt => opt.value === validation.values.timezone) || null}
+                              onChange={opt => validation.setFieldValue('timezone', opt ? opt.value : '')}
+                              isClearable
+                              placeholder="Select or search timezone..."
+                              styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
+                              classNamePrefix="react-select"
+                            />
+                            {validation.touched.timezone && validation.errors.timezone && (
+                              <div className="text-danger small mt-1">{validation.errors.timezone}</div>
+                            )}
+                          </div>
+                      ) : <div className="col-md-8 col-12"></div>}
+                          <div className="col-md-4 col-12">
+                            <label htmlFor="email" className="col-form-label fw-semibold form-label text-start">Email</label>
+                            <Input
+                              id="email"
+                              name="email"
+                              type="email"
+                              className="form-control rounded-pill px-3 py-2 reminder-input"
+                              placeholder="Enter email..."
+                              value={validation.values.email}
+                              onChange={validation.handleChange}
+                              onBlur={validation.handleBlur}
+                              invalid={validation.touched.email && !!validation.errors.email}
+                            />
+                            {validation.touched.email && validation.errors.email && (
+                              <div className="text-danger small mt-1">{validation.errors.email}</div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      <div data-repeater-list="outer-group" className="outer">
-                        <div data-repeater-item className="outer">
-                          {/* Agent */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="agent" className="col-form-label col-lg-2 fw-semibold form-label text-start">Agent <span style={{ color: 'red' }}>*</span></label>
-                            <div className="col-lg-6">
-                              <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
-                                <option value="">Select Agent</option>
-                                {agents.map(agent => (
-                                  <option key={agent.id} value={agent.id}>{agent.name}</option>
-                                ))}
-                              </select>
-                              {validation.touched.agent && validation.errors.agent && (
-                                <div className="text-danger small mt-1">{validation.errors.agent}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* User */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="user" className="col-form-label col-lg-2 fw-semibold form-label text-start">User <span style={{ color: 'red' }}>*</span></label>
-                            <div className="col-lg-6">
-                              <select className="form-control rounded-pill px-3 py-2 reminder-input" style={{maxWidth: 350}} value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
-                                <option value="">Select User</option>
-                                {users.map(user => (
-                                  <option key={user.id} value={user.id}>{user.name}</option>
-                                ))}
-                              </select>
-                              {validation.touched.user && validation.errors.user && (
-                                <div className="text-danger small mt-1">{validation.errors.user}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Group Name */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="group_name" className="col-form-label col-lg-2 fw-semibold form-label text-start">Group Name <span style={{ color: 'red' }}>*</span></label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="group_name"
-                                name="group_name"
-                                type="text"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter group name..."
-                                value={validation.values.group_name}
-                                onChange={validation.handleChange}
-                                onBlur={validation.handleBlur}
-                                invalid={validation.touched.group_name && !!validation.errors.group_name}
-                              />
-                              {validation.touched.group_name && validation.errors.group_name && (
-                                <div className="text-danger small mt-1">{validation.errors.group_name}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Exam Code */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="exam_code" className="col-form-label col-lg-2 fw-semibold form-label text-start">Exam code <span style={{ color: 'red' }}>*</span></label>
-                            <div className="col-lg-6">
-                              <CreatableSelect
-                                id="exam_code"
-                                name="exam_code"
-                                options={examCodeOptions}
-                                value={examCodeOptions.find(opt => opt.value === validation.values.exam_code) || (validation.values.exam_code ? { value: validation.values.exam_code, label: validation.values.exam_code } : null)}
-                                onChange={opt => {
-                                  validation.setFieldValue('exam_code', opt ? opt.value : '');
-                                }}
-                                isClearable
-                                placeholder="Select or type exam code..."
-                                styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
-                                isSearchable
-                                classNamePrefix="react-select"
-                              />
-                              {validation.touched.exam_code && validation.errors.exam_code && (
-                                <div className="text-danger small mt-1">{validation.errors.exam_code}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Timezone & Date */}
-                          {(location.state?.editType || formType === 'schedule') && (
-                            <>
-                              <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                                <label htmlFor="timezone" className="col-form-label col-lg-2 fw-semibold form-label text-start">Timezone <span style={{ color: 'red' }}>*</span></label>
-                                <div className="col-lg-6">
-                                  <Select
-                                    id="timezone"
-                                    name="timezone"
-                                    options={timezoneOptions}
-                                    value={timezoneOptions.find(opt => opt.value === validation.values.timezone) || null}
-                                    onChange={opt => validation.setFieldValue('timezone', opt ? opt.value : '')}
-                                    isClearable
-                                    placeholder="Select or search timezone..."
-                                    styles={{...customSelectStyles, container: base => ({...base, maxWidth: 350})}}
-                                    classNamePrefix="react-select"
-                                  />
-                                  {validation.touched.timezone && validation.errors.timezone && (
-                                    <div className="text-danger small mt-1">{validation.errors.timezone}</div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                                <label className="col-form-label col-lg-2 fw-semibold form-label text-start">Date <span style={{ color: 'red' }}>*</span></label>
-                                <div className="col-lg-6">
-                                  <DatePicker
-                                    className="form-control rounded-pill px-3 py-2 reminder-input"
-                                    style={{maxWidth: 350}}
-                                    selected={validation.values.date || null}
-                                    onChange={date => {
-                                      setstartDate(date);
-                                      validation.setFieldValue('date', date);
-                                    }}
-                                    onBlur={validation.handleBlur}
-                                    dateFormat="dd/MM/yyyy h:mm aa"
-                                    showTimeSelect
-                                    timeFormat="HH:mm"
-                                    placeholderText="Select date and time..."
-                                  />
-                                  {validation.touched.date && validation.errors.date && (
-                                    <div className="text-danger small mt-1">{validation.errors.date}</div>
-                                  )}
-                                </div>
-                              </div>
-                            </>
+                      {/* Date & Remind Remark */}
+                      <div className="row">
+                      {(location.state?.editType || formType === 'schedule') ? (
+                        <div className="col-md-8 col-12">
+                          <label className="col-form-label fw-semibold form-label text-start">Date <span style={{ color: 'red' }}>*</span></label>
+                          <DatePicker
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            selected={validation.values.date || null}
+                            onChange={date => {
+                              setstartDate(date);
+                              validation.setFieldValue('date', date);
+                            }}
+                            onBlur={validation.handleBlur}
+                            dateFormat="dd/MM/yyyy h:mm aa"
+                            showTimeSelect
+                            timeFormat="HH:mm"
+                            placeholderText="Select date and time..."
+                          />
+                          {validation.touched.date && validation.errors.date && (
+                            <div className="text-danger small mt-1">{validation.errors.date}</div>
                           )}
-                          {/* Support Fee */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="support_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Support fee</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="support_fee"
-                                name="support_fee"
-                                type="number"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter support fee..."
-                                value={validation.values.support_fee}
-                                onChange={validation.handleChange}
-                                onBlur={validation.handleBlur}
-                                invalid={validation.touched.support_fee && !!validation.errors.support_fee}
-                              />
-                              {validation.touched.support_fee && validation.errors.support_fee && (
-                                <div className="text-danger small mt-1">{validation.errors.support_fee}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Voucher Fee */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="voucher_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Voucher fee</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="voucher_fee"
-                                name="voucher_fee"
-                                type="number"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter voucher fee..."
-                                value={validation.values.voucher_fee}
-                                onChange={validation.handleChange}
-                                onBlur={validation.handleBlur}
-                                invalid={validation.touched.voucher_fee && !!validation.errors.voucher_fee}
-                              />
-                              {validation.touched.voucher_fee && validation.errors.voucher_fee && (
-                                <div className="text-danger small mt-1">{validation.errors.voucher_fee}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Total Fee */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="total_fee" className="col-form-label col-lg-2 fw-semibold form-label text-start">Total Fee</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="total_fee"
-                                name="total_fee"
-                                type="number"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter total fee..."
-                                value={validation.values.total_fee}
-                                readOnly
-                                onBlur={validation.handleBlur}
-                                invalid={validation.touched.total_fee && !!validation.errors.total_fee}
-                              />
-                              {validation.touched.total_fee && validation.errors.total_fee && (
-                                <div className="text-danger small mt-1">{validation.errors.total_fee}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Comment */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="comment" className="col-form-label col-lg-2 fw-semibold form-label text-start">Comment</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="comment"
-                                name="comment"
-                                type="text"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter comment..."
-                                value={validation.values.comment}
-                                onChange={validation.handleChange}
-                              />
-                            </div>
-                          </div>
-                          {/* Email */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="email" className="col-form-label col-lg-2 fw-semibold form-label text-start">Email</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter email..."
-                                value={validation.values.email}
-                                onChange={validation.handleChange}
-                                onBlur={validation.handleBlur}
-                                invalid={validation.touched.email && !!validation.errors.email}
-                              />
-                              {validation.touched.email && validation.errors.email && (
-                                <div className="text-danger small mt-1">{validation.errors.email}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Phone */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="phone" className="col-form-label col-lg-2 fw-semibold form-label text-start">Phone</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="phone"
-                                name="phone"
-                                type="text"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter phone..."
-                                value={validation.values.phone}
-                                onChange={validation.handleChange}
-                                onBlur={validation.handleBlur}
-                                onKeyDown={e => !(/[0-9]/.test(e.key) || (e.key === '+' && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes('+')) || ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) || e.ctrlKey) && e.preventDefault()}
-                                onPaste={e => !/^\+?[0-9]*$/.test(e.clipboardData.getData("text")) && e.preventDefault()}                              invalid={validation.touched.phone && !!validation.errors.phone}
-                              />
-                              {validation.touched.phone && validation.errors.phone && (
-                                <div className="text-danger small mt-1">{validation.errors.phone}</div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Remind Date */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label className="col-form-label col-lg-2 fw-semibold form-label text-start">Remind Date</label>
-                            <div className="col-lg-6">
-                              <DatePicker
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                selected={validation.values.remind_date}
-                                onChange={date => validation.setFieldValue('remind_date', date)}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="Select remind date..."
-                              />
-                            </div>
-                          </div>
-                          {/* Remind Remark */}
-                          <div className="mb-4 row mb-3 justify-content-center align-items-center">
-                            <label htmlFor="remind_remark" className="col-form-label col-lg-2 fw-semibold form-label text-start">Remind remark</label>
-                            <div className="col-lg-6">
-                              <Input
-                                id="remind_remark"
-                                name="remind_remark"
-                                type="text"
-                                className="form-control rounded-pill px-3 py-2 reminder-input"
-                                style={{maxWidth: 350}}
-                                placeholder="Enter remind remark..."
-                                value={validation.values.remind_remark}
-                                onChange={validation.handleChange}
-                              />
-                            </div>
-                          </div>
+                        </div>
+                      ) : <div className="col-md-8 col-12"></div>}
+                        <div className="col-md-4 col-12">
+                          <label htmlFor="remind_remark" className="col-form-label fw-semibold form-label text-start">Remind remark</label>
+                          <Input
+                            id="remind_remark"
+                            name="remind_remark"
+                            type="text"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            placeholder="Enter remind remark..."
+                            value={validation.values.remind_remark}
+                            onChange={validation.handleChange}
+                          />
                         </div>
                       </div>
                       <div className="row justify-content-center mt-4">

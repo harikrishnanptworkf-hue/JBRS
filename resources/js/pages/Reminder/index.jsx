@@ -8,6 +8,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
 function ReminderList() {
+
     //meta title
     document.title = "Reminders";
 
@@ -42,9 +43,12 @@ function ReminderList() {
     // Add roleId state
     const [roleId, setRoleId] = useState(null);
 
+    // Show/hide filter section (like Examcode)
+    const [showFullControls, setShowFullControls] = useState(false);
+
     // Fetch filter options on mount (simulate API call)
     useEffect(() => {
-        api.get('/reminders/filters').then(res => {
+        api.get('/schedule/filter-managed-data').then(res => {
             setAgentOptions(res.data.agents || []);
             setUserOptions(res.data.users || []);
             setGroupOptions(res.data.groups || []);
@@ -192,26 +196,6 @@ const columns = useMemo(() => {
             header: (
                 <span
                     style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
-                    onClick={() => handleSortChange('date')}
-                >
-                    Date
-                    {sortBy === 'date' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                            {sortDirection === 'asc' ? '▲' : '▼'}
-                        </span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'date',
-            enableSorting: true,
-            cell: (cellProps) => (
-                <span>{cellProps.row.original.formatted_e_date || cellProps.row.original.formatted_s_date || ''}</span>
-            ),
-        },
-        {
-            header: (
-                <span
-                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
                     onClick={() => handleSortChange('reminddate')}
                 >
                     Remind Date
@@ -277,39 +261,39 @@ const columns = useMemo(() => {
                 return formatDMY(cellProps.row.original.s_remind_date);
             },
         },
-        {
-            header: 'Action',
-            accessorKey: 'action',
-            enableSorting: false,
-            cell: (cellProps) => {
-                const rowId = cellProps.row.original.id;
-                if (editRowId === rowId) {
-                    return (
-                        <div>
-                            <button className="examcode-update-btn" onClick={() => handleEditSave(rowId)} type="button">
-                                Update
-                            </button>
-                            <button className="examcode-cancel-btn" onClick={handleEditCancel} type="button">
-                                Cancel
-                            </button>
-                        </div>
-                    );
-                }
-                return (
-                    <button
-                        type="button"
-                        className="examcode-action-btn edit"
-                        title="Edit Remind Date"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            handleEditClick(cellProps.row.original);
-                        }}
-                    >
-                        <i className="mdi mdi-pencil-outline"></i>
-                    </button>
-                );
-            },
-        }
+        // {
+        //     header: 'Action',
+        //     accessorKey: 'action',
+        //     enableSorting: false,
+        //     cell: (cellProps) => {
+        //         const rowId = cellProps.row.original.id;
+        //         if (editRowId === rowId) {
+        //             return (
+        //                 <div>
+        //                     <button className="examcode-update-btn" onClick={() => handleEditSave(rowId)} type="button">
+        //                         Update
+        //                     </button>
+        //                     <button className="examcode-cancel-btn" onClick={handleEditCancel} type="button">
+        //                         Cancel
+        //                     </button>
+        //                 </div>
+        //             );
+        //         }
+        //         return (
+        //             <button
+        //                 type="button"
+        //                 className="examcode-action-btn edit"
+        //                 title="Edit Remind Date"
+        //                 onClick={(e) => {
+        //                     e.preventDefault();
+        //                     handleEditClick(cellProps.row.original);
+        //                 }}
+        //             >
+        //                 <i className="mdi mdi-pencil-outline"></i>
+        //             </button>
+        //         );
+        //     },
+        // }
     );
 
     return cols;
@@ -390,10 +374,9 @@ const columns = useMemo(() => {
                   width: 100vw;
                   background: #fff;
                   box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);
-                  border-radius: 0 0 18px 18px;
                   padding: 32px 32px 0 32px;
                   display: flex;
-                  flex-direction: column;
+                  flex-direction: column;   
                   align-items: center;
                   gap: 0;
                 }
@@ -518,65 +501,128 @@ const columns = useMemo(() => {
             `}</style>
             {/* Header Bar: Title only */}
             <div className="reminder-header-bar">
-                <div>
-                    <div className="reminder-title-text">Reminders</div>
-                    <div className="reminder-title-divider"></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                    <button
+                        type="button"
+                        className="examcode-action-btn"
+                        style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
+                        title={showFullControls ? 'Hide filters' : 'Show filters'}
+                        onClick={() => setShowFullControls(v => !v)}
+                    >
+                        <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
+                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <div className="reminder-title-text">Reminders</div>
+                        <div className="reminder-title-divider"></div>
+                    </div>
                 </div>
             </div>
-            {/* Filter Bar */}
-            <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
-                <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
-                    {/* Hide All Agents filter if role_id is 2 or 3 */}
-                    {roleId !== 2 && roleId !== 3 && (
-                        <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
-                            <option value="">All Agents</option>
-                            {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+            {/* Animated show/hide for filter/search sections */}
+            <div
+                style={{
+                    maxHeight: showFullControls ? 800 : 0,
+                    opacity: showFullControls ? 1 : 0,
+                    overflow: 'hidden',
+                    transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s',
+                }}
+            >
+                <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                        {/* Hide All Agents filter if role_id is 2 or 3 */}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                { roleId !== 3 && roleId !== 2  && (
+                                    <select
+                                        className="reminder-input"
+                                        value={filterAgent}
+                                        onChange={e => setFilterAgent(e.target.value)}
+                                        style={{ minWidth: 180 }}
+                                    >
+                                        <option value="">All Agents</option>
+                                        {agentOptions.map(opt => (
+                                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                                        ))}
+                                    </select>
+                                  )}
+                                { roleId !== 3  && (
+                                    <select
+                                        className="reminder-input"
+                                        value={filterUser}
+                                        onChange={e => setFilterUser(e.target.value)}
+                                        style={{ minWidth: 180 }}
+                                    >
+                                        <option value="">All Users</option>
+                                        {userOptions.map(opt => (
+                                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                                        ))}
+                                    </select>
+                                  )}
+                            </div>
+
+                        <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Groups</option>
+                            {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
-                    )}
-                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Users</option>
-                        {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Groups</option>
-                        {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
-                    <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Exam Codes</option>
-                        {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.code}</option>)}
-                    </select>
-                    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <DatePicker
-                                className="reminder-input examcode-date"
-                                selected={filterStartDate}
-                                onChange={setFilterStartDate}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="Start Date"
-                                isClearable
-                                style={{ minWidth: 140 }}
-                            />
-                          
+                        <select className="reminder-input" value={filterExamCode} onChange={e => setFilterExamCode(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Exam Codes</option>
+                            {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={filterStartDate}
+                                    onChange={setFilterStartDate}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="Start Date"
+                                    isClearable
+                                    style={{ minWidth: 140 }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={filterEndDate}
+                                    onChange={setFilterEndDate}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="End Date"
+                                    isClearable
+                                    style={{ minWidth: 140 }}
+                                />
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <DatePicker
-                                className="reminder-input examcode-date"
-                                selected={filterEndDate}
-                                onChange={setFilterEndDate}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="End Date"
-                                isClearable
-                                style={{ minWidth: 140 }}
-                            />
-                           
-                        </div>
+                        {(!!filterAgent || !!filterUser || !!filterGroup || !!filterExamCode || !!filterStartDate || !!filterEndDate) && (
+                            <button className="examcode-cancel-btn" onClick={handleClearFilters} type="button">Clear</button>
+                        )}
+                </div>
+                {/* Search + Page Size Controls */}
+                <div className="reminder-tablebar">
+                    <div>
+                        <Label className="me-2 fw-semibold">Page size</Label>
+                        <select
+                            className="form-select d-inline-block w-auto reminder-input"
+                            value={customPageSize}
+                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                            style={{ minWidth: 80 }}
+                        >
+                            {[5, 10, 20, 50, 100].map(size => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
                     </div>
-                    {(!!filterAgent || !!filterUser || !!filterGroup || !!filterExamCode || !!filterStartDate || !!filterEndDate) && (
-                        <button className="examcode-cancel-btn" onClick={handleClearFilters} type="button">Clear</button>
-                    )}
+                    <div>
+                        <Input
+                            type="search"
+                            className="form-control d-inline-block w-auto reminder-input"
+                            style={{ minWidth: 280, maxWidth: 340, width: 320 }}
+                            placeholder="Search..."
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                        />
+                    </div>
+                </div>
             </div>
             {/* Search + Page Size Controls */}
-            <div className="reminder-tablebar">
+            {/* <div className="reminder-tablebar">
                 <div>
                     <Label className="me-2 fw-semibold">Page size</Label>
                     <select
@@ -600,7 +646,7 @@ const columns = useMemo(() => {
                         onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                     />
                 </div>
-            </div>
+            </div> */}
             {/* Table Section */}
             <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                 {isLoading ? <Spinners setLoading={setLoading} /> :

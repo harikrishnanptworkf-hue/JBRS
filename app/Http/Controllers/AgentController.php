@@ -84,9 +84,9 @@ class AgentController extends Controller
         return response()->json($user);
     }
 
-    public function destroy(User $user)
+    public function destroy(User $agent)
     {
-        $user->delete();
+        $agent->delete();
         return response()->json(['message' => 'Agent deleted']);
     }
 

@@ -24,12 +24,19 @@ import { loginUser } from "../../store/actions";
 import profile from "../../../images/profile-img.png";
 import logo from "../../../images/logo.svg";
 import { createSelector } from "reselect";
+import { useNavigate } from "react-router-dom";
 
 const Login = props => {
+  // Prevent navigating to login if already authenticated
+  // Do NOT clear sessionStorage here, only clear on explicit logout!
+  if (sessionStorage.getItem('authUser')) {
+    window.location.replace('/dashboard');
+    return null;
+  }
 
+  const navigate = useNavigate();
   //meta title
   document.title = "Login ";
-
   const dispatch = useDispatch();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

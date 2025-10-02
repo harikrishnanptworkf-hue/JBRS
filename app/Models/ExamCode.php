@@ -10,5 +10,7 @@ class ExamCode extends Model
     protected $fillable = [
         'ex_code',
         'ex_validity',
+        'ex_remind_year',
+        'ex_remind_month',
     ];
 }

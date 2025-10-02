@@ -15,6 +15,8 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function EnquiryList() {
+    // State for toggling filter/search controls
+    const [showFullControls, setShowFullControls] = useState(false);
 
     //meta title
     document.title = "Enquiry";
@@ -312,23 +314,24 @@ function EnquiryList() {
             ),
             accessorKey: 'examcode',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.e_exam_code || ''}</span>
+            cell: (cellProps) => <span>{cellProps.row.original.examcode?.ex_code || ''}</span>
+
         },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
-                    Date
-                    {sortBy === 'date' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                            {sortOrder === 'asc' ? '▲' : '▼'}
-                        </span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'date',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
-        },
+        // {
+        //     header: (
+        //         <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+        //             Date
+        //             {sortBy === 'date' && (
+        //                 <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+        //                     {sortOrder === 'asc' ? '▲' : '▼'}
+        //                 </span>
+        //             )}
+        //         </span>
+        //     ),
+        //     accessorKey: 'date',
+        //     enableSorting: true,
+        //     cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
+        // },
         {
             header: 'Action',
             accessorKey: 'action',
@@ -429,107 +432,118 @@ function EnquiryList() {
 
     return (
         <React.Fragment>
-                        <style>{`
-                                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
-                                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
-                                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
-                                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
-                                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
-                                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 352px; width: 100%; box-sizing: border-box; }
-                                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
-                                .examcode-action-btn.edit { color: #2ba8fb; }
-                                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
-                                .examcode-action-btn:active { background: #d0e7fa; }
-                                .examcode-action-btn .mdi { margin: 0; }
-                                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
-                                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
-                                .examcode-update-btn:active { background: #3d94cf; }
-                                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
-                                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
-                                .examcode-cancel-btn:active { background: #d0e7fa; }
-                                /* Examcode modal styles for delete modal */
-                                .examcode-modal-backdrop {
-                                    position: fixed;
-                                    top: 0; left: 0; right: 0; bottom: 0;
-                                    background: rgba(44,62,80,0.18);
-                                    z-index: 1050;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                }
-                                .examcode-modal {
-                                    background: #fff;
-                                    border-radius: 18px;
-                                    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
-                                    padding: 36px 32px 28px 32px;
-                                    min-width: 340px;
-                                    max-width: 90vw;
-                                    text-align: center;
-                                    z-index: 1060;
-                                    position: relative;
-                                    display: flex;
-                                    flex-direction: column;
-                                    align-items: center;
-                                }
-                                .examcode-modal-icon {
-                                    font-size: 2.8rem;
-                                    color: #ff4d4f;
-                                    margin-bottom: 12px;
-                                }
-                                .examcode-modal-title {
-                                    font-size: 1.25rem;
-                                    font-weight: 700;
-                                    color: #1a2942;
-                                    margin-bottom: 8px;
-                                }
-                                .examcode-modal-message {
-                                    color: #5a5a5a;
-                                    margin-bottom: 24px;
-                                    font-size: 1.05rem;
-                                }
-                                .examcode-modal-btns {
-                                    display: flex;
-                                    gap: 16px;
-                                    justify-content: center;
-                                }
-                                .examcode-delete-btn {
-                                    background: #ff4d4f;
-                                    color: #fff;
-                                    border: none;
-                                    border-radius: 100px;
-                                    font-weight: 600;
-                                    font-size: 1rem;
-                                    padding: 8px 28px;
-                                    box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
-                                    transition: background 0.2s, box-shadow 0.2s;
-                                }
-                                .examcode-delete-btn:hover {
-                                    background: #ff7875;
-                                    box-shadow: 0 0 12px #ff787550;
-                                }
-                                .examcode-delete-btn:active {
-                                    background: #d9363e;
-                                }
-                                @media (max-width: 700px) {
-                                    .examcode-header-bar, .examcode-tablebar, .examcode-form-row {
-                                        flex-direction: column;
-                                        align-items: stretch;
-                                        gap: 16px;
-                                    }
-                                }
-                        `}</style>
-
+            <style>{`
+                .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 0 0 18px 18px; padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+                .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
+                .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }
+                .reminder-tablebar { width: 100vw; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
+                .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
+                .reminder-input { border-radius: 10px !important; border: 1.5px solid #e3e6ef !important; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); font-size: 1.05rem; padding: 10px 16px; background: #fafdff !important; transition: border-color 0.2s; height: 44px !important; min-width: 220px; max-width: 352px; width: 100%; box-sizing: border-box; }
+                .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
+                .examcode-action-btn.edit { color: #2ba8fb; }
+                .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }
+                .examcode-action-btn:active { background: #d0e7fa; }
+                .examcode-action-btn .mdi { margin: 0; }
+                .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
+                .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
+                .examcode-update-btn:active { background: #3d94cf; }
+                .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
+                .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
+                .examcode-cancel-btn:active { background: #d0e7fa; }
+                /* Examcode modal styles for delete modal */
+                .examcode-modal-backdrop {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(44,62,80,0.18);
+                    z-index: 1050;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .examcode-modal {
+                    background: #fff;
+                    border-radius: 18px;
+                    box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+                    padding: 36px 32px 28px 32px;
+                    min-width: 340px;
+                    max-width: 90vw;
+                    text-align: center;
+                    z-index: 1060;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .examcode-modal-icon {
+                    font-size: 2.8rem;
+                    color: #ff4d4f;
+                    margin-bottom: 12px;
+                }
+                .examcode-modal-title {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: #1a2942;
+                    margin-bottom: 8px;
+                }
+                .examcode-modal-message {
+                    color: #5a5a5a;
+                    margin-bottom: 24px;
+                    font-size: 1.05rem;
+                }
+                .examcode-modal-btns {
+                    display: flex;
+                    gap: 16px;
+                    justify-content: center;
+                }
+                .examcode-delete-btn {
+                    background: #ff4d4f;
+                    color: #fff;
+                    border: none;
+                    border-radius: 100px;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    padding: 8px 28px;
+                    box-shadow: 0 1.5px 8px rgba(44,62,80,0.04);
+                    transition: background 0.2s, box-shadow 0.2s;
+                }
+                .examcode-delete-btn:hover {
+                    background: #ff7875;
+                    box-shadow: 0 0 12px #ff787550;
+                }
+                .examcode-delete-btn:active {
+                    background: #d9363e;
+                }
+                @media (max-width: 700px) {
+                    .examcode-header-bar, .examcode-tablebar, .examcode-form-row {
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 16px;
+                    }
+                }
+            `}</style>
 
             <ReminderDeleteModal show={deleteModal} onDeleteClick={handleDeleteEnquiry} onCloseClick={() => setDeleteModal(false)} />
             <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div>
-                        <div className="reminder-title-text">Enquiry</div>
-                        <div className="reminder-title-divider"></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                        <button
+                            type="button"
+                            className="examcode-action-btn"
+                            style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
+                            title={showFullControls ? 'Hide filters' : 'Show filters'}
+                            onClick={() => setShowFullControls(v => !v)}
+                        >
+                            <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
+                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <div className="reminder-title-text">Enquiry</div>
+                            <div className="reminder-title-divider"></div>
+                        </div>
                     </div>
                 </div>
                 {/* Filter Bar */}
+                {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
                     <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
                     {   roleId !== 2 && roleId !== 3 && (
@@ -537,11 +551,13 @@ function EnquiryList() {
                             <option value="">All Agents</option>
                             {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
-                    )}
-                    <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
-                        <option value="">All Users</option>
-                        {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                    </select>
+                      )}  
+                    {  roleId !== 3 && (
+                        <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
+                            <option value="">All Users</option>
+                            {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                        </select>
+                      )}  
                     <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
                         <option value="">All Groups</option>
                         {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
@@ -550,42 +566,6 @@ function EnquiryList() {
                         <option value="">All Exam Codes</option>
                         {examCodeOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.ex_code}</option>)}
                     </select>
-                    <DatePicker
-                        className="reminder-input examcode-date"
-                        selected={filterStartDate}
-                        onChange={setFilterStartDate}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="Start Date"
-                        isClearable
-                        style={{ minWidth: 160 }}
-                        calendarStartDay={1}
-                        renderCustomHeader={(
-                            { date, changeYear, changeMonth, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                            <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                            </div>
-                        )}
-                    />
-                    <DatePicker
-                        className="reminder-input examcode-date"
-                        selected={filterEndDate}
-                        onChange={setFilterEndDate}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="End Date"
-                        isClearable
-                        style={{ minWidth: 160 }}
-                        calendarStartDay={1}
-                        renderCustomHeader={(
-                            { date, changeYear, changeMonth, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                            <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                            </div>
-                        )}
-                    />
                     {(filterAgent || filterUser || filterGroup || filterExamCode || filterStartDate || filterEndDate) && (
                         <button
                             type="button"
@@ -597,7 +577,9 @@ function EnquiryList() {
                         </button>
                     )}
                 </div>
+                )}
                 {/* Search + Page Size Controls */}
+                {showFullControls && (
                 <div className="reminder-tablebar">
                     <div>
                         <Label className="me-2 fw-semibold">Page size</Label>
@@ -623,6 +605,7 @@ function EnquiryList() {
                         />
                     </div>
                 </div>
+                )}
                 {/* Table Section */}
                 <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                     {isLoading ? <Spinners setLoading={setLoading} /> :

@@ -35,12 +35,17 @@ class Enquiry extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'e_user_id');
+        return $this->belongsTo(User::class, 'e_user_id', 'id');
+    }
+
+    public function examcode()
+    {
+        return $this->belongsTo(ExamCode::class, 'e_exam_code');
     }
 
     public function agent()
     {
-        return $this->belongsTo(User::class, 'e_agent_id');
+        return $this->belongsTo(User::class, 'e_agent_id', 'id');
     }
 
     public function getFormattedEDateAttribute()

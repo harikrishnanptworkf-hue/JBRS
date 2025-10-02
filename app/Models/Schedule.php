@@ -47,6 +47,12 @@ class Schedule extends Model
         return $this->belongsTo(User::class, 's_user_id');
     }
 
+    public function examcode()
+    {
+        return $this->belongsTo(ExamCode::class, 's_exam_code');
+    }
+
+
     public function agent()
     {
         return $this->belongsTo(User::class, 's_agent_id');

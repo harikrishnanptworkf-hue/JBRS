@@ -17,7 +17,7 @@ class ExamCodeController extends Controller
             $query->where('ex_code', 'like', "%$search%");
         }
         // Only allow sorting by known columns
-        $allowedSorts = ['id', 'ex_code', 'ex_validity'];
+        $allowedSorts = ['id', 'ex_code', 'ex_validity', 'ex_remind_year', 'ex_remind_month'];
         if (!in_array($sortBy, $allowedSorts)) {
             $sortBy = 'id';
         }
@@ -32,11 +32,15 @@ class ExamCodeController extends Controller
     {
         $request->validate([
             'exam_code' => 'required|string|max:255',
-            'validity' => 'nullable|date', // validity is now optional
+            'validity' => 'nullable|numeric', // validity is now a number
+            'ex_remind_year' => 'nullable|numeric',
+            'ex_remind_month' => 'nullable|numeric',
         ]);
         $examcode = ExamCode::create([
             'ex_code' => $request->exam_code,
-            'ex_validity' => $request->validity, // will be null if not provided
+            'ex_validity' => $request->validity,
+            'ex_remind_year' => $request->ex_remind_year,
+            'ex_remind_month' => $request->ex_remind_month,
         ]);
         return response()->json($examcode, 201);
     }
@@ -52,11 +56,15 @@ class ExamCodeController extends Controller
         $examcode = ExamCode::findOrFail($id);
         $request->validate([
             'exam_code' => 'required|string|max:255',
-            'validity' => 'required|date',
+            'validity' => 'nullable|numeric',
+            'ex_remind_year' => 'nullable|numeric',
+            'ex_remind_month' => 'nullable|numeric',
         ]);
         $examcode->update([
             'ex_code' => $request->exam_code,
             'ex_validity' => $request->validity,
+            'ex_remind_year' => $request->ex_remind_year,
+            'ex_remind_month' => $request->ex_remind_month,
         ]);
         return response()->json($examcode);
     }

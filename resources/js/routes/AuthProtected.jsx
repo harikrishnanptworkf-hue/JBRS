@@ -28,7 +28,7 @@ const AuthProtected = (props) => {
     checkAuth();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div></div>;
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }

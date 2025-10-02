@@ -15,6 +15,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import debounce from 'lodash.debounce';
 
 function ScheduleList() {
+    // State for toggling filter/search controls
+    const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
 
     // Main state
@@ -48,13 +50,22 @@ function ScheduleList() {
     const [examCodeOptions, setExamCodeOptions] = useState([]);
     const [agentOptions, setAgentOptions] = useState([]);
     const [userOptions, setUserOptions] = useState([]);
+    const [roleId, setRoleId] = useState(null);
 
     const location = useLocation();
     const navigate = useNavigate();
 
+
+    useEffect(() => {
+        const obj = JSON.parse(sessionStorage.getItem("authUser"));
+        if (obj && obj.role_id) {
+            setRoleId(obj.role_id);
+        }
+    }, []);
+
     // Fetch filter options for dropdowns
     useEffect(() => {
-        api.get('/enquiries/filter-managed-data').then(res => {
+        api.get('/schedule/filter-managed-data').then(res => {
             setGroupOptions(res.data.groups || []);
             setExamCodeOptions(res.data.examcodes || []);
             setAgentOptions(res.data.agents || []);
@@ -73,12 +84,30 @@ function ScheduleList() {
     const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
         const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        // Map frontend sort keys to backend sort keys
+        const sortKeyMap = {
+            agent: 'agent',
+            user: 'user',
+            exam_code: 'examcode',
+            group_name: 'group_name',
+            s_id: 's_id',
+            s_group_name: 's_group_name',
+            s_exam_code: 's_exam_code',
+            s_date: 's_date',
+            s_agent_id: 's_agent_id',
+            s_user_id: 's_user_id',
+            s_status: 's_status',
+            system_name: 'system_name',
+            access_code: 'access_code',
+            done_by: 'done_by',
+        };
+        const backendSortBy = sortKeyMap[sortField] || sortField;
         api.get(`/schedule`, {
             params: {
                 page,
                 pageSize,
                 search: searchVal,
-                sortBy: sortField,
+                sortBy: backendSortBy,
                 sortOrder: sortDir,
                 agent_id: filterAgent,
                 user_id: filterUser,
@@ -100,7 +129,7 @@ function ScheduleList() {
                     agent: item.agent?.name || "",
                     user: item.user?.name || "",
                     group_name: item.s_group_name,
-                    exam_code: item.s_exam_code,
+                    exam_code: item.examcode.ex_code,
                     timezone: item.s_area,
                     indian_time: item.formatted_s_date,
                     status: item.s_status,
@@ -354,7 +383,7 @@ const columns = useMemo(() => [
         ),
         accessorKey: 'exam_code',
         enableSorting: true,
-        cell: (cellProps) => <span>{cellProps.row.original.exam_code}</span>
+            cell: (cellProps) => <span>{cellProps.row.original.exam_code || ''}</span>
     },
     {
         header: (
@@ -642,23 +671,39 @@ const columns = useMemo(() => [
             <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div>
-                        <div className="reminder-title-text">Schedule</div>
-                        <div className="reminder-title-divider"></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                        <button
+                            type="button"
+                            className="examcode-action-btn"
+                            style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
+                            title={showFullControls ? 'Hide filters' : 'Show filters'}
+                            onClick={() => setShowFullControls(v => !v)}
+                        >
+                            <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
+                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <div className="reminder-title-text">Schedule</div>
+                            <div className="reminder-title-divider"></div>
+                        </div>
                     </div>
                 </div>
                 {/* Filter Bar (Enquiry style) */}
+                {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
                         <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                         { roleId !== 2 && roleId !== 3 && (
                         <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
                             <option value="">All Agents</option>
                             {agentOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
-                        <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
-                            <option value="">All Users</option>
-                            {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                        </select>
+                        )}
+                        { roleId !== 3 && (
+                            <select className="reminder-input" value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ minWidth: 180 }}>
+                                <option value="">All Users</option>
+                                {userOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                            </select>
+                        )}
                         <select className="reminder-input" value={filterGroup} onChange={e => setFilterGroup(e.target.value)} style={{ minWidth: 180 }}>
                             <option value="">All Groups</option>
                             {groupOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
@@ -674,40 +719,48 @@ const columns = useMemo(() => [
                             <option value="DONE">DONE</option>
                             <option value="RESCHEDULE">RESCHEDULE</option>
                         </select>
-                        <DatePicker
-                            className="reminder-input examcode-date"
-                            selected={filterStartDate}
-                            onChange={setFilterStartDate}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="Start Date"
-                            isClearable
-                            style={{ minWidth: 160 }}
-                            calendarStartDay={1}
-                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                                </div>
-                            )}
-                        />
-                        <DatePicker
-                            className="reminder-input examcode-date"
-                            selected={filterEndDate}
-                            onChange={setFilterEndDate}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="End Date"
-                            isClearable
-                            style={{ minWidth: 160 }}
-                            calendarStartDay={1}
-                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                                </div>
-                            )}
-                        />
+                        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={filterStartDate}
+                                    onChange={setFilterStartDate}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="Start Date"
+                                    isClearable
+                                    style={{ minWidth: 160 }}
+                                    calendarStartDay={1}
+                                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                        <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                            <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                            <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                            <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={filterEndDate}
+                                    onChange={setFilterEndDate}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="End Date"
+                                    isClearable
+                                    style={{ minWidth: 160 }}
+                                    calendarStartDay={1}
+                                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                        <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                            <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                            <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                            <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                       
+
                         {(filterAgent || filterUser || filterGroup || filterExamCode || filterStatus || filterStartDate || filterEndDate) && (
                             <button
                                 type="button"
@@ -745,6 +798,7 @@ const columns = useMemo(() => [
                         </div>
                     </div>
                 </div>
+                )}
                 {/* Table Section (Enquiry style) */}
                 <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                     {isLoading ? <Spinners setLoading={setLoading} /> :

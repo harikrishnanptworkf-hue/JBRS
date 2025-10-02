@@ -6,25 +6,52 @@ use App\Models\Schedule;
 use App\Models\CustomHoliday;
 use App\Models\Holiday;
 use App\Models\Settings;
+use App\Models\User;
+use App\Models\Enquiry;
+use App\Models\ExamCode;    
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
 
 class ScheduleController extends Controller
 {
-    // List all schedules (with optional pagination)
     public function index(Request $request)
     {
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
         $pageSize = (int) $request->input('pageSize', 10);
         $sortBy = $request->input('sortBy', 's_id');
         $sortOrder = $request->input('sortOrder', 'desc');
 
-    $query = Schedule::with(['user', 'agent']);
-    // Exclude schedules with status 'done' from listing
-    $query->where(function ($q) {
-        $q->where('s_status', '!=', 'DONE')
-        ->orWhereNull('s_status');
-    });
+        $query = Schedule::with(['user', 'agent', 'examcode']);
+
+        // Join related tables for sorting by user, agent, examcode text fields
+        if (in_array($sortBy, ['user', 'agent', 'examcode'])) {
+            if ($sortBy === 'user') {
+                $query->leftJoin('users as u', 'schedule.s_user_id', '=', 'u.id');
+                $sortBy = 'u.name';
+                $query->select('schedule.*', 'u.name as user_name');
+            } elseif ($sortBy === 'agent') {
+                $query->leftJoin('users as a', 'schedule.s_agent_id', '=', 'a.id');
+                $sortBy = 'a.name';
+                $query->select('schedule.*', 'a.name as agent_name');
+            } elseif ($sortBy === 'examcode') {
+                $query->leftJoin('examcode as ec', 'schedule.s_exam_code', '=', 'ec.id');
+                $sortBy = 'ec.ex_code';
+                $query->select('schedule.*', 'ec.ex_code as examcode_text');
+            }
+        }
+        // Exclude schedules with status 'done' from listing
+        $query->where(function ($q) {
+            $q->where('s_status', '!=', 'DONE')
+            ->orWhereNull('s_status');
+        });
+
+        if ($roleId && $roleId == 3) {
+            $query->where('s_user_id', $sessionUser['id']);
+        } else if($roleId && $roleId == 2){
+            $query->where('s_agent_id', $sessionUser['id']);
+        }
         // Filtering
         if ($request->filled('agent_id')) {
             $query->where('s_agent_id', $request->input('agent_id'));
@@ -42,10 +69,12 @@ class ScheduleController extends Controller
             $query->where('s_status', $request->input('status'));
         }
         if ($request->filled('startdate')) {
-            $query->whereDate('s_date', '>=', $request->input('startdate'));
+            $fromDate = Carbon::parse($request->input('startdate'))->setTimezone('UTC')->format('Y-m-d');
+            $query->whereDate('s_date', '>=', $fromDate);
         }
         if ($request->filled('enddate')) {
-            $query->whereDate('s_date', '<=', $request->input('enddate'));
+            $toDate = Carbon::parse($request->input('enddate'))->setTimezone('UTC')->format('Y-m-d');
+            $query->whereDate('s_date', '<=', $toDate);
         }
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -58,42 +87,43 @@ class ScheduleController extends Controller
                   ->orWhere('s_comment', 'like', "%$search%")
                   ->orWhereHas('user', function($uq) use ($search) {
                       $uq->where('name', 'like', "%$search%")
-                         ->orWhere('email', 'like', "%$search%")
-                         ->orWhere('phone', 'like', "%$search%")
                          ;
                   })
                   ->orWhereHas('agent', function($aq) use ($search) {
                       $aq->where('name', 'like', "%$search%")
-                         ->orWhere('email', 'like', "%$search%")
-                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  })
+                  ->orWhereHas('examcode', function($eq) use ($search) {
+                   $eq->where('ex_code', 'like', "%$search%")
                          ;
                   });
             });
         }
 
+
         // Only allow sorting by known columns or relationships
-        $allowedSorts = [
-            's_id', 's_group_name', 's_exam_code', 's_date', 's_agent_id', 's_user_id', 's_status',
-            'group_name', 'exam_code', 'date', 'agent', 'user', 'status', 'indian_time', 'system_name', 'access_code', 'done_by'
-        ];
-        $sortByMap = [
-            'group_name' => 's_group_name',
-            'exam_code' => 's_exam_code',
-            'date' => 's_date',
-            'agent' => 's_agent_id',
-            'user' => 's_user_id',
-            'status' => 's_status',
-            'indian_time' => 's_date',
-            'system_name' => 's_system_name',
-            'access_code' => 's_access_code',
-            'done_by' => 's_done_by',
-        ];
-        if (isset($sortByMap[$sortBy])) {
-            $sortBy = $sortByMap[$sortBy];
-        }
-        if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 's_id';
-        }
+        // $allowedSorts = [
+        //     's_id', 's_group_name', 's_exam_code', 's_date', 's_agent_id', 's_user_id', 's_status',
+        //     'group_name', 'exam_code', 'date', 'agent', 'user', 'status', 'indian_time', 'system_name', 'access_code', 'done_by'
+        // ];
+        // $sortByMap = [
+        //     'group_name' => 's_group_name',
+        //     'exam_code' => 's_exam_code',
+        //     'date' => 's_date',
+        //     'agent' => 's_agent_id',
+        //     'user' => 's_user_id',
+        //     'status' => 's_status',
+        //     'indian_time' => 's_date',
+        //     'system_name' => 's_system_name',
+        //     'access_code' => 's_access_code',
+        //     'done_by' => 's_done_by',
+        // ];
+        // if (isset($sortByMap[$sortBy])) {
+        //     $sortBy = $sortByMap[$sortBy];
+        // }
+        // if (!in_array($sortBy, $allowedSorts)) {
+        //     $sortBy = 's_id';
+        // }
         $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
@@ -115,6 +145,7 @@ class ScheduleController extends Controller
             'agent'           => 'required|integer',
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
+            'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:191',
@@ -146,7 +177,7 @@ class ScheduleController extends Controller
             's_agent_id'      => $validated['agent'],
             's_user_id'       => $validated['user'] ?? null,
             's_group_name'    => $validated['group_name'] ?? null,
-            's_exam_code'     => $validated['exam_code'] ?? null,
+            's_exam_code'     => $validated['exam_code_id'] ?? null,
             's_area'          => $request->input('timezone') ?? null,
             's_date'          => $validated['date'] ?? null,
             's_location'      => $validated['location'] ?? null,
@@ -338,5 +369,53 @@ class ScheduleController extends Controller
         return sprintf('%02d:%02d', $hour, $minute);
     }
 
+
+    public function filterManagedData(Request $request)
+    {
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
+        if ($roleId && $roleId == 3) {
+            $agents = User::select('id', 'name')->where('role_id', 2)->where('id', $sessionUser['agent_id'])->get();
+
+            $users = User::select('id', 'name')->where('role_id', 3)->where('id', $sessionUser['id'])->get();
+        }else if ($roleId && $roleId == 2) {
+            $agents = User::select('id', 'name')->where('role_id', 2)->where('id', $sessionUser['id'])->get();
+
+            $users = User::select('id', 'name')->where('role_id', 3)->where('agent_id', $sessionUser['id'])->get();
+        }else {
+            $agents = User::select('id', 'name')->where('role_id', 2)->get();
+            $users = User::select('id', 'name')->where('role_id', 3)->get();
+        }
+
+        $groups = collect();
+        $examcodes = collect();
+        if ($request->has('enq')) {
+            $groups = Enquiry::select('e_group_name as id', 'e_group_name as name')
+                ->whereNotNull('e_group_name')
+                ->where('e_group_name', '!=', '')
+                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
+                    $query->where('e_user_id', $sessionUser['id']);
+                })
+                ->distinct()
+                ->get();
+        } else {
+            $groups = Schedule::select('s_group_name as id', 's_group_name as name')
+                ->whereNotNull('s_group_name')
+                ->where('s_group_name', '!=', '')
+                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
+                    $query->where('s_user_id', $sessionUser['id']);
+                })
+                ->distinct()
+                ->get();
+                
+            }
+        $examcodes = ExamCode::select('id', 'ex_code')->get();
+        return response()->json([
+            'users' => $users,
+            'agents' => $agents,
+            'groups' => $groups,
+            'examcodes' => $examcodes,
+        ]);
+    }
     // Optionally, add a filterManagedData method if needed
 }

@@ -47,6 +47,7 @@ class UserController extends Controller
             'name' => 'required',
             'username' => 'required',
             'password' => 'required',
+            'agent_id' => 'nullable|integer|exists:users,id',
         ]);
         // Check if username already exists
         if (User::where('username', $validated['username'])->exists()) {
@@ -58,6 +59,7 @@ class UserController extends Controller
         $user->role_id = 3;
         $user->setRawAttributes([
             'password' => $validated['password'],
+            'agent_id' => $validated['agent_id'] ?? null,
         ] + $user->getAttributes());
         $user->save();
         return response()->json($user, 201);
@@ -69,6 +71,7 @@ class UserController extends Controller
             'name' => 'required',
             'username' => 'required',
             'password' => 'required',
+            'agent_id' => 'nullable|integer|exists:users,id',
         ]);
         // Check if username already exists for another user
         if (User::where('username', $validated['username'])->where('id', '!=', $user->id)->exists()) {
@@ -79,6 +82,7 @@ class UserController extends Controller
         $user->role_id = 3;
         $user->setRawAttributes([
             'password' => $validated['password'],
+            'agent_id' => $validated['agent_id'] ?? null,
         ] + $user->getAttributes());
         $user->save();
         return response()->json($user);

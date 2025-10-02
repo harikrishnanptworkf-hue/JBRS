@@ -5,6 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import TableContainer from '../../components/Common/TableContainer';
 import api from '../../helpers/api';
 import { format } from 'date-fns';
+import DeleteModal from '../../components/Common/DeleteModal';
 
 // Custom notification alert styled like modal with fade-out
 const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
@@ -14,7 +15,7 @@ const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
     if (open) {
       setVisible(true);
       setFade(false);
-      const timer = setTimeout(() => setFade(true), duration - 400); // start fade before close
+      const timer = setTimeout(() => setFade(true), duration - 400);
       const closeTimer = setTimeout(() => {
         setVisible(false);
         onClose && onClose();
@@ -61,16 +62,33 @@ const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
 };
 
 const Examcode = () => {
+  const [showFullControls, setShowFullControls] = useState(false);
   const [examcodes, setExamcodes] = useState([]);
   const [examDate, setExamDate] = useState(null);
   const [examCode, setExamCode] = useState('');
+  const [validity, setValidity] = useState('');
+  const [validityError, setValidityError] = useState('');
+  const [reminderYear, setReminderYear] = useState('');
+  const [editReminderYear, setEditReminderYear] = useState('');
+  const [editReminderMonth, setEditReminderMonth] = useState('');
+  const [reminderMonths, setReminderMonths] = useState('');
+  const [modalError, setModalError] = useState('');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [editRowId, setEditRowId] = useState(null);
   const [editCode, setEditCode] = useState('');
-  const [editDate, setEditDate] = useState(null);
+  const [editValidity, setEditValidity] = useState('');
+  const [editValidityError, setEditValidityError] = useState('');
+  // Refs for edit inputs
+  const editCodeRef = React.useRef(null);
+  const editValidityRef = React.useRef(null);
+  const editReminderYearRef = React.useRef(null);
+  const editReminderMonthRef = React.useRef(null);
+  // Track last focused input and cursor position using ref
+  const lastFocusedEditInputRef = React.useRef('');
+  const editCursorPosRef = React.useRef(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
   const [sortBy, setSortBy] = useState('');
@@ -86,8 +104,9 @@ const Examcode = () => {
     setSnackbar({ open: true, message: finalMessage, severity });
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
+      id: 'ex_code',
       header: (
         <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('ex_code')}>
           Exam Code
@@ -107,11 +126,19 @@ const Examcode = () => {
               <Input
                 type="text"
                 value={editCode}
-                onChange={e => setEditCode(e.target.value)}
+                onChange={e => {
+                  setEditCode(e.target.value);
+                  lastFocusedEditInputRef.current = 'code';
+                  editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
+                }}
                 placeholder="Enter exam code"
-                autoFocus
                 className="examcode-input"
                 style={{ height: 44, textAlign: 'center' }}
+                innerRef={editCodeRef}
+                onFocus={e => {
+                  lastFocusedEditInputRef.current = 'code';
+                  editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
+                }}
               />
             </div>
           );
@@ -120,10 +147,11 @@ const Examcode = () => {
       },
     },
     {
+      id: 'ex_validity',
       header: (
         <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('ex_validity')}>
-          Validity
-          {sortBy === 'ex_validity' && (
+          Validity (Year)
+           {sortBy === 'ex_validity' && (
             <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
               {sortDirection === 'asc' ? '▲' : '▼'}
             </span>
@@ -136,57 +164,184 @@ const Examcode = () => {
         if (editRowId === row.row.original.id) {
           return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <DatePicker
-                className="examcode-input examcode-date"
-                selected={editDate}
-                onChange={setEditDate}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="Select validity date"
-                style={{ height: 44, minWidth: 220, maxWidth: 220, width: '100%', textAlign: 'center' }}
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={editValidity}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (/^\d*$/.test(val)) setEditValidity(val);
+                  lastFocusedEditInputRef.current = 'validity';
+                  editCursorPosRef.current = { field: 'validity', pos: e.target.selectionStart };
+                }}
+                placeholder="Enter validity (1-10)"
+                className="examcode-input"
+                style={{ height: 44, minWidth: 100, maxWidth: 120, textAlign: 'center' }}
+                innerRef={editValidityRef}
+                onFocus={e => {
+                  lastFocusedEditInputRef.current = 'validity';
+                  editCursorPosRef.current = { field: 'validity', pos: e.target.selectionStart };
+                }}
               />
             </div>
           );
         }
-        return row.row.original.ex_validity ? format(new Date(row.row.original.ex_validity), 'dd/MM/yyyy') : '';
+        return row.row.original.ex_validity || '';
       },
     },
     {
-      header: 'Action',
+      id: 'reminder',
+      header: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} >
+          Reminder
+        </span>
+      ),
+      enableSorting: true,
+      cell: row => {
+        if (editRowId === row.row.original.id) {
+          return (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={editReminderYear}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) setEditReminderYear(val);
+                    lastFocusedEditInputRef.current = 'reminderYear';
+                    editCursorPosRef.current = { field: 'reminderYear', pos: e.target.selectionStart };
+                  }}
+                  placeholder="Year"
+                  className="examcode-input"
+                  style={{ height: 44, minWidth: 80, maxWidth: 100, textAlign: 'center' }}
+                  innerRef={editReminderYearRef}
+                  onFocus={e => {
+                    lastFocusedEditInputRef.current = 'reminderYear';
+                    editCursorPosRef.current = { field: 'reminderYear', pos: e.target.selectionStart };
+                  }}
+                />
+                <span style={{ fontWeight: 500, color: '#1a2942', fontSize: 15, marginLeft: 4 }}>Year</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Input
+                  type="number"
+                  min={0}
+                  max={12}
+                  value={editReminderMonth}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val) && Number(val) >= 0 && Number(val) <= 12) setEditReminderMonth(val);
+                    lastFocusedEditInputRef.current = 'reminderMonth';
+                    editCursorPosRef.current = { field: 'reminderMonth', pos: e.target.selectionStart };
+                  }}
+                  placeholder="Month"
+                  className="examcode-input"
+                  style={{ height: 44, minWidth: 80, maxWidth: 100, textAlign: 'center' }}
+                  innerRef={editReminderMonthRef}
+                  onFocus={e => {
+                    lastFocusedEditInputRef.current = 'reminderMonth';
+                    editCursorPosRef.current = { field: 'reminderMonth', pos: e.target.selectionStart };
+
+                  }}
+                />
+                <span style={{ fontWeight: 500, color: '#1a2942', fontSize: 15, marginLeft: 4 }}>Month</span>
+              </div>
+            </div>
+          );
+        }
+        const year = row.row.original.ex_remind_year || 0;
+        const month = row.row.original.ex_remind_month || 0;
+        let result = '';
+        if (year > 0) result += `${year} Year`;
+        if (month > 0) result += (result ? ' ' : '') + `${month} Month`;
+        return result || '-';
+      },
+    },
+      {
       id: 'action',
+      header: 'Actions',
       enableSorting: false,
       cell: row => {
         const rowId = row.row.original.id;
         if (editRowId === rowId) {
           return (
-            <div className="">
-              <button className="examcode-update-btn" onClick={() => handleEditSave(rowId)} type="button">Update</button>
-              <button className="examcode-cancel-btn" onClick={handleEditCancel} type="button">Cancel</button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="examcode-update-btn"
+                onClick={() => handleEditSave(rowId)}
+                disabled={loading}
+                style={{ minWidth: 100 }}
+              >
+                Update
+              </button>
+              <button
+                type="button"
+                className="examcode-cancel-btn"
+                onClick={handleEditCancel}
+                style={{ minWidth: 100 }}
+              >
+                Cancel
+              </button>
             </div>
           );
         }
         return (
-          <div className="">
-            <button
-              type="button"
-              className="examcode-action-btn edit"
-              title="Edit"
-              onClick={e => { e.preventDefault(); handleEditClick(row.row.original); }}
-            >
-              <i className="mdi mdi-pencil-outline"></i>
-            </button>
-            <button
-              type="button"
-              className="examcode-action-btn delete"
-              title="Delete"
-              onClick={e => { e.preventDefault(); setDeleteRowId(rowId); setShowDeleteModal(true); }}
-            >
-              <i className="mdi mdi-delete-outline"></i>
-            </button>
-          </div>
+          <ul className="list-unstyled hstack gap-1 mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+            <li>
+              <button
+                type="button"
+                className="examcode-action-btn edit"
+                style={{ color: '#1a8cff', background: '#e6f2ff' }}
+                title="Edit"
+                onClick={() => handleEditClick(row.row.original)}
+                id={`edit-tooltip-${rowId}`}
+              >
+                <i className="mdi mdi-pencil-outline" />
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="examcode-action-btn delete"
+                style={{ color: '#ff4d4f', background: '#fff1f0' }}
+                title="Delete"
+                onClick={() => { setDeleteRowId(rowId); setShowDeleteModal(true); }}
+                id={`delete-tooltip-${rowId}`}
+              >
+                <i className="mdi mdi-delete-outline" />
+              </button>
+            </li>
+          </ul>
         );
       },
     },
-  ];
+  ], [editRowId, editCode, editValidity, editReminderYear, editReminderMonth, sortBy, sortDirection]);
+
+  // Restore focus and cursor position after each render in edit mode
+React.useEffect(() => {
+  if (editRowId !== null) {
+    let ref = null;
+    if (lastFocusedEditInputRef.current === 'code') ref = editCodeRef.current;
+    else if (lastFocusedEditInputRef.current === 'validity') ref = editValidityRef.current;
+    else if (lastFocusedEditInputRef.current === 'reminderYear') ref = editReminderYearRef.current;
+    else if (lastFocusedEditInputRef.current === 'reminderMonth') ref = editReminderMonthRef.current;
+    if (ref) {
+      ref.focus();
+      if (
+        editCursorPosRef.current &&
+        typeof editCursorPosRef.current.pos === 'number'
+      ) {
+        ref.setSelectionRange(editCursorPosRef.current.pos, editCursorPosRef.current.pos);
+      }
+    }
+  }
+}, [editRowId, editCode, editValidity, editReminderYear, editReminderMonth]);
+  // Memoize table data
+  const memoExamcodes = React.useMemo(() => examcodes, [examcodes]);
 
   // Fetch examcodes from backend
   useEffect(() => {
@@ -215,14 +370,19 @@ const Examcode = () => {
   }, [currentPage, pageSize, search, sortBy, sortDirection]);
 
   const handleAddExamcode = async () => {
-    if (!examCode.trim()) {
-      showSnackbar('Please enter exam code', 'error');
+  // columns array is defined outside this function
+    if (!validity.match(/^[1-9]$|^10$/)) {
+      showSnackbar('Please enter validity between 1 and 10', 'error');
       return;
     }
-    if (!examDate) {
-      showSnackbar('Please select validity date', 'error');
-      return;
-    }
+        if (reminderYear && (!/^\d+$/.test(reminderYear) || Number(reminderYear) < 0)) {
+          showSnackbar('Reminder year must be a number >= 0', 'error');
+          return;
+        }
+        if (reminderMonths && (!/^\d+$/.test(reminderMonths) || Number(reminderMonths) < 0 || Number(reminderMonths) > 12)) {
+          showSnackbar('Reminder month must be a number between 0 and 12', 'error');
+          return;
+        }
     setLoading(true);
     try {
       // Check if exam code exists in backend
@@ -237,17 +397,23 @@ const Examcode = () => {
       }
       await api.post('/examcodes', {
         exam_code: examCode,
-        validity: format(examDate, 'yyyy-MM-dd')
+        validity: validity,
+        ex_remind_year: reminderYear,
+        ex_remind_month: reminderMonths
       });
       showSnackbar('Exam code created successfully', 'success');
       setExamCode('');
       setExamDate(null);
+      setValidity('');
+      setReminderYear('');
+      setReminderMonths('');
       setCurrentPage(1);
-      // Refetch
+      // Refetch and update totalRecords
       const res = await api.get('/examcodes', {
         params: { page: 1, pageSize, search }
       });
       setExamcodes(res.data.data || []);
+      setTotalRecords(res.data.total || (res.data.data ? res.data.data.length : 0));
     } catch (err) {
       showSnackbar('Failed to add exam code', 'error');
     }
@@ -262,11 +428,12 @@ const Examcode = () => {
       setCurrentPage(1);
       setShowDeleteModal(false);
       setDeleteRowId(null);
-      // Refetch
+      // Refetch and update totalRecords
       const res = await api.get('/examcodes', {
         params: { page: 1, pageSize, search }
       });
       setExamcodes(res.data.data || []);
+      setTotalRecords(res.data.total || (res.data.data ? res.data.data.length : 0));
     } catch (err) {
       showSnackbar('Failed to delete exam code', 'error');
     }
@@ -274,15 +441,16 @@ const Examcode = () => {
   };
 
   const handleEditClick = (row) => {
-    setEditRowId(row.id);
-    setEditCode(row.ex_code);
-    setEditDate(row.ex_validity ? new Date(row.ex_validity) : null);
+  setEditRowId(row.id);
+  setEditCode(row.ex_code);
+  setEditValidity((row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '');
+  setEditReminderYear((row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '');
+  setEditReminderMonth((row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '');
   };
 
   const handleEditCancel = () => {
-    setEditRowId(null);
-    setEditCode('');
-    setEditDate(null);
+  setEditRowId(null);
+  setEditCode('');
   };
 
   const handleEditSave = async (id) => {
@@ -290,10 +458,21 @@ const Examcode = () => {
       showSnackbar('Please enter exam code', 'error');
       return;
     }
-    if (!editDate) {
-      showSnackbar('Please select validity date', 'error');
+    if (!editValidity.match(/^[1-9]$|^10$/)) {
+      showSnackbar('Please enter validity between 1 and 10', 'error');
       return;
     }
+
+    if (editReminderYear && (!/^\d+$/.test(editReminderYear) || Number(editReminderYear) < 0)) {
+      showSnackbar('Reminder year must be a number >= 0', 'error');
+      return;
+    }  
+
+    if (editReminderMonth && (!/^\d+$/.test(editReminderMonth) || Number(editReminderMonth) < 0 || Number(editReminderMonth) > 12)) {
+      showSnackbar('Reminder month must be a number between 0 and 12', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
       // Check if exam code exists in backend (excluding current row)
@@ -308,18 +487,19 @@ const Examcode = () => {
       }
       await api.put(`/examcodes/${id}`, {
         exam_code: editCode,
-        validity: format(editDate, 'yyyy-MM-dd')
+        validity: editValidity,
+        ex_remind_year: editReminderYear === '' ? 0 : Number(editReminderYear),
+        ex_remind_month: editReminderMonth === '' ? 0 : Number(editReminderMonth)
       });
-      showSnackbar('Exam code updated', 'success');
-      setEditRowId(null);
-      setEditCode('');
-      setEditDate(null);
-      setCurrentPage(1);
-      // Refetch
+  showSnackbar('Exam code updated', 'success');
+  setEditRowId(null);
+  setEditCode('');
+      // Always refetch from backend for latest data
       const res = await api.get('/examcodes', {
-        params: { page: 1, pageSize, search }
+        params: { page: currentPage, pageSize, search }
       });
       setExamcodes(res.data.data || []);
+      setTotalRecords(res.data.total || (res.data.data ? res.data.data.length : 0));
     } catch (err) {
       showSnackbar('Failed to update exam code', 'error');
     }
@@ -382,7 +562,6 @@ const Examcode = () => {
       width: 100vw;
       background: #fff;
       box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);
-      border-radius: 0 0 18px 18px;
       padding: 32px 32px 0 32px;
       display: flex;
       flex-direction: column;
@@ -585,77 +764,165 @@ const Examcode = () => {
   `;
 
   return (
-    <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+    <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
       <style>{addButtonCss}</style>
+     
       {/* Header Bar: Title only */}
       <div className="examcode-header-bar">
-        <div>
-          <div className="examcode-title-text">Exam Code</div>
-          <div className="examcode-title-divider"></div>
-        </div>
-      </div>
-      {/* Form Row: Exam Code/Validity/Add */}
-      <div className="examcode-form-row">
-        <div style={{ minWidth: 220, maxWidth: 220 }}>
-          <Label className="fw-semibold">Exam Code</Label>
-          <Input
-            type="text"
-            className="examcode-input"
-            style={{ height: 44 }}
-            value={examCode}
-            onChange={e => setExamCode(e.target.value)}
-            placeholder="Enter exam code"
-          />
-        </div>
-        <div style={{ minWidth: 220, maxWidth: 220 }}>
-          <Label className="fw-semibold">Validity</Label>
-          <DatePicker
-            className="examcode-input examcode-date"
-            selected={examDate}
-            onChange={setExamDate}
-            dateFormat="dd/MM/yyyy"
-            placeholderText="Select validity date"
-            style={{ height: 44, minWidth: 220, maxWidth: 220, width: '100%' }}
-          />
-        </div>
-        <div>
-          <Button className="examcode-create-btn" onClick={handleAddExamcode} disabled={loading}>Create</Button>
-        </div>
-      </div>
-      {/* Table Bar: Page Size + Search */}
-      <div className="examcode-tablebar">
-        <div>
-          <Label className="me-2 fw-semibold">Page size</Label>
-          <select
-            className="form-select d-inline-block w-auto examcode-input"
-            value={pageSize}
-            onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-            style={{ minWidth: 80 }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+          <button
+            type="button"
+            className="examcode-action-btn"
+            style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
+            title={showFullControls ? 'Hide filters & create' : 'Show filters & create'}
+            onClick={() => setShowFullControls(v => !v)}
           >
-            {[5, 10, 20, 50, 100].map(size => (
-              <option key={size} value={size}>{size}</option>
-            ))}
-          </select>
+            <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div className="examcode-title-text">Exam Code</div>
+            <div className="examcode-title-divider" style={{ width: 60, height: 4, background: '#2ba8fb', borderRadius: 2, margin: '8px 0 0 0', opacity: 0.8 }}></div>
+          </div>
         </div>
-        <div>
-          <Input
-            type="search"
-            className="form-control d-inline-block w-auto examcode-input"
-            style={{ minWidth: 280, maxWidth: 340, width: 320 }}
-            placeholder="Search..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-          />
+      </div>
+      {/* Animated show/hide for create/filter sections */}
+      <div
+        style={{
+          maxHeight: showFullControls ? 800 : 0,
+          opacity: showFullControls ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s',
+        }}
+      >
+        {/* Form Row: Exam Code/Validity/Add */}
+        <div className="examcode-form-row">
+          <div style={{ minWidth: 220, maxWidth: 220 }}>
+            <Label className="fw-semibold">Exam Code</Label>
+            <Input
+              type="text"
+              className="examcode-input"
+              style={{ height: 44 }}
+              value={examCode}
+              onChange={e => setExamCode(e.target.value)}
+              placeholder="Enter exam code"
+            />
+          </div>
+          <div>
+            <Label className="fw-semibold">Validity</Label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={validity}
+              onChange={e => {
+                const onlyNums = e.target.value.replace(/\D/g, '');
+                setValidity(onlyNums);
+                setValidityError('');
+              }}
+              onKeyDown={e => {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="Enter validity (1-10)"
+              className="examcode-input"
+              style={{ height: 44, minWidth: 100, maxWidth: 120, textAlign: 'center' }}
+            />
+          </div>
+          <div>
+            <Label className="fw-semibold">Reminder (Year)</Label>
+            <Input
+              type="text"
+              className="examcode-input"
+              style={{ height: 44, minWidth: 100, maxWidth: 120, textAlign: 'center' }}
+              value={reminderYear}
+              onChange={e => {
+                // allow only digits
+                const onlyNums = e.target.value.replace(/\D/g, '');
+                setReminderYear(onlyNums);
+              }}
+              onKeyDown={e => {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="Enter year"
+            />
+          </div>
+          <div >
+            <Label className="fw-semibold">Reminder (Month)</Label>
+            <Input
+              type="text"
+              className="examcode-input"
+              style={{ height: 44, minWidth: 100, maxWidth: 120, textAlign: 'center' }}
+              value={reminderMonths}
+              onChange={e => {
+                // allow only digits
+                const onlyNums = e.target.value.replace(/\D/g, '');
+                setReminderMonths(onlyNums);
+              }}
+              onKeyDown={e => {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="Enter months"
+            />
+          </div>
+          <div>
+            <Button className="examcode-create-btn" onClick={() => {
+              setModalError('');
+              if (!examCode.trim()) {
+                // setModalError('Please enter exam code');
+                showSnackbar('Please enter exam code', 'error');
+                return;
+              }
+              if (!validity.match(/^[1-9]$|^10$/)) {
+                showSnackbar('Please enter validity between 1 and 10','error');
+                return;
+              }
+              handleAddExamcode();
+            }} disabled={loading}>Create</Button>
+            {modalError && (
+              <div style={{ color: '#ff4d4f', fontWeight: 600, marginTop: 8, background: '#fffbe6', borderRadius: 8, padding: '8px 16px', textAlign: 'center' }}>{modalError}</div>
+            )}
+          </div>
+        </div>
+        {/* Table Bar: Page Size + Search */}
+        <div className="examcode-tablebar">
+          <div>
+            <Label className="me-2 fw-semibold">Page size</Label>
+            <select
+              className="form-select d-inline-block w-auto examcode-input"
+              value={pageSize}
+              onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              style={{ minWidth: 80 }}
+            >
+              {[5, 10, 20, 50, 100].map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Input
+              type="search"
+              className="form-control d-inline-block w-auto examcode-input"
+              style={{ minWidth: 280, maxWidth: 340, width: 320 }}
+              placeholder="Search..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
         </div>
       </div>
       {/* Listing Section */}
-      <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
+  <div style={{ padding: '32px 32px 0 32px', width: '100%', background: '#fff' }}>
         <Row className="mb-2">
           <Col xs={12} className="examcode-table-shadow">
-            {Array.isArray(examcodes) ? (
+            {Array.isArray(memoExamcodes) ? (
               <TableContainer
                 columns={columns.map(col => ({ ...col, headerClassName: 'text-center' }))}
-                data={examcodes}
+                data={memoExamcodes}
                 isCustomPageSize={false}
                 isGlobalFilter={false}
                 isJobListGlobalFilter={false}
@@ -681,21 +948,13 @@ const Examcode = () => {
         </Row>
       </div>
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="examcode-modal-backdrop">
-          <div className="examcode-modal">
-            <div className="examcode-modal-icon">
-              <i className="mdi mdi-alert-circle-outline"></i>
-            </div>
-            <div className="examcode-modal-title">Delete Exam Code?</div>
-            <div className="examcode-modal-message">Are you sure you want to delete this exam code? This action cannot be undone.</div>
-            <div className="examcode-modal-btns">
-              <button className="examcode-cancel-btn" onClick={() => { setShowDeleteModal(false); setDeleteRowId(null); }} type="button">Cancel</button>
-              <button className="examcode-save-btn" style={{background:'#ff4d4f'}} onClick={() => handleDelete(deleteRowId)} type="button">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteModal
+        section="exam code"
+        show={showDeleteModal}
+        onDeleteClick={() => { handleDelete(deleteRowId); setShowDeleteModal(false); setDeleteRowId(null); }}
+        onCloseClick={() => { setShowDeleteModal(false); setDeleteRowId(null); }}
+      />
+
       <CustomAlert open={snackbar.open} message={snackbar.message} severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} />
     </div>
   );

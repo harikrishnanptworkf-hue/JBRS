@@ -10,6 +10,8 @@ import Spinners from "../../components/Common/Spinner";
 import { ToastContainer } from "react-toastify";
 
 function ReportList() {
+    // State for toggling filter/search controls
+    const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Report";
 
     const [customPageSize, setCustomPageSize] = useState(10);
@@ -33,6 +35,8 @@ function ReportList() {
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState('s_id');
     const [sortOrder, setSortOrder] = useState('desc');
+    const [roleId, setRoleId] = useState(null);
+
 
     const fetchReports = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
@@ -54,16 +58,34 @@ function ReportList() {
             }
         })
             .then(res => {
-                setTotalRecords(res.data.total);
-                setCurrentPage(res.data.current_page);
-                setCustomPageSize(res.data.per_page);
-                setFromRecord(res.data.from);
-                setToRecord(res.data.to);
-                setReports(res.data.data || []);
+                const data = res.data.data || [];
+                const total = res.data.total || data.length;
+                const pageNum = res.data.current_page || page;
+                const pageSizeNum = res.data.per_page || pageSize;
+                // Calculate from/to if not provided
+                let from = res.data.from;
+                let to = res.data.to;
+                if (!from || !to) {
+                    from = data.length > 0 ? (pageNum - 1) * pageSizeNum + 1 : 0;
+                    to = data.length > 0 ? from + data.length - 1 : 0;
+                }
+                setTotalRecords(total);
+                setCurrentPage(pageNum);
+                setCustomPageSize(pageSizeNum);
+                setFromRecord(from);
+                setToRecord(to);
+                setReports(data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
     };
+
+    useEffect(() => {
+        const obj = JSON.parse(sessionStorage.getItem("authUser"));
+        if (obj && obj.role_id) {
+            setRoleId(obj.role_id);
+        }
+    }, []);
 
     useEffect(() => {
         fetchReports(currentPage, customPageSize, sortBy, sortOrder, search);
@@ -72,7 +94,7 @@ function ReportList() {
 
     useEffect(() => {
         // Fetch users, agents, groups, exam codes for dropdowns
-        api.get('/enquiries/filter-managed-data').then(res => {
+        api.get('/schedule/filter-managed-data').then(res => {
             setUsers(res.data.users || []);
             setAgents(res.data.agents || []);
             setGroupOptions(res.data.groups || []);
@@ -143,7 +165,7 @@ function ReportList() {
             cell: (cellProps) => <span>{cellProps.row.original.group_name || cellProps.row.original.e_group_name || cellProps.row.original.s_group_name || ''}</span>
         },
         {
-            header: (
+            header: (   
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code')}>
                     Exam Code
                     {sortBy === 'exam_code' && (
@@ -153,7 +175,7 @@ function ReportList() {
             ),
             accessorKey: 'exam_code',
             enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_exam_code || cellProps.row.original.exam_code || cellProps.row.original.e_exam_code || ''}</span>
+            cell: (cellProps) => <span>{cellProps.row.original.examcode?.ex_code || ''}</span>
         },
         {
             header: (
@@ -325,23 +347,39 @@ function ReportList() {
             <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div>
-                        <div className="reminder-title-text">Report</div>
-                        <div className="reminder-title-divider"></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                        <button
+                            type="button"
+                            className="examcode-action-btn"
+                            style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
+                            title={showFullControls ? 'Hide filters' : 'Show filters'}
+                            onClick={() => setShowFullControls(v => !v)}
+                        >
+                            <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
+                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <div className="reminder-title-text">Report</div>
+                            <div className="reminder-title-divider"></div>
+                        </div>
                     </div>
                 </div>
                 {/* Filter Bar (Enquiry style) */}
+                {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
                         <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                    { roleId !== 2 && roleId !== 3 && (
                         <select className="reminder-input" value={selectedAgent} onChange={e => { setSelectedAgent(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
                             <option value="">All Agents</option>
                             {agents.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
+                    )}
+                    {roleId !== 3 && (
                         <select className="reminder-input" value={selectedUser} onChange={e => { setSelectedUser(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
                             <option value="">All Users</option>
                             {users.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
+                    )}
                         <select className="reminder-input" value={selectedGroup} onChange={e => { setSelectedGroup(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
                             <option value="">All Groups</option>
                             {groupOptions.map(opt => <option key={opt.id} value={opt.name}>{opt.name}</option>)}
@@ -357,40 +395,48 @@ function ReportList() {
                             <option value="DONE">DONE</option>
                             <option value="RESCHEDULE">RESCHEDULE</option>
                         </select>
-                        <DatePicker
-                            className="reminder-input examcode-date"
-                            selected={startDate}
-                            onChange={date => { setStartDate(date); setCurrentPage(1); }}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="Start Date"
-                            isClearable
-                            style={{ minWidth: 160 }}
-                            calendarStartDay={1}
-                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                                </div>
-                            )}
-                        />
-                        <DatePicker
-                            className="reminder-input examcode-date"
-                            selected={endDate}
-                            onChange={date => { setEndDate(date); setCurrentPage(1); }}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="End Date"
-                            isClearable
-                            style={{ minWidth: 160 }}
-                            calendarStartDay={1}
-                            renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
-                                    <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
-                                    <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
-                                    <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
-                                </div>
-                            )}
-                        />
+                        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={startDate}
+                                    onChange={date => { setStartDate(date); setCurrentPage(1); }}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="Start Date"
+                                    isClearable
+                                    style={{ minWidth: 160 }}
+                                    calendarStartDay={1}
+                                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                        <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                            <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                            <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                            <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DatePicker
+                                    className="reminder-input examcode-date"
+                                    selected={endDate}
+                                    onChange={date => { setEndDate(date); setCurrentPage(1); }}
+                                    dateFormat="dd/MM/yyyy"
+                                    placeholderText="End Date"
+                                    isClearable
+                                    style={{ minWidth: 160 }}
+                                    calendarStartDay={1}
+                                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                                        <div style={{ margin: 10, display: "flex", justifyContent: "center" }}>
+                                            <button onClick={decreaseMonth} disabled={prevMonthButtonDisabled}>{'<'}</button>
+                                            <span style={{ margin: '0 8px' }}>{date.toLocaleString('default', { month: 'long' })} {date.getFullYear()}</span>
+                                            <button onClick={increaseMonth} disabled={nextMonthButtonDisabled}>{'>'}</button>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
                         {(selectedAgent || selectedUser || selectedGroup || selectedExamCode || selectedStatus || startDate || endDate || search) && (
                             <button
                                 type="button"
@@ -428,6 +474,7 @@ function ReportList() {
                         </div>
                     </div>
                 </div>
+                )}
                 {/* Table Section (Enquiry/Examcode style) */}
                 <div style={{ padding: '32px 32px 32px 32px', width: '100%', background: '#fff' }}>
                     {isLoading ? <Spinners setLoading={setLoading} /> :

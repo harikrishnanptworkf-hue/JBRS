@@ -17,13 +17,30 @@ class EnquiryController extends Controller
      */
     public function index(Request $request)
     {
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
         $pageSize = (int) $request->input('pageSize', 10);
         $sortBy = $request->input('sortBy', 'e_id');
         $sortOrder = $request->input('sortOrder', 'desc');
-        $userObj = $request->user();
+        $userObj = null;
 
-        $query = Enquiry::with(['user', 'agent']);
-
+        $query = Enquiry::with(['user', 'agent', 'examcode']);
+        // Join related tables for sorting by user, agent, examcode text fields
+        if (in_array($sortBy, ['user', 'agent', 'examcode'])) {
+            if ($sortBy === 'user') {
+                $query->leftJoin('users as u', 'enquiries.e_user_id', '=', 'u.id');
+                $sortBy = 'u.name';
+                $query->select('enquiries.*', 'u.name as user_name');
+            } elseif ($sortBy === 'agent') {
+                $query->leftJoin('users as a', 'enquiries.e_agent_id', '=', 'a.id');
+                $sortBy = 'a.name';
+                $query->select('enquiries.*', 'a.name as agent_name');
+            } elseif ($sortBy === 'examcode') {
+                $query->leftJoin('examcode as ec', 'enquiries.e_exam_code', '=', 'ec.id');
+                $sortBy = 'ec.ex_code';
+                $query->select('enquiries.*', 'ec.ex_code as examcode_text');
+            }
+        }
 
         if ($userObj && $userObj->role_id == 2) {
             $query->where('e_agent_id', $userObj->id);
@@ -33,6 +50,12 @@ class EnquiryController extends Controller
             }    
         }
 
+
+        if ($roleId && $roleId == 3) {
+            $query->where('e_user_id', $sessionUser['id']);
+        } else if($roleId && $roleId == 2){
+            $query->where('e_agent_id', $sessionUser['id']);
+        }
         // Filtering
 
         if ($request->filled('user_id')) {
@@ -44,54 +67,49 @@ class EnquiryController extends Controller
         if ($request->filled('examcode_id')) {
             $query->where('e_exam_code', $request->input('examcode_id'));
         }
-        if ($request->filled('startdate')) {
-            $query->whereDate('e_date', '>=', $request->input('startdate'));
-        }
-        if ($request->filled('enddate')) {
-            $query->whereDate('e_date', '<=', $request->input('enddate'));
-        }
+        // if ($request->filled('startdate')) {
+        //     $query->whereDate('e_date', '>=', $request->input('startdate'));
+        // }
+        // if ($request->filled('enddate')) {
+        //     $query->whereDate('e_date', '<=', $request->input('enddate'));
+        // }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('e_group_name', 'like', "%$search%")
-                  ->orWhere('e_exam_code', 'like', "%$search%")
-                  ->orWhere('e_location', 'like', "%$search%")
-                  ->orWhere('e_email', 'like', "%$search%")
-                  ->orWhere('e_phone', 'like', "%$search%")
-                  ->orWhere('e_comment', 'like', "%$search%")
                   ->orWhereHas('user', function($uq) use ($search) {
                       $uq->where('name', 'like', "%$search%")
-                         ->orWhere('email', 'like', "%$search%")
-                         ->orWhere('phone', 'like', "%$search%")
                          ;
                   })
                   ->orWhereHas('agent', function($aq) use ($search) {
                       $aq->where('name', 'like', "%$search%")
-                         ->orWhere('email', 'like', "%$search%")
-                         ->orWhere('phone', 'like', "%$search%")
+                         ;
+                  })
+                  ->orWhereHas('examcode', function($eq) use ($search) {
+                      $eq->where('ex_code', 'like', "%$search%")
                          ;
                   });
             });
         }
 
-        // Only allow sorting by known columns or relationships
-        $allowedSorts = [
-            'e_id', 'e_group_name', 'e_exam_code', 'e_date', 'e_agent_id', 'e_user_id',
-            'groupname', 'examcode', 'date', 'agent', 'user'
-        ];
-        $sortByMap = [
-            'groupname' => 'e_group_name',
-            'examcode' => 'e_exam_code',
-            'date' => 'e_date',
-            'agent' => 'e_agent_id',
-            'user' => 'e_user_id',
-        ];
-        if (isset($sortByMap[$sortBy])) {
-            $sortBy = $sortByMap[$sortBy];
-        }
-        if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'e_id';
-        }
+        // // Only allow sorting by known columns or relationships
+        // $allowedSorts = [
+        //     'e_id', 'e_group_name', 'e_exam_code', 'e_agent_id', 'e_user_id',
+        //     'groupname', 'examcode', 'date', 'agent', 'user'
+        // ];
+        // $sortByMap = [
+        //     'groupname' => 'e_group_name',
+        //     'examcode' => 'e_exam_code',
+        //     'agent' => 'e_agent_id',
+        //     'user' => 'e_user_id',
+        // ];
+        // if (isset($sortByMap[$sortBy])) {
+        //     $sortBy = $sortByMap[$sortBy];
+        // }
+        // if (!in_array($sortBy, $allowedSorts)) {
+        //     $sortBy = 'e_id';
+        // }
         $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
@@ -109,6 +127,7 @@ class EnquiryController extends Controller
             'agent'           => 'required|integer',
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
+            'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:255',
@@ -135,7 +154,7 @@ class EnquiryController extends Controller
             'e_agent_id'      => $validated['agent'],
             'e_user_id'       => $validated['user'] ?? null,
             'e_group_name'    => $validated['group_name'] ?? null,
-            'e_exam_code'     => $validated['exam_code'] ?? null,
+            'e_exam_code'     => $validated['exam_code_id'] ?? null,
             'e_area'          => $request->input('timezone') ?? null,
             'e_date'          => $validated['date'] ?? null,
             'e_location'      => $validated['location'] ?? null,
@@ -235,21 +254,29 @@ class EnquiryController extends Controller
 
     public function filterManagedData(Request $request)
     {
-        if ($request->has('agent_id') && $request->input('agent_id')) {
-            $users = User::select('id', 'name')
-                ->where('role_id', 3)
-                ->where('agent_id', $request->input('agent_id'))
-                ->get();
-        } else {
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
+        if ($roleId && $roleId == 3) {
+            $agents = User::select('id', 'name')->where('role_id', 2)->where('id', $sessionUser['agent_id'])->get();
+
+            $users = User::select('id', 'name')->where('role_id', 3)->where('id', $sessionUser['id'])->get();
+        }else if ($roleId && $roleId == 2) {
+            $agents = User::select('id', 'name')->where('role_id', 2)->where('id', $sessionUser['id'])->get();
+
+            $users = User::select('id', 'name')->where('role_id', 3)->where('agent_id', $sessionUser['id'])->get();
+        }else {
+            $agents = User::select('id', 'name')->where('role_id', 2)->get();
             $users = User::select('id', 'name')->where('role_id', 3)->get();
         }
-        $agents = User::select('id', 'name')->where('role_id', 2)->get();
         $groups = collect();
         $examcodes = collect();
         if ($request->has('enq')) {
             $groups = Enquiry::select('e_group_name as id', 'e_group_name as name')
                 ->whereNotNull('e_group_name')
                 ->where('e_group_name', '!=', '')
+                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
+                    $query->where('e_user_id', $sessionUser['id']);
+                })
                 ->distinct()
                 ->get();
             $examcodes = ExamCode::select('id', 'ex_code')->get();
@@ -257,15 +284,26 @@ class EnquiryController extends Controller
             $groups = Schedule::select('s_group_name as id', 's_group_name as name')
                 ->whereNotNull('s_group_name')
                 ->where('s_group_name', '!=', '')
+                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
+                    $query->where('s_user_id', $sessionUser['id']);
+                })
                 ->distinct()
                 ->get();
-            $examcodes = Schedule::select('s_exam_code as ex_code')->whereNotNull('s_exam_code')->where('s_exam_code', '!=', '')->distinct()->get();
+            $examcodes = Schedule::select('s_exam_code as ex_code')
+                                ->whereNotNull('s_exam_code')
+                                ->where('s_exam_code', '!=', '')
+                                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
+                                    $query->where('s_user_id', $sessionUser['id']);
+                                })
+                                ->distinct()
+                                ->get();
         }
         return response()->json([
             'users' => $users,
             'agents' => $agents,
             'groups' => $groups,
             'examcodes' => $examcodes,
+            'roleId' => $sessionUser['role_id'] ?? null
         ]);
     }
 }

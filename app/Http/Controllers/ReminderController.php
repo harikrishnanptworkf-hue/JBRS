@@ -14,6 +14,7 @@ class ReminderController extends Controller
 
     public function index(Request $request)
     {
+
         $pageSize = (int) $request->input('pageSize', 10);
 
         // Filtering
@@ -25,16 +26,19 @@ class ReminderController extends Controller
         $reminddate = $request->input('reminddate');
         $dateStart = $request->input('date_start');
         $dateEnd = $request->input('date_end');
+        $search = $request->input('search');
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
 
-        $userObj = $request->user();
-        
         $schedules = Schedule::with(['user', 'agent'])
-        ->whereNotNull('s_remind_date');
-        if ($userObj && $userObj->role_id == 2) {
-            $schedules->where('s_agent_id', $userObj->id);
-        }else{
-            if ($agent) $schedules->where('s_agent_id', $agent);
+            ->whereNotNull('s_remind_date');
+        if ($roleId && $roleId == 3) {
+            $schedules->where('s_user_id', $sessionUser['id']);
+        } else if($roleId && $roleId == 2){
+            $schedules->where('s_agent_id', $sessionUser['id']);
         }
+        
+        if ($agent) $schedules->where('s_agent_id', $agent);
 
         if ($user) $schedules->where('s_user_id', $user);
         if ($group) $schedules->where('s_group_name', $group);
@@ -42,6 +46,23 @@ class ReminderController extends Controller
         if ($reminddate) $schedules->whereDate('s_remind_date', $reminddate);
         if ($dateStart) $schedules->whereDate('s_date', '>=', $dateStart);
         if ($dateEnd) $schedules->whereDate('s_date', '<=', $dateEnd);
+
+
+
+        // Search filter (case-insensitive, partial match)
+        if ($search) {
+            $schedules = $schedules->where(function($query) use ($search) {
+                $query->where('s_exam_code', 'like', "%$search%")
+                    ->orWhere('s_group_name', 'like', "%$search%")
+                    ->orWhereHas('user', function($q) use ($search) {
+                        $q->where('name', 'like', "%$search%") ;
+                    })
+                    ->orWhereHas('agent', function($q) use ($search) {
+                        $q->where('name', 'like', "%$search%") ;
+                    });
+            });
+        }
+
         $merged = $schedules->get();
 
         // Sorting
