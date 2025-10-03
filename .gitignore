@@ -5,6 +5,8 @@
 /storage/*.key
 .env
 package.json
+package-lock.json
+composer.lock
 vite.config.js
 /resources/js/helpers/api.js
 Homestead.json
