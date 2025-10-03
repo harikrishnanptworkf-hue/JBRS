@@ -12,7 +12,8 @@ import 'react-toastify/dist/ReactToastify.css';
 function* loginUser({ payload: { user, history } }) {
   try {
     // Send login request to '/login' (baseURL is '/api')
-    const response = yield axios.post('/login', user);
+  yield axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+  const response = yield axios.post('/login', user, { withCredentials: true });
     const data = response.data;
     if (data.success === true && data.message === 'success') {
       if (data.token) {
