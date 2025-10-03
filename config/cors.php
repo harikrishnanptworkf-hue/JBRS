@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://onvuestore.com'],
+    'allowed_origins' => ['https://jbrs.onvuestore.com'],
 
     'allowed_origins_patterns' => [],
 
@@ -28,6 +28,9 @@ return [
     'exposed_headers' => [],
 
     'max_age' => 0,
+
+'Access-Control-Allow-Origin' => 'https://jbrs.onvuestore.com',
+'Access-Control-Allow-Credentials' => 'true',
 
     'supports_credentials' => true,
 

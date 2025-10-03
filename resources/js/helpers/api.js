@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://onvuestore.com/api/",
+  baseURL: "https://jbrs.onvuestore.com/api/",
+    withCredentials: true
 });
 
 // Add a request interceptor to include the token if present

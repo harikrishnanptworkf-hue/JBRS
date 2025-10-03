@@ -8,7 +8,7 @@ const token = accessToken;
 const API_URL = "";
 
 const axiosApi = axios.create({
-  baseURL: "https://onvuestore.com/api/",
+  baseURL: "https://jbrs.onvuestore.com/api/",
 });
 
 axiosApi.defaults.headers.common["Authorization"] = token;
