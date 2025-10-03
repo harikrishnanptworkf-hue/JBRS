@@ -18,6 +18,7 @@ const AuthProtected = (props) => {
         await axios.get('/user'); // Assumes baseURL is /api
         setIsAuthenticated(true);
       } catch (err) {
+console.log(err);
         localStorage.removeItem('auth_token');
         sessionStorage.removeItem('authUser');
         setIsAuthenticated(false);

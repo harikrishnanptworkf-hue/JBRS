@@ -1,21 +1,43 @@
+# ----------------------------------------
+# Force HTTPS & redirect domains to jbrs subdomain
+# ----------------------------------------
+RewriteEngine On
+
+# Redirect trailing dot domain
+RewriteCond %{HTTP_HOST} ^onvuestore\.com\.$ [NC,OR]
+# Redirect root domain without www
+RewriteCond %{HTTP_HOST} ^onvuestore\.com$ [NC,OR]
+# Redirect www subdomain
+RewriteCond %{HTTP_HOST} ^www\.onvuestore\.com$ [NC]
+RewriteRule ^(.*)$ https://jbrs.onvuestore.com/$1 [L,R=301]
+
+# ----------------------------------------
+# Laravel routing
+# ----------------------------------------
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
     RewriteEngine On
-
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# ----------------------------------------
+# CORS headers
+# ----------------------------------------
+<IfModule mod_headers.c>
+    # Allow only your frontend origin
+    Header set Access-Control-Allow-Origin "https://jbrs.onvuestore.com"
+    Header set Access-Control-Allow-Credentials "true"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+</IfModule>
+
+# ----------------------------------------
+# Handle preflight OPTIONS requests
+# ----------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>
+
