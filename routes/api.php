@@ -31,16 +31,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
-// routes/api.php
-Route::middleware(['web'])->group(function () {
-    Route::post('/login', [APIController::class, 'login']);
-    Route::post('/logout', function (Request $request) {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out'], 200);
-    })->middleware('auth:sanctum');
-});
-
+Route::post('/login', [APIController::class, 'login']);
+Route::post('/logout', function (Request $request) {
+    $request->user()->currentAccessToken()->delete();
+    return response()->json(['message' => 'Logged out'], 200);
+})->middleware('auth:sanctum');
 Route::post('/register', [APIController::class, 'register']);
 Route::post('/forget-password', [APIController::class, 'forget_pass']);
 Route::post('/reset-password', [APIController::class, 'reset_pass']);

@@ -95,7 +95,7 @@ class APIController extends Controller
         // $user->tokens()->delete(); // Allow multiple device/tab login
         $token = $user->createToken('auth_token')->plainTextToken;
         // Save user data in session
-        session(['user' => $user]);
+        // session(['user' => $user]);
         return response()->json([
             'success' => true,
             'data' => $user,
@@ -109,7 +109,7 @@ class APIController extends Controller
     public function logout(Request $request)
     {
     $request->user()->currentAccessToken()->delete();
-    session()->forget('user'); // Clear user session
+    // session()->forget('user'); // Clear user session
     return response()->json(['message' => 'Logged out'], 200);
     }
 
