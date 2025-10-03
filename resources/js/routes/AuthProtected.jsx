@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import axios from '../helpers/api';
+import api from '../helpers/api';
 
 const AuthProtected = (props) => {
   const [loading, setLoading] = useState(true);
@@ -15,10 +15,9 @@ const AuthProtected = (props) => {
         return;
       }
       try {
-        await axios.get('/user'); // Assumes baseURL is /api
+        await api.get('/user'); // Assumes baseURL is /api
         setIsAuthenticated(true);
       } catch (err) {
-console.log(err);
         localStorage.removeItem('auth_token');
         sessionStorage.removeItem('authUser');
         setIsAuthenticated(false);

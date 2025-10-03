@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from '../../helpers/api';
+import api from '../../helpers/api';
 
 const PrivateRoute = ({ children }) => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const PrivateRoute = ({ children }) => {
         return;
       }
       try {
-        await axios.get('/user');
+        await api.get('/user');
         setIsAuthenticated(true);
       } catch (err) {
         localStorage.removeItem('auth_token');
