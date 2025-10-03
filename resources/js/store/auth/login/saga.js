@@ -1,5 +1,6 @@
 import { put, takeEvery } from "redux-saga/effects";
 import axios from "../../../helpers/api";
+import ogaxios from "axios";
 
 // Login Redux States
 import { LOGIN_USER, LOGOUT_USER } from "./actionTypes";
@@ -11,6 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 function* loginUser({ payload: { user, history } }) {
   try {
+
     // Token-based login
     const response = yield axios.post('/login', user);
     const data = response.data;
