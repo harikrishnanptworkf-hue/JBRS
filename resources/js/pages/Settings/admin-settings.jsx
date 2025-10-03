@@ -34,11 +34,21 @@ import AdminList from './agent';
 import UserList from './user';
 
 const Settings = () => {
-
   //meta title
   document.title="Settings";
 
   const navigate = useNavigate();
+  // Redirect to dashboard if role_id is 2 or 3
+  const authUser = sessionStorage.getItem("authUser");
+  if (authUser) {
+    try {
+      const obj = JSON.parse(authUser);
+      if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+        navigate("/dashboard", { replace: true });
+        return null;
+      }
+    } catch (e) {}
+  }
 
   // Tabs state
   const [activeTab, setActiveTab] = useState('1');
@@ -382,7 +392,7 @@ const Settings = () => {
         if (editRowId === rowId) {
           return (
             <div className="d-flex gap-2">
-              <button className="examcode-update-btn" style={{background:'#2ba8fb',color:'#fff',border:'none',borderRadius:8,padding:'6px 22px',fontWeight:600,fontSize:15}} onClick={() => handleEditSave(rowId)}>Update</button>
+              <button className="examcode-update-btn"  onClick={() => handleEditSave(rowId)}>Update</button>
               <button className="examcode-cancel-btn" onClick={handleEditCancel}>Cancel</button>
             </div>
           );
@@ -600,7 +610,7 @@ const Settings = () => {
                             />
                           </Col>
                           <Col md={2} className="mb-2 d-flex align-items-end" style={{minWidth: 140, justifyContent: 'flex-end'}}>
-                            <button className="examcode-save-btn" style={{background:'#00C853',color:'#fff',border:'none',borderRadius:8,padding:'10px 32px',fontWeight:600,fontSize:17,boxShadow:'0 2px 8px 0 rgba(0,200,83,0.08)'}} onClick={handleAddCustomHoliday} type="button">Create</button>
+                            <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Create</button>
                           </Col>
                         </Row>
                         <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Custom holiday listing</h5>

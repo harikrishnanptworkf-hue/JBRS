@@ -79,16 +79,19 @@ const Login = props => {
       password: Yup.string().required("Please Enter Your Password"),
     }),
     onSubmit: (values) => {
+      // Trim whitespaces from username and password
+      const trimmedUsername = values.username.trim();
+      const trimmedPassword = values.password.trim();
       const secret = "mySecretKey12345"; // 16 chars for AES-128
       const encrypted = CryptoJS.AES.encrypt(
-        values.password,
+        trimmedPassword,
         CryptoJS.enc.Utf8.parse(secret),
         {
           mode: CryptoJS.mode.ECB,
           padding: CryptoJS.pad.Pkcs7
         }
       ).toString();
-      dispatch(loginUser({ ...values, password: encrypted }, props.router.navigate));
+      dispatch(loginUser({ ...values, username: trimmedUsername, password: encrypted }, props.router.navigate));
     }
   });
 
