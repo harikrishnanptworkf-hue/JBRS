@@ -16,8 +16,6 @@ use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 
 Route::get('/{any?}', [App\Http\Controllers\HomeController::class, 'index'])->where('any', '^(?!api\/)[\/\w\.-]*');
 
-Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
-
 // Auth::routes();
 
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
