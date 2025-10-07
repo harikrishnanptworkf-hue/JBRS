@@ -1,0 +1,487 @@
+{
+  "resources/fonts/boxicons.eot": {
+    "file": "others/boxicons.eot",
+    "src": "resources/fonts/boxicons.eot"
+  },
+  "resources/fonts/boxicons.svg": {
+    "file": "images/boxicons.svg",
+    "src": "resources/fonts/boxicons.svg"
+  },
+  "resources/fonts/boxicons.ttf": {
+    "file": "others/boxicons.ttf",
+    "src": "resources/fonts/boxicons.ttf"
+  },
+  "resources/fonts/boxicons.woff": {
+    "file": "others/boxicons.woff",
+    "src": "resources/fonts/boxicons.woff"
+  },
+  "resources/fonts/boxicons.woff2": {
+    "file": "others/boxicons.woff2",
+    "src": "resources/fonts/boxicons.woff2"
+  },
+  "resources/fonts/dripicons-v2.eot": {
+    "file": "others/dripicons-v2.eot",
+    "src": "resources/fonts/dripicons-v2.eot"
+  },
+  "resources/fonts/dripicons-v2.svg": {
+    "file": "images/dripicons-v2.svg",
+    "src": "resources/fonts/dripicons-v2.svg"
+  },
+  "resources/fonts/dripicons-v2.ttf": {
+    "file": "others/dripicons-v2.ttf",
+    "src": "resources/fonts/dripicons-v2.ttf"
+  },
+  "resources/fonts/dripicons-v2.woff": {
+    "file": "others/dripicons-v2.woff",
+    "src": "resources/fonts/dripicons-v2.woff"
+  },
+  "resources/fonts/fa-brands-400.eot": {
+    "file": "others/fa-brands-400.eot",
+    "src": "resources/fonts/fa-brands-400.eot"
+  },
+  "resources/fonts/fa-brands-400.svg": {
+    "file": "images/fa-brands-400.svg",
+    "src": "resources/fonts/fa-brands-400.svg"
+  },
+  "resources/fonts/fa-brands-400.ttf": {
+    "file": "others/fa-brands-400.ttf",
+    "src": "resources/fonts/fa-brands-400.ttf"
+  },
+  "resources/fonts/fa-brands-400.woff": {
+    "file": "others/fa-brands-400.woff",
+    "src": "resources/fonts/fa-brands-400.woff"
+  },
+  "resources/fonts/fa-brands-400.woff2": {
+    "file": "others/fa-brands-400.woff2",
+    "src": "resources/fonts/fa-brands-400.woff2"
+  },
+  "resources/fonts/fa-regular-400.eot": {
+    "file": "others/fa-regular-400.eot",
+    "src": "resources/fonts/fa-regular-400.eot"
+  },
+  "resources/fonts/fa-regular-400.svg": {
+    "file": "images/fa-regular-400.svg",
+    "src": "resources/fonts/fa-regular-400.svg"
+  },
+  "resources/fonts/fa-regular-400.ttf": {
+    "file": "others/fa-regular-400.ttf",
+    "src": "resources/fonts/fa-regular-400.ttf"
+  },
+  "resources/fonts/fa-regular-400.woff": {
+    "file": "others/fa-regular-400.woff",
+    "src": "resources/fonts/fa-regular-400.woff"
+  },
+  "resources/fonts/fa-regular-400.woff2": {
+    "file": "others/fa-regular-400.woff2",
+    "src": "resources/fonts/fa-regular-400.woff2"
+  },
+  "resources/fonts/fa-solid-900.eot": {
+    "file": "others/fa-solid-900.eot",
+    "src": "resources/fonts/fa-solid-900.eot"
+  },
+  "resources/fonts/fa-solid-900.svg": {
+    "file": "images/fa-solid-900.svg",
+    "src": "resources/fonts/fa-solid-900.svg"
+  },
+  "resources/fonts/fa-solid-900.ttf": {
+    "file": "others/fa-solid-900.ttf",
+    "src": "resources/fonts/fa-solid-900.ttf"
+  },
+  "resources/fonts/fa-solid-900.woff": {
+    "file": "others/fa-solid-900.woff",
+    "src": "resources/fonts/fa-solid-900.woff"
+  },
+  "resources/fonts/fa-solid-900.woff2": {
+    "file": "others/fa-solid-900.woff2",
+    "src": "resources/fonts/fa-solid-900.woff2"
+  },
+  "resources/fonts/materialdesignicons-webfont.eot": {
+    "file": "others/materialdesignicons-webfont.eot",
+    "src": "resources/fonts/materialdesignicons-webfont.eot"
+  },
+  "resources/fonts/materialdesignicons-webfont.ttf": {
+    "file": "others/materialdesignicons-webfont.ttf",
+    "src": "resources/fonts/materialdesignicons-webfont.ttf"
+  },
+  "resources/fonts/materialdesignicons-webfont.woff": {
+    "file": "others/materialdesignicons-webfont.woff",
+    "src": "resources/fonts/materialdesignicons-webfont.woff"
+  },
+  "resources/fonts/materialdesignicons-webfont.woff2": {
+    "file": "others/materialdesignicons-webfont.woff2",
+    "src": "resources/fonts/materialdesignicons-webfont.woff2"
+  },
+  "resources/images/bg-auth-overlay.png": {
+    "file": "images/bg-auth-overlay.png",
+    "src": "resources/images/bg-auth-overlay.png"
+  },
+  "resources/images/brands/bitbucket.png": {
+    "file": "images/bitbucket.png",
+    "src": "resources/images/brands/bitbucket.png"
+  },
+  "resources/images/brands/dribbble.png": {
+    "file": "images/dribbble.png",
+    "src": "resources/images/brands/dribbble.png"
+  },
+  "resources/images/brands/dropbox.png": {
+    "file": "images/dropbox.png",
+    "src": "resources/images/brands/dropbox.png"
+  },
+  "resources/images/brands/github.png": {
+    "file": "images/github.png",
+    "src": "resources/images/brands/github.png"
+  },
+  "resources/images/brands/mail_chimp.png": {
+    "file": "images/mail_chimp.png",
+    "src": "resources/images/brands/mail_chimp.png"
+  },
+  "resources/images/brands/slack.png": {
+    "file": "images/slack.png",
+    "src": "resources/images/brands/slack.png"
+  },
+  "resources/images/coming-soon.svg": {
+    "file": "images/coming-soon.svg",
+    "src": "resources/images/coming-soon.svg"
+  },
+  "resources/images/companies/adobe-photoshop.svg": {
+    "file": "images/adobe-photoshop.svg",
+    "src": "resources/images/companies/adobe-photoshop.svg"
+  },
+  "resources/images/companies/adobe.svg": {
+    "file": "images/adobe.svg",
+    "src": "resources/images/companies/adobe.svg"
+  },
+  "resources/images/companies/airbnb.svg": {
+    "file": "images/airbnb.svg",
+    "src": "resources/images/companies/airbnb.svg"
+  },
+  "resources/images/companies/amazon.svg": {
+    "file": "images/amazon.svg",
+    "src": "resources/images/companies/amazon.svg"
+  },
+  "resources/images/companies/flutter.svg": {
+    "file": "images/flutter.svg",
+    "src": "resources/images/companies/flutter.svg"
+  },
+  "resources/images/companies/img-1.png": {
+    "file": "images/img-1.png",
+    "src": "resources/images/companies/img-1.png"
+  },
+  "resources/images/companies/img-2.png": {
+    "file": "images/img-2.png",
+    "src": "resources/images/companies/img-2.png"
+  },
+  "resources/images/companies/img-3.png": {
+    "file": "images/img-3.png",
+    "src": "resources/images/companies/img-3.png"
+  },
+  "resources/images/companies/img-4.png": {
+    "file": "images/img-4.png",
+    "src": "resources/images/companies/img-4.png"
+  },
+  "resources/images/companies/img-5.png": {
+    "file": "images/img-5.png",
+    "src": "resources/images/companies/img-5.png"
+  },
+  "resources/images/companies/img-6.png": {
+    "file": "images/img-6.png",
+    "src": "resources/images/companies/img-6.png"
+  },
+  "resources/images/companies/line.svg": {
+    "file": "images/line.svg",
+    "src": "resources/images/companies/line.svg"
+  },
+  "resources/images/companies/mailchimp.svg": {
+    "file": "images/mailchimp.svg",
+    "src": "resources/images/companies/mailchimp.svg"
+  },
+  "resources/images/companies/reddit.svg": {
+    "file": "images/reddit.svg",
+    "src": "resources/images/companies/reddit.svg"
+  },
+  "resources/images/companies/sass.svg": {
+    "file": "images/sass.svg",
+    "src": "resources/images/companies/sass.svg"
+  },
+  "resources/images/companies/spotify.svg": {
+    "file": "images/spotify.svg",
+    "src": "resources/images/companies/spotify.svg"
+  },
+  "resources/images/companies/upwork.svg": {
+    "file": "images/upwork.svg",
+    "src": "resources/images/companies/upwork.svg"
+  },
+  "resources/images/companies/wechat.svg": {
+    "file": "images/wechat.svg",
+    "src": "resources/images/companies/wechat.svg"
+  },
+  "resources/images/companies/wordpress.svg": {
+    "file": "images/wordpress.svg",
+    "src": "resources/images/companies/wordpress.svg"
+  },
+  "resources/images/crypto/bg-ico-hero.jpg": {
+    "file": "images/bg-ico-hero.jpg",
+    "src": "resources/images/crypto/bg-ico-hero.jpg"
+  },
+  "resources/images/crypto/blog/img-1.jpg": {
+    "file": "images/img-12.jpg",
+    "src": "resources/images/crypto/blog/img-1.jpg"
+  },
+  "resources/images/crypto/blog/img-2.jpg": {
+    "file": "images/img-22.jpg",
+    "src": "resources/images/crypto/blog/img-2.jpg"
+  },
+  "resources/images/crypto/blog/img-3.jpg": {
+    "file": "images/img-32.jpg",
+    "src": "resources/images/crypto/blog/img-3.jpg"
+  },
+  "resources/images/error-img.png": {
+    "file": "images/error-img.png",
+    "src": "resources/images/error-img.png"
+  },
+  "resources/images/flags/germany.jpg": {
+    "file": "images/germany.jpg",
+    "src": "resources/images/flags/germany.jpg"
+  },
+  "resources/images/flags/italy.jpg": {
+    "file": "images/italy.jpg",
+    "src": "resources/images/flags/italy.jpg"
+  },
+  "resources/images/flags/russia.jpg": {
+    "file": "images/russia.jpg",
+    "src": "resources/images/flags/russia.jpg"
+  },
+  "resources/images/flags/spain.jpg": {
+    "file": "images/spain.jpg",
+    "src": "resources/images/flags/spain.jpg"
+  },
+  "resources/images/flags/us.jpg": {
+    "file": "images/us.jpg",
+    "src": "resources/images/flags/us.jpg"
+  },
+  "resources/images/layouts/layout-1.jpg": {
+    "file": "images/layout-1.jpg",
+    "src": "resources/images/layouts/layout-1.jpg"
+  },
+  "resources/images/layouts/layout-2.jpg": {
+    "file": "images/layout-2.jpg",
+    "src": "resources/images/layouts/layout-2.jpg"
+  },
+  "resources/images/layouts/layout-3.jpg": {
+    "file": "images/layout-3.jpg",
+    "src": "resources/images/layouts/layout-3.jpg"
+  },
+  "resources/images/logo-dark.png": {
+    "file": "images/logo-dark.png",
+    "src": "resources/images/logo-dark.png"
+  },
+  "resources/images/logo-light.png": {
+    "file": "images/logo-light.png",
+    "src": "resources/images/logo-light.png"
+  },
+  "resources/images/logo-light.svg": {
+    "file": "images/logo-light.svg",
+    "src": "resources/images/logo-light.svg"
+  },
+  "resources/images/logo.svg": {
+    "file": "images/logo.svg",
+    "src": "resources/images/logo.svg"
+  },
+  "resources/images/maintenance.svg": {
+    "file": "images/maintenance.svg",
+    "src": "resources/images/maintenance.svg"
+  },
+  "resources/images/megamenu-img.png": {
+    "file": "images/megamenu-img.png",
+    "src": "resources/images/megamenu-img.png"
+  },
+  "resources/images/product/Pro-12b.png": {
+    "file": "images/Pro-12b.png",
+    "src": "resources/images/product/Pro-12b.png"
+  },
+  "resources/images/product/Pro-17.png": {
+    "file": "images/Pro-17.png",
+    "src": "resources/images/product/Pro-17.png"
+  },
+  "resources/images/product/Pro-17a.png": {
+    "file": "images/Pro-17a.png",
+    "src": "resources/images/product/Pro-17a.png"
+  },
+  "resources/images/product/img-1.png": {
+    "file": "images/img-12.png",
+    "src": "resources/images/product/img-1.png"
+  },
+  "resources/images/product/img-2.png": {
+    "file": "images/img-22.png",
+    "src": "resources/images/product/img-2.png"
+  },
+  "resources/images/product/img-3.png": {
+    "file": "images/img-32.png",
+    "src": "resources/images/product/img-3.png"
+  },
+  "resources/images/product/img-4.png": {
+    "file": "images/img-42.png",
+    "src": "resources/images/product/img-4.png"
+  },
+  "resources/images/product/img-5.png": {
+    "file": "images/img-52.png",
+    "src": "resources/images/product/img-5.png"
+  },
+  "resources/images/product/img-6.png": {
+    "file": "images/img-62.png",
+    "src": "resources/images/product/img-6.png"
+  },
+  "resources/images/product/img-7.png": {
+    "file": "images/img-7.png",
+    "src": "resources/images/product/img-7.png"
+  },
+  "resources/images/profile-img.png": {
+    "file": "images/profile-img.png",
+    "src": "resources/images/profile-img.png"
+  },
+  "resources/images/sidebar/img1.jpg": {
+    "file": "images/img1.jpg",
+    "src": "resources/images/sidebar/img1.jpg"
+  },
+  "resources/images/sidebar/img2.jpg": {
+    "file": "images/img2.jpg",
+    "src": "resources/images/sidebar/img2.jpg"
+  },
+  "resources/images/sidebar/img3.jpg": {
+    "file": "images/img3.jpg",
+    "src": "resources/images/sidebar/img3.jpg"
+  },
+  "resources/images/sidebar/img4.jpg": {
+    "file": "images/img4.jpg",
+    "src": "resources/images/sidebar/img4.jpg"
+  },
+  "resources/images/small/img-1.jpg": {
+    "file": "images/img-1.jpg",
+    "src": "resources/images/small/img-1.jpg"
+  },
+  "resources/images/small/img-2.jpg": {
+    "file": "images/img-2.jpg",
+    "src": "resources/images/small/img-2.jpg"
+  },
+  "resources/images/small/img-3.jpg": {
+    "file": "images/img-3.jpg",
+    "src": "resources/images/small/img-3.jpg"
+  },
+  "resources/images/small/img-4.jpg": {
+    "file": "images/img-4.jpg",
+    "src": "resources/images/small/img-4.jpg"
+  },
+  "resources/images/small/img-5.jpg": {
+    "file": "images/img-5.jpg",
+    "src": "resources/images/small/img-5.jpg"
+  },
+  "resources/images/small/img-6.jpg": {
+    "file": "images/img-6.jpg",
+    "src": "resources/images/small/img-6.jpg"
+  },
+  "resources/images/small/img-7.jpg": {
+    "file": "images/img-7.jpg",
+    "src": "resources/images/small/img-7.jpg"
+  },
+  "resources/images/users/avatar-2.jpg": {
+    "file": "images/avatar-2.jpg",
+    "src": "resources/images/users/avatar-2.jpg"
+  },
+  "resources/images/users/avatar-3.jpg": {
+    "file": "images/avatar-3.jpg",
+    "src": "resources/images/users/avatar-3.jpg"
+  },
+  "resources/images/users/avatar-4.jpg": {
+    "file": "images/avatar-4.jpg",
+    "src": "resources/images/users/avatar-4.jpg"
+  },
+  "resources/images/users/avatar-5.jpg": {
+    "file": "images/avatar-5.jpg",
+    "src": "resources/images/users/avatar-5.jpg"
+  },
+  "resources/images/users/avatar-6.jpg": {
+    "file": "images/avatar-6.jpg",
+    "src": "resources/images/users/avatar-6.jpg"
+  },
+  "resources/images/users/avatar-7.jpg": {
+    "file": "images/avatar-7.jpg",
+    "src": "resources/images/users/avatar-7.jpg"
+  },
+  "resources/images/users/avatar-8.jpg": {
+    "file": "images/avatar-8.jpg",
+    "src": "resources/images/users/avatar-8.jpg"
+  },
+  "resources/images/users/avatar.png": {
+    "file": "images/avatar.png",
+    "src": "resources/images/users/avatar.png"
+  },
+  "resources/js/app.js": {
+    "file": "js/app.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "css": [
+      "css/app.min.css"
+    ],
+    "assets": [
+      "images/logo-dark.png",
+      "images/logo-light.png",
+      "images/profile-img.png",
+      "images/logo.svg",
+      "images/logo-light.svg",
+      "images/avatar.png",
+      "images/img-1.jpg",
+      "images/img-2.jpg",
+      "images/img-3.jpg",
+      "images/img-4.jpg",
+      "images/img-5.jpg",
+      "images/img-6.jpg",
+      "images/img-7.jpg",
+      "images/avatar-3.jpg",
+      "images/avatar-4.jpg",
+      "images/avatar-5.jpg",
+      "images/avatar-2.jpg",
+      "images/maintenance.svg",
+      "images/coming-soon.svg",
+      "images/error-img.png",
+      "images/us.jpg",
+      "images/spain.jpg",
+      "images/germany.jpg",
+      "images/italy.jpg",
+      "images/russia.jpg",
+      "images/img1.jpg",
+      "images/img2.jpg",
+      "images/img3.jpg",
+      "images/img4.jpg",
+      "images/layout-1.jpg",
+      "images/layout-2.jpg",
+      "images/layout-3.jpg",
+      "images/avatar-8.jpg",
+      "images/avatar-7.jpg",
+      "images/img-1.png",
+      "images/img-2.png",
+      "images/img-3.png",
+      "images/img-4.png",
+      "images/img-5.png",
+      "images/img-6.png",
+      "images/avatar-6.jpg",
+      "images/img-12.png",
+      "images/img-22.png",
+      "images/img-32.png",
+      "images/img-42.png",
+      "images/img-52.png",
+      "images/img-62.png",
+      "images/img-7.png",
+      "images/Pro-12b.png",
+      "images/Pro-17.png",
+      "images/Pro-17a.png",
+      "images/bg-auth-overlay.png",
+      "images/bg-ico-hero.jpg"
+    ]
+  },
+  "resources/scss/theme.scss": {
+    "file": "css/theme.min.css",
+    "src": "resources/scss/theme.scss",
+    "isEntry": true
+  }
+}
