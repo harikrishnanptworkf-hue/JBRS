@@ -81,6 +81,7 @@ function ScheduleList() {
     }, []);
 
     // Fetch data with filters (Enquiry style)
+    const [serverIST, setServerIST] = useState(null);
     const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
         setLoading(true);
         const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
@@ -124,6 +125,7 @@ function ScheduleList() {
                 setCustomPageSize(res.data.per_page);
                 setFromRecord(res.data.from);
                 setToRecord(res.data.to);
+                setServerIST(res.data.server_time_ist || null);
                 setSchedules(res.data.data.map((item) => ({
                     s_id: item.s_id,
                     agent: item.agent?.name || "",
@@ -570,14 +572,50 @@ const columns = useMemo(() => [
         setSearch("");
     };
 
-    const tableData = useMemo(() => schedules.map(row => ({
-        ...row,
-        _rowClass: (row.status && row.status.toUpperCase() === 'TAKEN' ? 'font-maroon' : '')
-    })), [schedules]);
+    // Highlight row red if IST time >= indian_time column
+    const tableData = useMemo(() => {
+        if (!serverIST) return schedules;
+        const serverDate = new Date(serverIST);
+        return schedules.map(row => {
+            let highlight = false;
+            if (row.indian_time) {
+                let rowDate = null;
+                // Handle format: DD/MM/YYYY-HH:mm AM
+                const match = row.indian_time.match(/^(\d{2})\/(\d{2})\/(\d{4})-(\d{2}):(\d{2}) (AM|PM)$/i);
+                if (match) {
+                    let [_, dd, mm, yyyy, hh, min, ampm] = match;
+                    let hour = parseInt(hh, 10);
+                    if (ampm.toUpperCase() === 'PM' && hour < 12) hour += 12;
+                    if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
+                    // Parse as local IST time (not UTC)
+                    rowDate = new Date(
+                        parseInt(yyyy, 10),
+                        parseInt(mm, 10) - 1,
+                        parseInt(dd, 10),
+                        hour,
+                        parseInt(min, 10),
+                        0
+                    );
+                } else if (/^\d{4}-\d{2}-\d{2}/.test(row.indian_time)) {
+                    rowDate = new Date(row.indian_time.replace(/-/g, '/'));
+                }
+                // Only compare if both dates are valid
+                if (rowDate instanceof Date && !isNaN(rowDate) && serverDate instanceof Date && !isNaN(serverDate)) {
+                    if (serverDate.getTime() >= rowDate.getTime()) highlight = true;
+                }
+            }
+            return {
+                ...row,
+                _rowClass: highlight ? 'font-red' : (row.status && row.status.toUpperCase() === 'TAKEN' ? 'font-maroon' : ''),
+            };
+        });
+    }, [schedules, serverIST]);
+            {/* Add red color for highlight */}
 
     return (
         <React.Fragment>
             <style>{`
+                .font-red { background: #ffeaea !important; color: #d32f2f !important; }
                 .reminder-header-bar { width: 100vw; background: #fff; box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08);  padding: 32px 32px 0 32px; display: flex; flex-direction: column; align-items: center; gap: 0; }
                 .reminder-title-text { font-size: 2.1rem; font-weight: 700; color: #1a2942; margin-bottom: 0.5rem; letter-spacing: 0.01em; text-align: left; }
                 .reminder-title-divider { width: 60px; height: 4px; background: #2ba8fb; border-radius: 2px; margin: 18px 0 0 0; opacity: 0.8; }

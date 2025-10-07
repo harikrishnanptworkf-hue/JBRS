@@ -29,16 +29,13 @@ class ReminderController extends Controller
         $search = $request->input('search');
         $sessionUser = session('user');
         $roleId = $sessionUser['role_id'] ?? null;
-
-        $schedules = Schedule::with(['user', 'agent'])
-            ->whereNotNull('s_remind_date');
+        $schedules = Schedule::with(['user', 'agent', 'examcode']);
         if ($roleId && $roleId == 3) {
-            $schedules->where('s_user_id', $sessionUser['id']);
+            $schedules = $schedules->where('s_user_id', $sessionUser['id']);
         } else if($roleId && $roleId == 2){
-            $schedules->where('s_agent_id', $sessionUser['id']);
+            $schedules = $schedules->where('s_agent_id', $sessionUser['id']);
         }
-        
-        if ($agent) $schedules->where('s_agent_id', $agent);
+        if ($agent) $schedules = $schedules->where('s_agent_id', $agent);
 
         if ($user) $schedules->where('s_user_id', $user);
         if ($group) $schedules->where('s_group_name', $group);
@@ -63,7 +60,26 @@ class ReminderController extends Controller
             });
         }
 
+
         $merged = $schedules->get();
+        $nowUtc = Carbon::now('UTC')->startOfDay();
+        // Calculate s_remind_date as s_date + ex_remind_year + ex_remind_month, filter by remind date <= today (UTC), display IST
+        $merged = $merged->filter(function($item) use ($nowUtc) {
+            if ($item->s_date && $item->examcode) {
+                $sDate = Carbon::parse($item->s_date, 'UTC');
+                $remindYear = (int)($item->examcode->ex_remind_year ?? 0);
+                $remindMonth = (int)($item->examcode->ex_remind_month ?? 0);
+                $remindDate = $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
+                $item->s_remind_date = $remindDate->toDateTimeString();
+                $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+                // Show if today (UTC) is equal or after remind date (UTC, date only)
+                return $nowUtc->greaterThanOrEqualTo($remindDate->copy()->startOfDay());
+            } else {
+                $item->s_remind_date = null;
+                $item->s_remind_date_ist = null;
+                return false;
+            }
+        })->values();
 
         // Sorting
         $sortBy = $request->input('sortBy', 'reminddate');

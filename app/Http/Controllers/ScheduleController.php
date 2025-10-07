@@ -127,9 +127,17 @@ class ScheduleController extends Controller
         $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
-        $schedules = $query->paginate($pageSize);
+    $schedules = $query->paginate($pageSize);
 
-        return response()->json($schedules);
+    // Add current server time in UTC and IST
+    $nowUtc = Carbon::now('UTC');
+    $nowIst = $nowUtc->copy()->setTimezone('Asia/Kolkata');
+
+    $response = json_decode(json_encode($schedules), true);
+    $response['server_time_utc'] = $nowUtc->format('Y-m-d H:i:s');
+    $response['server_time_ist'] = $nowIst->format('Y-m-d H:i:s');
+
+    return response()->json($response);
     }
 
     // Show a single schedule

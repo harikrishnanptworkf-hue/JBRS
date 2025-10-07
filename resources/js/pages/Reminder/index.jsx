@@ -83,19 +83,21 @@ function ReminderList() {
                 date_end: formatDate(filterEndDate)
             }
         })
-                        .then(res => {
-                                setTotalRecords(res.data.total || res.data.length || 0);
-                                setCurrentPage(res.data.page || 1);
-                                setCustomPageSize(res.data.pageSize || pageSize);
-                                setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
-                                setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
-                                setReminders((res.data.data || []).map(r => ({
-                                    ...r,
-                                    id: r.s_id 
-                                })));
-                                setLoading(false);
-                        })
-                        .catch(() => setLoading(false));
+        .then(res => {
+            setTotalRecords(res.data.total || res.data.length || 0);
+            setCurrentPage(res.data.page || 1);
+            setCustomPageSize(res.data.pageSize || pageSize);
+            setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
+            setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
+            setReminders((res.data.data || []).map(r => ({
+                ...r,
+                id: r.s_id,
+                remind_date_ist: r.s_remind_date_ist,
+                remind_date_utc: r.s_remind_date
+            })));
+            setLoading(false);
+        })
+        .catch(() => setLoading(false));
     };
 
     useEffect(() => {
@@ -189,7 +191,7 @@ const columns = useMemo(() => {
             accessorKey: 'examcode',
             enableSorting: true,
             cell: (cellProps) => (
-                <span>{cellProps.row.original.e_exam_code || cellProps.row.original.s_exam_code || ''}</span>
+                <span>{cellProps.row.original.examcode.ex_code || ''}</span>
             ),
         },
         {
@@ -198,7 +200,7 @@ const columns = useMemo(() => {
                     style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
                     onClick={() => handleSortChange('reminddate')}
                 >
-                    Remind Date
+                    Remind Date (IST)
                     {sortBy === 'reminddate' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                             {sortDirection === 'asc' ? '▲' : '▼'}
@@ -210,8 +212,7 @@ const columns = useMemo(() => {
             enableSorting: true,
             cell: (cellProps) => {
                 const rowId = cellProps.row.original.id;
-
-                // Date formatter
+                // Use s_remind_date_ist for display, s_remind_date for UTC
                 function parseDate(str) {
                     if (!str) return null;
                     if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
@@ -241,8 +242,8 @@ const columns = useMemo(() => {
                     } else if (typeof editRemindDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editRemindDate)) {
                         const [year, month, day] = editRemindDate.split('-');
                         dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-                    } else if (cellProps.row.original.s_remind_date) {
-                        dateObj = parseDate(cellProps.row.original.s_remind_date);
+                    } else if (cellProps.row.original.s_remind_date_ist) {
+                        dateObj = parseDate(cellProps.row.original.s_remind_date_ist);
                     }
 
                     return (
@@ -258,7 +259,7 @@ const columns = useMemo(() => {
                     );
                 }
 
-                return formatDMY(cellProps.row.original.s_remind_date);
+                return formatDMY(cellProps.row.original.s_remind_date_ist);
             },
         },
         // {
@@ -322,8 +323,19 @@ const columns = useMemo(() => {
             if (/^\d{2}\/\d{2}\/\d{4}$/.test(row.s_remind_date)) {
                 const [day, month, year] = row.s_remind_date.split('/');
                 dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-            } else if (/^\d{4}-\d{2}-\d{2}$/.test(row.s_remind_date)) {
+            } else if (/^\d{4}-\d{2}-\d{2}/.test(row.s_remind_date)) {
                 const [year, month, day] = row.s_remind_date.split('-');
+                dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+            }
+            setEditRemindDate(dateObj);
+        } else if (row.s_remind_date_ist) {
+            // fallback to IST if UTC not present
+            let dateObj = null;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(row.s_remind_date_ist)) {
+                const [day, month, year] = row.s_remind_date_ist.split('/');
+                dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+            } else if (/^\d{4}-\d{2}-\d{2}/.test(row.s_remind_date_ist)) {
+                const [year, month, day] = row.s_remind_date_ist.split('-');
                 dateObj = new Date(Number(year), Number(month) - 1, Number(day));
             }
             setEditRemindDate(dateObj);
