@@ -486,7 +486,7 @@ const ClientCreate = () => {
                         <div className="col-md-8 col-12">
                           <label htmlFor="user" className="col-form-label fw-semibold form-label text-start">User <span style={{ color: 'red' }}>*</span></label>
                           <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
-                            {users.length !== 1 && <option value="">Select Agent</option>}
+                            {users.length !== 1 && <option value="">Select User</option>}
                             {users.map(user => (
                               <option key={user.id} value={user.id}>{user.name}</option>
                             ))}

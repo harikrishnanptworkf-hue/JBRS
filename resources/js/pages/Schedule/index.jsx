@@ -262,6 +262,12 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
+        if (value === 'DONE') {
+            // Remove from list after a short delay to allow backend update
+            setTimeout(() => {
+                setSchedules(prev => prev.filter(row => row.s_id !== s_id));
+            }, 600); // match debounce delay
+        }
     };
 
     // Inline editable cell

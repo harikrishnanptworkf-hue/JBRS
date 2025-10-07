@@ -389,9 +389,7 @@ const UserCore = () => {
 			{/* Header Bar: Title only */}
 			<div className="examcode-header-bar" style={{borderRadius:"0px"}}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
-					<button type="button" className="examcode-action-btn" style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }} title={showFullControls ? 'Hide filters & create' : 'Show filters & create'} onClick={() => setShowFullControls(v => !v)}>
-						<i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
-					</button>
+
 					<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
 						<div className="examcode-title-text">User</div>
 						<div className="examcode-title-divider" style={{ width: 60, height: 4, background: '#2ba8fb', borderRadius: 2, margin: '8px 0 0 0', opacity: 0.8 }}></div>
@@ -399,7 +397,7 @@ const UserCore = () => {
 				</div>
 			</div>
 			{/* Animated show/hide for create/filter sections */}
-			<div style={{ maxHeight: showFullControls ? 800 : 0, opacity: showFullControls ? 1 : 0, overflow: 'hidden', transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s' }}>
+			<div style={{ maxHeight:  800 , opacity: 1, overflow: 'hidden', transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s' }}>
 				{/* Form Row: Name/Username/Password/Agent/Add */}
 				<div className="examcode-form-row">
 					<div style={{ minWidth: 220, maxWidth: 220 }}>
