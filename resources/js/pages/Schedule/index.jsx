@@ -103,7 +103,7 @@ function ScheduleList() {
             done_by: 'done_by',
         };
         const backendSortBy = sortKeyMap[sortField] || sortField;
-        api.get(`/schedule`, {
+    api.get(`/schedule`, {
             params: {
                 page,
                 pageSize,
@@ -126,12 +126,12 @@ function ScheduleList() {
                 setFromRecord(res.data.from);
                 setToRecord(res.data.to);
                 setServerIST(res.data.server_time_ist || null);
-                setSchedules(res.data.data.map((item) => ({
+                const mapped = (res.data.data || []).map((item) => ({
                     s_id: item.s_id,
                     agent: item.agent?.name || "",
                     user: item.user?.name || "",
                     group_name: item.s_group_name,
-                    exam_code: item.examcode.ex_code,
+                    exam_code: item.examcode?.ex_code || '',
                     timezone: item.s_area,
                     indian_time: item.formatted_s_date,
                     status: item.s_status,
@@ -139,7 +139,9 @@ function ScheduleList() {
                     access_code: item.s_access_code,
                     done_by: item.s_done_by,
                     _rowClass: item.s_status && item.s_status.toUpperCase() === 'TAKEN' ? 'font-maroon' : '',
-                })));
+                }));
+                console.log('Schedules mapped for table:', mapped);
+                setSchedules(mapped);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
