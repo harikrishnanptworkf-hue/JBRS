@@ -155,7 +155,7 @@ class ScheduleController extends Controller
             'group_name'      => 'nullable|string|max:45',
             'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
-            'date'            => 'nullable|date',
+            'date'            => ['nullable', 'date_format:Y-m-d H:i:s'],
             'location'        => 'nullable|string|max:191',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
@@ -166,19 +166,16 @@ class ScheduleController extends Controller
             'remind_remark'   => 'nullable|string',
         ]);
 
-        // Convert ISO 8601 date strings to Y-m-d or Y-m-d H:i:s
+        // Parse and keep full datetime (Y-m-d H:i:s)
         if (!empty($validated['date'])) {
-            $validated['date'] = Carbon::parse($validated['date'])->format('Y-m-d');
+            if ($request->input('timezone')) {
+                $validated['date'] = Carbon::createFromFormat('Y-m-d H:i:s', $validated['date'], $request->input('timezone'))->setTimezone('UTC')->format('Y-m-d H:i:s');
+            } else {
+                $validated['date'] = Carbon::createFromFormat('Y-m-d H:i:s', $validated['date'])->setTimezone('UTC')->format('Y-m-d H:i:s');
+            }
         }
         if (!empty($validated['remind_date'])) {
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
-        }
-
-        // Convert date to UTC using selected timezone
-        if (!empty($validated['date']) && $request->input('timezone')) {
-            $validated['date'] = Carbon::parse($validated['date'], $request->input('timezone'))->setTimezone('UTC')->format('Y-m-d H:i:s');
-        } elseif (!empty($validated['date'])) {
-            $validated['date'] = Carbon::parse($validated['date'])->setTimezone('UTC')->format('Y-m-d H:i:s');
         }
 
         $scheduleData = [
@@ -214,7 +211,7 @@ class ScheduleController extends Controller
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
             'exam_code'       => 'nullable|string|max:45',
-            'date'            => 'nullable|date',
+            'date'            => ['nullable', 'date_format:Y-m-d H:i:s'],
             'location'        => 'nullable|string|max:191',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
@@ -224,23 +221,29 @@ class ScheduleController extends Controller
             'remind_date'     => 'nullable|date',
             'remind_remark'   => 'nullable|string',
         ]);
+        // Parse and keep full datetime (Y-m-d H:i:s)
         if (!empty($validated['date'])) {
-            $validated['date'] = Carbon::parse($validated['date'])->format('Y-m-d');
+            if ($request->input('timezone')) {
+                $validated['date'] = Carbon::createFromFormat('Y-m-d H:i:s', $validated['date'], $request->input('timezone'))->setTimezone('UTC')->format('Y-m-d H:i:s');
+            } else {
+                $validated['date'] = Carbon::createFromFormat('Y-m-d H:i:s', $validated['date'])->setTimezone('UTC')->format('Y-m-d H:i:s');
+            }
         }
         if (!empty($validated['remind_date'])) {
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
         }
-        // Convert date to UTC using selected timezone
-        if (!empty($validated['date']) && $request->input('timezone')) {
-            $validated['date'] = Carbon::parse($validated['date'], $request->input('timezone'))->setTimezone('UTC')->format('Y-m-d H:i:s');
-        } elseif (!empty($validated['date'])) {
-            $validated['date'] = Carbon::parse($validated['date'])->setTimezone('UTC')->format('Y-m-d H:i:s');
+        // Always save exam code as ID (integer)
+        $examCodeId = $request->input('exam_code_id');
+        if (!$examCodeId && !empty($validated['exam_code'])) {
+            // Try to find the exam code by string if only code is provided
+            $examCode = \App\Models\ExamCode::where('ex_code', $validated['exam_code'])->first();
+            $examCodeId = $examCode ? $examCode->id : null;
         }
         $scheduleData = [
             's_agent_id'      => $validated['agent'] ?? $schedule->s_agent_id,
             's_user_id'       => $validated['user'] ?? $schedule->s_user_id,
             's_group_name'    => $validated['group_name'] ?? $schedule->s_group_name,
-            's_exam_code'     => $validated['exam_code'] ?? $schedule->s_exam_code,
+            's_exam_code'     => $examCodeId ?? $schedule->s_exam_code,
             's_date'          => $validated['date'] ?? $schedule->s_date,
             's_location'      => $validated['location'] ?? $schedule->s_location,
             's_support_fee'   => $validated['support_fee'] ?? $schedule->s_support_fee,

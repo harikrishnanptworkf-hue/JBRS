@@ -71,6 +71,23 @@ const ClientCreate = () => {
     });
   }, []);
 
+  // Fetch users for selected agent
+  const handleAgentChange = async (e) => {
+    const agentId = e.target.value;
+    validation.setFieldValue('agent', agentId);
+    validation.setFieldValue('user', ''); // Reset user selection
+    if (agentId) {
+      try {
+        const res = await api.get(`/agents/${agentId}/users`);
+        setUsers(res.data.data || []);
+      } catch {
+        setUsers([]);
+      }
+    } else {
+      setUsers([]);
+    }
+  };
+
   const validation = useFormik({
     initialValues: {
       group_name: '',
@@ -159,7 +176,8 @@ const ClientCreate = () => {
           await api.post('/schedule', payload);
           navigate('/schedule');
         } else if (location.state?.editType === 'schedule') {
-          await api.post('/schedule', payload);
+          // Use PUT to update existing schedule instead of POST
+          await api.put(`/schedule/${location.state.editId}`, payload);
           navigate('/schedule');
         }
       } catch (err) {
@@ -453,7 +471,7 @@ const ClientCreate = () => {
                       <div className="row">
                         <div className="col-md-8 col-12">
                           <label htmlFor="agent" className="col-form-label fw-semibold form-label text-start">Agent <span style={{ color: 'red' }}>*</span></label>
-                          <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.agent} onChange={e => validation.setFieldValue('agent', e.target.value)}>
+                          <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.agent} onChange={handleAgentChange}>
                             {agents.length !== 1 && <option value="">Select Agent</option>}
                             {agents.map(agent => (
                               <option key={agent.id} value={agent.id}>{agent.name}</option>
