@@ -22,9 +22,27 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '../../helpers/api';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { formatDateToTimezone } from './moment-timezone';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
+
+function formatDateToYMDHMS(date) {
+  if (!date) return '';
+  let d = date;
+  if (typeof d === 'string') {
+    // If already in correct format, return as is
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(d)) return d;
+    // If ISO string, convert to Date
+    d = new Date(d);
+  }
+  if (!(d instanceof Date) || isNaN(d)) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+}
 
 const ClientCreate = () => {
   document.title = "Client";
@@ -435,7 +453,7 @@ const ClientCreate = () => {
         <div className="client-create-card">
           <div className="page-content" style={{marginTop:"63px",paddingBottom:"0px"}}>
             <Row className="justify-content-center">
-              <Col lg="10" className="mx-auto" style={{width:"100%"}}>
+              <Col lg="10" className="mx-auto" style={{width: "100%"}}>
                 <Card className="shadow rounded border-0">
                   <CardBody>
                     <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
@@ -658,10 +676,10 @@ const ClientCreate = () => {
                           <label className="col-form-label fw-semibold form-label text-start">Date <span style={{ color: 'red' }}>*</span></label>
                           <DatePicker
                             className="form-control rounded-pill px-3 py-2 reminder-input"
-                            selected={validation.values.date || null}
+                            selected={validation.values.date ? new Date(validation.values.date) : null}
                             onChange={date => {
                               setstartDate(date);
-                              validation.setFieldValue('date', date);
+                              validation.setFieldValue('date', formatDateToYMDHMS(date));
                             }}
                             onBlur={validation.handleBlur}
                             dateFormat="dd/MM/yyyy h:mm aa"
