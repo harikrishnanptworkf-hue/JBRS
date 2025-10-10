@@ -8,9 +8,15 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
 function ReminderList() {
-
-    //meta title
+    // Listen for filter button event from Navbar
     document.title = "Reminders";
+
+    useEffect(() => {
+        const handler = () => setShowFullControls(v => !v);
+        window.addEventListener('toggleExamcodeControls', handler);
+        return () => window.removeEventListener('toggleExamcodeControls', handler);
+    }, []);
+
 
     const [customPageSize, setCustomPageSize] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
@@ -380,7 +386,7 @@ const columns = useMemo(() => {
     };
 
     return (
-        <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+        <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding:'0px',marginTop:'0px', width: '100vw', overflowX: 'hidden',}}>
             <style>{`
                 .reminder-header-bar {
                   width: 100vw;
@@ -514,19 +520,6 @@ const columns = useMemo(() => {
             {/* Header Bar: Title only */}
             <div className="reminder-header-bar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
-                    <button
-                        type="button"
-                        className="examcode-action-btn"
-                        style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
-                        title={showFullControls ? 'Hide filters' : 'Show filters'}
-                        onClick={() => setShowFullControls(v => !v)}
-                    >
-                        <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
-                    </button>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                        <div className="reminder-title-text">Reminders</div>
-                        <div className="reminder-title-divider"></div>
-                    </div>
                 </div>
             </div>
             {/* Animated show/hide for filter/search sections */}

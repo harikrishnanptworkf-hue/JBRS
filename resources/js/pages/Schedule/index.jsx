@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import TableContainer from '../../components/Common/TableContainer';
@@ -15,6 +16,12 @@ import 'react-toastify/dist/ReactToastify.css';
 import debounce from 'lodash.debounce';
 
 function ScheduleList() {
+    // Listen for filter button event from Navbar
+    useEffect(() => {
+        const handler = () => setShowFullControls(v => !v);
+        window.addEventListener('toggleExamcodeControls', handler);
+        return () => window.removeEventListener('toggleExamcodeControls', handler);
+    }, []);
     // State for toggling filter/search controls
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
@@ -23,14 +30,15 @@ function ScheduleList() {
     const [modal, setModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [schedule, setSchedule] = useState(null);
-    const [customPageSize, setCustomPageSize] = useState(10);
+    const [customPageSize, setCustomPageSize] = useState(20);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [schedules, setSchedules] = useState([]);
     const [isLoading, setLoading] = useState(true);
     const [fromRecord, setFromRecord] = useState(0);
     const [toRecord, setToRecord] = useState(0);
-    const [sortBy, setSortBy] = useState('s_id');
+    // Default sort: Indian Time column, latest first
+    const [sortBy, setSortBy] = useState('indian_time');
     const [sortOrder, setSortOrder] = useState('desc');
     const [deleteModal, setDeleteModal] = useState(false);
     const [timezones, setTimezones] = useState([]);
@@ -95,6 +103,7 @@ function ScheduleList() {
             s_group_name: 's_group_name',
             s_exam_code: 's_exam_code',
             s_date: 's_date',
+            indian_time: 's_date', // Map frontend 'indian_time' to backend 's_date'
             s_agent_id: 's_agent_id',
             s_user_id: 's_user_id',
             s_status: 's_status',
@@ -140,7 +149,6 @@ function ScheduleList() {
                     done_by: item.s_done_by,
                     _rowClass: item.s_status && item.s_status.toUpperCase() === 'TAKEN' ? 'font-maroon' : '',
                 }));
-                console.log('Schedules mapped for table:', mapped);
                 setSchedules(mapped);
                 setLoading(false);
             })
@@ -266,7 +274,7 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
-        if (value === 'DONE') {
+        if (value === 'DONE' || value === 'RESCHEDULE' || value === 'REVOKE' ) {
             // Remove from list after a short delay to allow backend update
             setTimeout(() => {
                 setSchedules(prev => prev.filter(row => row.s_id !== s_id));
@@ -322,18 +330,28 @@ const handleSortChange = React.useCallback((field) => {
 const columns = useMemo(() => [
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id')}>
-                SNo
-                {sortBy === 's_id' && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
+                Indian Time
+                {sortBy === 'indian_time' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
                         {sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
         ),
-        accessorKey: 's_id',
+        accessorKey: 'indian_time',
         enableSorting: true,
-        cell: (cellProps) => <span>{cellProps.row.original.s_id}</span>
+        cell: (cellProps) => <span>{cellProps.row.original.indian_time}</span>
+    },
+    {
+        header: (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                SNo
+            </span>
+        ),
+        accessorKey: 'sno',
+        enableSorting: false,
+        cell: (cellProps) => <span>{(currentPage - 1) * customPageSize + cellProps.row.index + 1}</span>
     },
     {
         header: (
@@ -714,10 +732,10 @@ const columns = useMemo(() => [
                 onDeleteClick={handleDeleteSchedule}
                 onCloseClick={() => setDeleteModal(false)}
             />
-            <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+                <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                    {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
                             className="examcode-action-btn"
@@ -731,7 +749,7 @@ const columns = useMemo(() => [
                             <div className="reminder-title-text">Schedule</div>
                             <div className="reminder-title-divider"></div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
                 {/* Filter Bar (Enquiry style) */}
                 {showFullControls && (
@@ -827,6 +845,7 @@ const columns = useMemo(() => [
                                 onChange={e => handlePageSizeChange(Number(e.target.value))}
                                 style={{ minWidth: 80 }}
                             >
+                                    <option key={'All'} value={'All'}>{'All'}</option>
                                 {[5, 10, 20, 50, 100].map(size => (
                                     <option key={size} value={size}>{size}</option>
                                 ))}

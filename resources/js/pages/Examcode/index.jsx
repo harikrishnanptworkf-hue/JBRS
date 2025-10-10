@@ -62,6 +62,12 @@ const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
 };
 
 const Examcode = () => {
+  // Listen for filter button event from Navbar
+  useEffect(() => {
+    const handler = () => setShowFullControls(v => !v);
+    window.addEventListener('toggleExamcodeControls', handler);
+    return () => window.removeEventListener('toggleExamcodeControls', handler);
+  }, []);
   const [showFullControls, setShowFullControls] = useState(false);
   const [examcodes, setExamcodes] = useState([]);
   const [examDate, setExamDate] = useState(null);
@@ -764,27 +770,9 @@ React.useEffect(() => {
   `;
 
   return (
-    <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+  <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
       <style>{addButtonCss}</style>
-     
-      {/* Header Bar: Title only */}
-      <div className="examcode-header-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
-          <button
-            type="button"
-            className="examcode-action-btn"
-            style={{ background: '#f6f8fa', color: '#2ba8fb', borderRadius: '50%', width: 44, height: 44, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)', marginRight: 12 }}
-            title={showFullControls ? 'Hide filters & create' : 'Show filters & create'}
-            onClick={() => setShowFullControls(v => !v)}
-          >
-            <i className={showFullControls ? 'mdi mdi-eye-off-outline' : 'mdi mdi-eye-outline'}></i>
-          </button>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <div className="examcode-title-text">Exam Code</div>
-            <div className="examcode-title-divider" style={{ width: 60, height: 4, background: '#2ba8fb', borderRadius: 2, margin: '8px 0 0 0', opacity: 0.8 }}></div>
-          </div>
-        </div>
-      </div>
+      {/* Header Bar removed, eye button moved to Navbar */}
       {/* Animated show/hide for create/filter sections */}
       <div
         style={{

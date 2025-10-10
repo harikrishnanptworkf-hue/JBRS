@@ -17,7 +17,7 @@ import { useSelector, useDispatch } from "react-redux";
 
 //components
 import Navbar from "./Navbar";
-import Header from "./Header";
+// import Header from "./Header";
 import Footer from "./Footer";
 import RightSidebar from "../CommonForBoth/RightSidebar";
 import { createSelector } from 'reselect';
@@ -139,11 +139,6 @@ const Layout = (props) => {
       </div>
 
       <div id="layout-wrapper">
-        <Header
-          theme={topbarTheme}
-          isMenuOpened={isMenuOpened}
-          openLeftMenuCallBack={openMenu}
-        />
         <Navbar menuOpen={isMenuOpened} />
         <div className="main-content">{props.children}</div>
         {/* <Footer /> */}

@@ -102,7 +102,6 @@ const TableContainer = ({
   endDate,
   setEndDate
 }) => {
-  console.log('TableContainer rendered');
 
   const [columnFilters, setColumnFilters] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');

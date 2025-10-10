@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { Row, Col, Collapse } from "reactstrap";
 import { Link } from "react-router-dom";
 import withRouter from "../Common/withRouter";
+import ProfileMenu from "../CommonForBoth/TopbarDropdown/ProfileMenu";
+import NavbarDropdownButton from "./NavbarDropdownButton";
 import classname from "classnames";
 
 //i18n
@@ -11,6 +13,33 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 
 const Navbar = props => {
+  // Eye button visibility: hide on settings page
+  const [showEyeButton, setShowEyeButton] = useState(true);
+  useEffect(() => {
+    const path = window.location.pathname;
+    setShowEyeButton(path !== '/settings');
+  }, [window.location.pathname]);
+  const [selectedMenu, setSelectedMenu] = useState('');
+
+  // Detect current route and set menu name on mount and route change
+  useEffect(() => {
+    const path = window.location.pathname;
+    const menuMap = {
+      '/dashboard': 'Dashboard',
+      '/examcode': 'Examcode',
+      '/reminders': 'Reminder',
+      '/client-create': 'Client Create',
+      '/enquiry': 'Enquiry',
+      '/schedule': 'Scheduled',
+      '/report': 'Report',
+      '/settings': 'Settings',
+    };
+    if (menuMap[path]) {
+      setSelectedMenu(menuMap[path]);
+    } else {
+      setSelectedMenu('');
+    }
+  }, [window.location.pathname]);
 
   const [dashboard, setdashboard] = useState(false);
   const [ui, setui] = useState(false);
@@ -106,9 +135,41 @@ const Navbar = props => {
 
   return (
     <React.Fragment>
-      <div className="topnav" style={{backgroundColor: "#0271b9", paddingLeft: "32px", minHeight: "70px"}}>
+      <div className="topnav d-flex align-items-center justify-content-between" style={{
+        background: "linear-gradient(90deg, #0271b9 80%, #2ba8fb 100%)",
+        padding: "0 32px",
+        minHeight: "88px",
+        marginTop: 0,
+        position: "relative",
+        borderRadius: 0,
+        boxShadow: "0 4px 24px rgba(44,62,80,0.10)",
+        fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
+      }}>
+        {/* Top left selected menu name - modern pill style */}
+        <div style={{
+          position: 'absolute',
+          left: 32,
+          top: 'calc(50% - 24px)',
+          minWidth: 180,
+          minHeight: 48,
+          display: 'flex',
+          alignItems: 'center',
+          fontWeight: 700,
+          fontSize: '2.3rem',
+          color: '#fff',
+          letterSpacing: '0.01em',
+          zIndex: 10,
+          background: 'rgba(255,255,255,0.08)',
+          borderRadius: '24px',
+          boxShadow: '0 2px 8px rgba(44,62,80,0.08)',
+          padding: '0 38px',
+          transition: 'background 0.2s',
+          fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
+        }}>
+          <span style={{flex: 'none'}}>{selectedMenu ? selectedMenu : ''}</span>
+        </div>
           <nav
-            className="navbar navbar-light navbar-expand-lg topnav-menu"
+            className="navbar navbar-light navbar-expand-lg topnav-menu flex-grow-1"
             id="navigation"
             style={{fontSize: "1.3rem", minHeight: "70px"}}
           >
@@ -117,97 +178,56 @@ const Navbar = props => {
               className="navbar-collapse"
               id="topnav-menu-content"
             >
-              <ul className="navbar-nav">
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/dashboard"
-                  >
-                    {props.t("Dashboard")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/examcode"
-                  >
-                    {props.t("Examcode")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/reminders"
-                  >
-                    {props.t("Reminder")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/client-create"
-                  >
-                    {props.t("Client Create")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/enquiry"
-                  >
-                    {props.t("Enquiry")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/schedule"
-                  >
-                    {props.t("Scheduled")} {props.menuOpen}
-                  </Link>
-
-                </li>
-
-                <li className="nav-item dropdown">
-                  <Link
-                    className="nav-link dropdown-toggle"
-                    style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                    to="/report"
-                  >
-                    {props.t("Report")} {props.menuOpen}
-                  </Link>
-                </li>
-                {/* Hide Settings if role_id is 2 or 3 */}
-                {roleId !== 2 && roleId !== 3 && (
-                  <li className="nav-item dropdown">
-                    <Link
-                      className="nav-link dropdown-toggle"
-                      style={{fontSize: "1.2rem", padding: "16px 24px"}}
-                      to="/settings"
-                    >
-                      {props.t("Settings")} {props.menuOpen}
-                    </Link>
-                  </li>
-                )}
-              </ul>
+              {/* Navigation links removed as requested */}
             </Collapse>
           </nav>
+
+          {/* Right-aligned navbar button + filter button + profile menu */}
+          <div className="ms-auto me-3 d-flex align-items-center" style={{gap: '18px'}}>
+            {/* Standard filter button, visible except on settings page */}
+            {showEyeButton && (
+              <button
+                type="button"
+                className="examcode-action-btn navbar-filter-animate"
+                style={{
+                  background: '#f6f8fa',
+                  color: '#2ba8fb',
+                  borderRadius: '50%',
+                  width: 44,
+                  height: 44,
+                  fontSize: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  boxShadow: '0 1.5px 8px rgba(44,62,80,0.04)',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+                title="Show/hide filters & create"
+                aria-label="Show or hide filters and create section"
+                onClick={e => {
+                  e.currentTarget.classList.add('clicked');
+                  window.dispatchEvent(new CustomEvent('toggleExamcodeControls'));
+                  setTimeout(() => e.currentTarget.classList.remove('clicked'), 200);
+                }}
+                onMouseOver={e => e.currentTarget.style.background = '#e3e6ef'}
+                onMouseOut={e => e.currentTarget.style.background = '#f6f8fa'}
+              >
+                <i className="mdi mdi-filter-variant"></i>
+                <style>{`
+                  .navbar-filter-animate.clicked {
+                    transform: scale(0.88);
+                    box-shadow: 0 0 16px #2ba8fb50;
+                    transition: transform 0.18s, box-shadow 0.18s;
+                  }
+                `}</style>
+              </button>
+            )}
+            {/* Standard Navbar Dropdown Button */}
+            <NavbarDropdownButton roleId={roleId} t={props.t} setSelectedMenu={setSelectedMenu} />
+            <ProfileMenu />
+          </div>
       </div>
     </React.Fragment>
   );

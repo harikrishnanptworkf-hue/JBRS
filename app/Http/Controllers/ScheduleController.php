@@ -17,13 +17,27 @@ class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
-        $sessionUser = session('user');
-        $roleId = $sessionUser['role_id'] ?? null;
-        $pageSize = (int) $request->input('pageSize', 10);
-        $sortBy = $request->input('sortBy', 's_id');
-        $sortOrder = $request->input('sortOrder', 'desc');
+    $sessionUser = session('user');
+    $roleId = $sessionUser['role_id'] ?? null;
+    $pageSizeInput = $request->input('pageSize', 10);
+    $sortBy = $request->input('sortBy', 's_id');
+    $sortOrder = $request->input('sortOrder', 'desc');
 
-        $query = Schedule::with(['user', 'agent', 'examcode']);
+    // Map frontend sort keys to backend columns
+    $sortByMap = [
+        'formatted_s_date' => 's_date',
+        'indian_time' => 's_date',
+        // add other mappings as needed
+    ];
+    if (isset($sortByMap[$sortBy])) {
+        $sortBy = $sortByMap[$sortBy];
+    }
+
+    // Support 'all' as a value for pageSize to return all records
+    $isAll = (strtolower($pageSizeInput) === 'all' || (int)$pageSizeInput === 0);
+    $pageSize = $isAll ? null : (int)$pageSizeInput;
+
+    $query = Schedule::with(['user', 'agent', 'examcode']);
 
         // Join related tables for sorting by user, agent, examcode text fields
         if (in_array($sortBy, ['user', 'agent', 'examcode'])) {
@@ -101,7 +115,6 @@ class ScheduleController extends Controller
         }
 
 
-        // Only allow sorting by known columns or relationships
         // $allowedSorts = [
         //     's_id', 's_group_name', 's_exam_code', 's_date', 's_agent_id', 's_user_id', 's_status',
         //     'group_name', 'exam_code', 'date', 'agent', 'user', 'status', 'indian_time', 'system_name', 'access_code', 'done_by'
@@ -127,17 +140,43 @@ class ScheduleController extends Controller
         $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
-    $schedules = $query->paginate($pageSize);
+        if ($isAll) {
+            $schedules = $query->get();
+            $count = $schedules->count();
+            // Format s_date to Indian time for each schedule
+            $schedules = $schedules->map(function($item) {
+                $item['formatted_s_date'] = $item['s_date'] ? Carbon::parse($item['s_date'], 'UTC')->setTimezone('Asia/Kolkata')->format('d/m/Y-h:i A') : null;
+                return $item;
+            });
+            $response = [
+                'data' => $schedules,
+                'total' => $count,
+                'per_page' => $count,
+                'current_page' => 1,
+                'last_page' => 1,
+                'from' => $count > 0 ? 1 : 0,
+                'to' => $count,
+            ];
+        } else {
+            $schedules = $query->paginate($pageSize > 0 ? $pageSize : 10);
+            $response = json_decode(json_encode($schedules), true);
+            // Format s_date to Indian time for each schedule in paginated data array
+            if (isset($response['data']) && is_array($response['data'])) {
+                foreach ($response['data'] as &$item) {
+                    $item['formatted_s_date'] = isset($item['s_date']) && $item['s_date'] ? Carbon::parse($item['s_date'], 'UTC')->setTimezone('Asia/Kolkata')->format('d/m/Y-h:i A') : null;
+                }
+                unset($item);
+            }
+        }
 
-    // Add current server time in UTC and IST
-    $nowUtc = Carbon::now('UTC');
-    $nowIst = $nowUtc->copy()->setTimezone('Asia/Kolkata');
+        // Add current server time in UTC and IST
+        $nowUtc = Carbon::now('UTC');
+        $nowIst = $nowUtc->copy()->setTimezone('Asia/Kolkata');
 
-    $response = json_decode(json_encode($schedules), true);
-    $response['server_time_utc'] = $nowUtc->format('Y-m-d H:i:s');
-    $response['server_time_ist'] = $nowIst->format('Y-m-d H:i:s');
+        $response['server_time_utc'] = $nowUtc->format('Y-m-d H:i:s');
+        $response['server_time_ist'] = $nowIst->format('Y-m-d H:i:s');
 
-    return response()->json($response);
+        return response()->json($response);
     }
 
     // Show a single schedule

@@ -40,6 +40,7 @@ const ProfileMenu = props => {
           className="btn header-item "
           id="page-header-user-dropdown"
           tag="button"
+          style={{color:'white'}}
         >
           <img
             className="rounded-circle header-profile-user"

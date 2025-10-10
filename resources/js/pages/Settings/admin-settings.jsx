@@ -462,7 +462,7 @@ const Settings = () => {
         .examcode-tablebar { width: 100vw; background: #fff; display: flex; justify-content: flex-start; align-items: flex-end; gap: 16px; padding: 18px 32px 0 32px; margin-bottom: 0; border-radius: 0; box-shadow: none; }
         .examcode-table-shadow { box-shadow: 0 4px 24px rgba(44, 62, 80, 0.10), 0 1.5px 4px rgba(44, 62, 80, 0.08); border-radius: 18px; background: #fff; }
       `}</style>
-      <div className="page-content">
+        <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
 
           {/* <div className="examcode-header-bar">
             <div>

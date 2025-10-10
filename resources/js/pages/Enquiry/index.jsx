@@ -15,6 +15,12 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function EnquiryList() {
+    // Listen for filter button event from Navbar
+    useEffect(() => {
+        const handler = () => setShowFullControls(v => !v);
+        window.addEventListener('toggleExamcodeControls', handler);
+        return () => window.removeEventListener('toggleExamcodeControls', handler);
+    }, []);
     // State for toggling filter/search controls
     const [showFullControls, setShowFullControls] = useState(false);
 
@@ -523,10 +529,10 @@ function EnquiryList() {
             `}</style>
 
             <ReminderDeleteModal show={deleteModal} onDeleteClick={handleDeleteEnquiry} onCloseClick={() => setDeleteModal(false)} />
-            <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+                <div className="page-content" style={{  background: '#f6f8fa', padding: '0px', width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                    {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
                             className="examcode-action-btn"
@@ -540,7 +546,7 @@ function EnquiryList() {
                             <div className="reminder-title-text">Enquiry</div>
                             <div className="reminder-title-divider"></div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
                 {/* Filter Bar */}
                 {showFullControls && (

@@ -451,13 +451,13 @@ const ClientCreate = () => {
             `}</style>
       <div className="client-create-center-container">
         <div className="client-create-card">
-          <div className="page-content" style={{marginTop:"63px",paddingBottom:"0px"}}>
+          <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
             <Row className="justify-content-center">
               <Col lg="10" className="mx-auto" style={{width: "100%"}}>
                 <Card className="shadow rounded border-0">
                   <CardBody>
-                    <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2>
-                    <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div>
+                    {/* <h2 className="fw-bold text-center" style={{color: '#232b46'}}>Client Create</h2> */}
+                    {/* <div className="mx-auto mb-4" style={{width: 70, height: 4, background: '#22a6f7', borderRadius: 2}}></div> */}
                     <form className="container" onSubmit={handleFormSubmit} autoComplete="off">
                       {/* Type & Support Fee */}
                       <div className="row">

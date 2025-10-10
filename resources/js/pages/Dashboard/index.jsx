@@ -81,7 +81,7 @@ const Dashboard = (props) => {
 
   return (
     <React.Fragment>
-      <div className="page-content">
+        <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
         <Row>
           <Col lg="12"></Col>
         </Row>

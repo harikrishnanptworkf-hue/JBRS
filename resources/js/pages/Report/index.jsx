@@ -10,6 +10,12 @@ import Spinners from "../../components/Common/Spinner";
 import { ToastContainer } from "react-toastify";
 
 function ReportList() {
+    // Listen for filter button event from Navbar
+    useEffect(() => {
+        const handler = () => setShowFullControls(v => !v);
+        window.addEventListener('toggleExamcodeControls', handler);
+        return () => window.removeEventListener('toggleExamcodeControls', handler);
+    }, []);
     // State for toggling filter/search controls
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Report";
@@ -344,10 +350,10 @@ function ReportList() {
                 .examcode-cancel-btn:active { background: #d0e7fa; }
                 @media (max-width: 700px) { .reminder-header-bar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
             `}</style>
-            <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', paddingTop: '64px' }}>
+                <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
                 <div className="reminder-header-bar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
+                    {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
                             className="examcode-action-btn"
@@ -361,7 +367,7 @@ function ReportList() {
                             <div className="reminder-title-text">Report</div>
                             <div className="reminder-title-divider"></div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
                 {/* Filter Bar (Enquiry style) */}
                 {showFullControls && (
