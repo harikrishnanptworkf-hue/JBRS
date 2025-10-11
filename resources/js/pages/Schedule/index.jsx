@@ -26,6 +26,37 @@ function ScheduleList() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
 
+    // Listen for StatusUpdated event and patch only the changed row in real-time
+    useEffect(() => {
+        if (!window.Echo) {
+            console.error('window.Echo is not defined!');
+            return;
+        }
+        window.Echo.channel('schedulechange')
+            .listen('.StatusUpdated', (e) => {
+                // TOP-LEVEL LOG: Confirm event handler is triggered
+                // Use event data directly
+                setSchedules(prev => {
+                    const updated = prev.map(row => {
+                        const eventId = e.id ?? e.s_id;
+                        if (row.s_id === eventId) {
+                            return {
+                                ...row,
+                                status: e.status,
+                                system_name: e.system_name,
+                                access_code: e.access_code,
+                                done_by: e.done_by
+                            };
+                        }
+                        return row;
+                    });
+                    return updated;
+                });
+            });
+    }, []);
+
+    // Removed duplicate Echo listener for StatusUpdated
+
     // Main state
     const [modal, setModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
@@ -38,8 +69,7 @@ function ScheduleList() {
     const [fromRecord, setFromRecord] = useState(0);
     const [toRecord, setToRecord] = useState(0);
     // Default sort: Indian Time column, latest first
-    const [sortBy, setSortBy] = useState('indian_time');
-    const [sortOrder, setSortOrder] = useState('desc');
+    const [sortState, setSortState] = useState({ sortBy: 'indian_time', sortOrder: 'desc' });
     const [deleteModal, setDeleteModal] = useState(false);
     const [timezones, setTimezones] = useState([]);
     const [rowEdits, setRowEdits] = useState({});
@@ -90,7 +120,7 @@ function ScheduleList() {
 
     // Fetch data with filters (Enquiry style)
     const [serverIST, setServerIST] = useState(null);
-    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
+    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortState.sortBy, sortDir = sortState.sortOrder, searchVal = search) => {
         setLoading(true);
         const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
         // Map frontend sort keys to backend sort keys
@@ -98,7 +128,7 @@ function ScheduleList() {
             agent: 'agent',
             user: 'user',
             exam_code: 'examcode',
-            group_name: 'group_name',
+            group_name: 's_group_name', // Fix: map to actual DB column
             s_id: 's_id',
             s_group_name: 's_group_name',
             s_exam_code: 's_exam_code',
@@ -112,7 +142,7 @@ function ScheduleList() {
             done_by: 'done_by',
         };
         const backendSortBy = sortKeyMap[sortField] || sortField;
-    api.get(`/schedule`, {
+        api.get(`/schedule`, {
             params: {
                 page,
                 pageSize,
@@ -130,8 +160,10 @@ function ScheduleList() {
         })
             .then(res => {
                 setTotalRecords(res.data.total);
-                setCurrentPage(res.data.current_page);
-                setCustomPageSize(res.data.per_page);
+                // Only update currentPage if changed
+                if (res.data.current_page !== currentPage) setCurrentPage(res.data.current_page);
+                // Only update customPageSize if changed
+                if (res.data.per_page !== customPageSize) setCustomPageSize(res.data.per_page);
                 setFromRecord(res.data.from);
                 setToRecord(res.data.to);
                 setServerIST(res.data.server_time_ist || null);
@@ -157,9 +189,8 @@ function ScheduleList() {
 
     // Refetch on filter/search change
     useEffect(() => {
-        fetchSchedules(currentPage, customPageSize, sortBy, sortOrder, search);
-        // eslint-disable-next-line
-    }, [currentPage, customPageSize, sortBy, sortOrder, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStatus, filterStartDate, filterEndDate]);
+        fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder, search);
+    }, [currentPage, customPageSize, sortState, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStatus, filterStartDate, filterEndDate]);
 
     // Formik for modal
     const validation = useFormik({
@@ -179,7 +210,7 @@ function ScheduleList() {
                 try {
                     await api.put(`/schedule/${schedule.id}`, values);
                     toast.success('Schedule updated successfully!');
-                    fetchSchedules(currentPage, customPageSize, sortBy, sortOrder);
+                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
                 } catch {
                     toast.error('Failed to update schedule.');
                 }
@@ -187,7 +218,7 @@ function ScheduleList() {
                 try {
                     await api.post('/schedule', values);
                     toast.success('Schedule created successfully!');
-                    fetchSchedules(currentPage, customPageSize, sortBy, sortOrder);
+                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
                 } catch {
                     toast.error('Failed to create schedule.');
                 }
@@ -224,7 +255,7 @@ function ScheduleList() {
             try {
                 await api.delete(`/schedule/${schedule.s_id}`);
                 toast.success('Schedule deleted successfully!');
-                fetchSchedules(currentPage, customPageSize, sortBy, sortOrder);
+                fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
             } catch {
                 toast.error('Failed to delete schedule.');
             }
@@ -287,19 +318,27 @@ function ScheduleList() {
       ({ value: initialValue, onSave, cellKey, isFocused, onFocusCell }) => {
         const [value, setValue] = React.useState(initialValue);
         const inputRef = React.useRef(null);
-        const debouncedSave = React.useMemo(() => debounce(onSave, 500), [onSave]);
-        React.useEffect(() => { setValue(initialValue); }, [initialValue]);
-        React.useEffect(() => { return () => debouncedSave.cancel(); }, [debouncedSave]);
+    // Remove debounce: save immediately for smooth typing
+                        // Only update value if cellKey changes (row changes), not on every render
+                        const prevCellKey = React.useRef(cellKey);
+                        React.useEffect(() => {
+                            if (prevCellKey.current !== cellKey) {
+                                setValue(initialValue);
+                                prevCellKey.current = cellKey;
+                            }
+                        }, [cellKey, initialValue]);
+    // Do not cancel debounce on unmount to avoid losing unsaved input
         React.useEffect(() => {
           if (isFocused && inputRef.current) {
             inputRef.current.focus();
             inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
           }
         }, [isFocused]);
-        const handleChange = e => {
-          setValue(e.target.value);
-          debouncedSave(e.target.value);
-        };
+                        const handleChange = e => {
+                            const newValue = e.target.value;
+                            setValue(newValue);
+                            onSave(newValue); // save immediately
+                        };
         const handleFocus = () => {
           onFocusCell(cellKey);
         };
@@ -317,32 +356,19 @@ function ScheduleList() {
       },
       (prevProps, nextProps) => prevProps.value === nextProps.value && prevProps.isFocused === nextProps.isFocused
     );
-const handleSortChange = React.useCallback((field) => {
-    if (sortBy === field) {
-        setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-        setSortBy(field);
-        setSortOrder('asc');
-    }
-    // setCurrentPage(1); // Optionally reset to first page on sort
-}, [sortBy]);
+const handleSortChange = columnId => {
+    setSortState(prev => {
+        if (prev.sortBy === columnId) {
+            // Toggle direction
+            return { sortBy: columnId, sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' };
+        } else {
+            // Switch column, always start with ascending
+            return { sortBy: columnId, sortOrder: 'asc' };
+        }
+    });
+};
 
 const columns = useMemo(() => [
-    {
-        header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
-                Indian Time
-                {sortBy === 'indian_time' && (
-                    <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
-                    </span>
-                )}
-            </span>
-        ),
-        accessorKey: 'indian_time',
-        enableSorting: true,
-        cell: (cellProps) => <span>{cellProps.row.original.indian_time}</span>
-    },
     {
         header: (
             <span style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -357,9 +383,9 @@ const columns = useMemo(() => [
         header: (
             <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
                 Agent
-                {sortBy === 'agent' && (
+                {sortState.sortBy === 'agent' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
+                        {sortState.sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
@@ -372,9 +398,9 @@ const columns = useMemo(() => [
         header: (
             <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('user')}>
                 User
-                {sortBy === 'user' && (
+                {sortState.sortBy === 'user' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
+                        {sortState.sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
@@ -387,9 +413,9 @@ const columns = useMemo(() => [
         header: (
             <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('group_name')}>
                 Group Name
-                {sortBy === 'group_name' && (
+                {sortState.sortBy === 'group_name' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
+                        {sortState.sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
@@ -402,31 +428,31 @@ const columns = useMemo(() => [
         header: (
             <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('exam_code')}>
                 Exam Code
-                {sortBy === 'exam_code' && (
+                {sortState.sortBy === 'exam_code' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
+                        {sortState.sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
         ),
         accessorKey: 'exam_code',
         enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.exam_code || ''}</span>
+        cell: (cellProps) => <span>{cellProps.row.original.exam_code || ''}</span>
     },
     {
         header: (
-            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer'}} onClick={() => handleSortChange('indian_time')}>
                 Indian Time
-                {sortBy === 'indian_time' && (
+                {sortState.sortBy === 'indian_time' && (
                     <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-                        {sortOrder === 'asc' ? '▲' : '▼'}
+                        {sortState.sortOrder === 'asc' ? '▲' : '▼'}
                     </span>
                 )}
             </span>
         ),
         accessorKey: 'indian_time',
         enableSorting: true,
-        cell: (cellProps) => <span>{cellProps.row.original.indian_time}</span>
+        cell: (cellProps) => <span style={{ fontWeight: 'bold' }}>{cellProps.row.original.indian_time}</span>
     },
     {
         header: 'Status',
@@ -444,7 +470,7 @@ const columns = useMemo(() => [
                     className="form-select form-select-sm reminder-input"
                     style={{ minWidth: 120 }}
                 >
-                    <option value="REVOKE">SELECT</option>
+                    <option value="SELECT">SELECT</option>
                     <option value="TAKEN" style={isTaken ? { color: 'maroon', fontWeight: 'bold' } : {}}>TAKEN</option>
                     <option value="REVOKE">REVOKE</option>
                     <option value="DONE">DONE</option>
@@ -544,7 +570,7 @@ const columns = useMemo(() => [
             </ul>
         )
     },  
-], [sortBy, sortOrder, handleEditSchedule, rowEdits, focusedCell, handleSortChange]);
+], [sortState, handleEditSchedule, rowEdits, focusedCell, handleSortChange]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -732,9 +758,9 @@ const columns = useMemo(() => [
                 onDeleteClick={handleDeleteSchedule}
                 onCloseClick={() => setDeleteModal(false)}
             />
-                <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
+                <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
-                <div className="reminder-header-bar">
+                {/* <div className="reminder-header-bar"> */}
                     {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
@@ -750,12 +776,12 @@ const columns = useMemo(() => [
                             <div className="reminder-title-divider"></div>
                         </div>
                     </div> */}
-                </div>
+                {/* </div> */}
                 {/* Filter Bar (Enquiry style) */}
                 {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
-                        <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                        <div style={{ fontWeight: 600, fontSize: 18, color: '#1a2942', marginRight: 18 }}>Filter</div>
                          { roleId !== 2 && roleId !== 3 && (
                         <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
                             <option value="">All Agents</option>

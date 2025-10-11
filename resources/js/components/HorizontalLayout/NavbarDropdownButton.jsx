@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const menuOptions = [
@@ -14,9 +14,25 @@ const menuOptions = [
 
 const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const handleClickAway = (e) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target) &&
+        menuRef.current && !menuRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickAway);
+    return () => document.removeEventListener("mousedown", handleClickAway);
+  }, [open]);
   return (
     <div style={{ position: "relative" }}>
       <button
+        ref={btnRef}
         type="button"
         className="navbar-dropdown-btn"
         aria-haspopup="true"
@@ -42,6 +58,7 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
       </button>
       {open && (
         <div
+          ref={menuRef}
           className="navbar-dropdown-menu"
           style={{
             position: "absolute",

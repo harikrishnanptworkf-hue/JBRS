@@ -386,7 +386,7 @@ const columns = useMemo(() => {
     };
 
     return (
-        <div className="page-content" style={{ minHeight: '100vh', background: '#f6f8fa', padding:'0px',marginTop:'0px', width: '100vw', overflowX: 'hidden',}}>
+        <div className="page-content" style={{ minHeight: '100vh', background: '#fff', padding:'0px',marginTop:'0px', width: '100vw', overflowX: 'hidden',}}>
             <style>{`
                 .reminder-header-bar {
                   width: 100vw;
@@ -518,10 +518,10 @@ const columns = useMemo(() => {
                 }
             `}</style>
             {/* Header Bar: Title only */}
-            <div className="reminder-header-bar">
+            {/* <div className="reminder-header-bar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                 </div>
-            </div>
+            </div> */}
             {/* Animated show/hide for filter/search sections */}
             <div
                 style={{
@@ -532,7 +532,7 @@ const columns = useMemo(() => {
                 }}
             >
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#1a2942', marginRight: 18 }}>Filter</div>
                         {/* Hide All Agents filter if role_id is 2 or 3 */}
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 { roleId !== 3 && roleId !== 2  && (

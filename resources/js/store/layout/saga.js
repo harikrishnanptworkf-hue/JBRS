@@ -1,3 +1,7 @@
+// Global style for html background
+if (typeof document !== 'undefined') {
+  document.documentElement.style.background = '#fff';
+}
 // @flow
 import { all, call, fork, takeEvery, put } from "redux-saga/effects"
 

@@ -13,6 +13,11 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 
 const Navbar = props => {
+  const [filterBtnClicked, setFilterBtnClicked] = useState(false);
+  // Reset filter button animation on route change
+  useEffect(() => {
+    setFilterBtnClicked(false);
+  }, [window.location.pathname]);
   // Eye button visibility: hide on settings page
   const [showEyeButton, setShowEyeButton] = useState(true);
   useEffect(() => {
@@ -137,8 +142,8 @@ const Navbar = props => {
     <React.Fragment>
       <div className="topnav d-flex align-items-center justify-content-between" style={{
         background: "linear-gradient(90deg, #0271b9 80%, #2ba8fb 100%)",
-        padding: "0 32px",
-        minHeight: "88px",
+          padding: "0 24px",
+          minHeight: "56px",
         marginTop: 0,
         position: "relative",
         borderRadius: 0,
@@ -147,22 +152,22 @@ const Navbar = props => {
       }}>
         {/* Top left selected menu name - modern pill style */}
         <div style={{
-          position: 'absolute',
-          left: 32,
-          top: 'calc(50% - 24px)',
-          minWidth: 180,
-          minHeight: 48,
+            position: 'absolute',
+            left: 24,
+            top: 'calc(50% - 18px)',
+            minWidth: 140,
+            minHeight: 36,
           display: 'flex',
           alignItems: 'center',
           fontWeight: 700,
-          fontSize: '2.3rem',
+            fontSize: '1.45rem',
           color: '#fff',
           letterSpacing: '0.01em',
           zIndex: 10,
           background: 'rgba(255,255,255,0.08)',
           borderRadius: '24px',
           boxShadow: '0 2px 8px rgba(44,62,80,0.08)',
-          padding: '0 38px',
+            padding: '0 24px',
           transition: 'background 0.2s',
           fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
         }}>
@@ -188,7 +193,7 @@ const Navbar = props => {
             {showEyeButton && (
               <button
                 type="button"
-                className="examcode-action-btn navbar-filter-animate"
+                className={`examcode-action-btn navbar-filter-animate${filterBtnClicked ? ' clicked' : ''}`}
                 style={{
                   background: '#f6f8fa',
                   color: '#2ba8fb',
@@ -206,10 +211,10 @@ const Navbar = props => {
                 }}
                 title="Show/hide filters & create"
                 aria-label="Show or hide filters and create section"
-                onClick={e => {
-                  e.currentTarget.classList.add('clicked');
+                onClick={() => {
+                  setFilterBtnClicked(true);
                   window.dispatchEvent(new CustomEvent('toggleExamcodeControls'));
-                  setTimeout(() => e.currentTarget.classList.remove('clicked'), 200);
+                  setTimeout(() => setFilterBtnClicked(false), 200);
                 }}
                 onMouseOver={e => e.currentTarget.style.background = '#e3e6ef'}
                 onMouseOut={e => e.currentTarget.style.background = '#f6f8fa'}

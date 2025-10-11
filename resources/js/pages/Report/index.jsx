@@ -350,9 +350,9 @@ function ReportList() {
                 .examcode-cancel-btn:active { background: #d0e7fa; }
                 @media (max-width: 700px) { .reminder-header-bar, .reminder-filterbar { flex-direction: column; align-items: stretch; gap: 16px; } }
             `}</style>
-                <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
+                <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
-                <div className="reminder-header-bar">
+                {/* <div className="reminder-header-bar"> */}
                     {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
@@ -368,12 +368,12 @@ function ReportList() {
                             <div className="reminder-title-divider"></div>
                         </div>
                     </div> */}
-                </div>
+                {/* </div> */}
                 {/* Filter Bar (Enquiry style) */}
                 {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '18px 32px 0 32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, width: '100%' }}>
-                        <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                        <div style={{ fontWeight: 600, fontSize: 18, color: '#1a2942', marginRight: 18 }}>Filter</div>
                     { roleId !== 2 && roleId !== 3 && (
                         <select className="reminder-input" value={selectedAgent} onChange={e => { setSelectedAgent(e.target.value); setCurrentPage(1); }} style={{ minWidth: 180 }}>
                             <option value="">All Agents</option>

@@ -230,7 +230,7 @@ const TableContainer = ({
           <th
             key={header.id}
             colSpan={header.colSpan}
-              style={{ backgroundColor: "#0271b9", color: "white", border: "1px solid #ccc" , textAlign : "center"}}
+              style={{ backgroundColor: "#0271b9", color: "white", border: "1px solid #ccc" , textAlign : "center" ,fontSize : "15px"}}
             className={`${header.column.columnDef.enableSorting ? "sorting sorting_desc" : ""}`}
             onClick={() => {
               if (header.column.columnDef.enableSorting && onSortChange) {
@@ -262,13 +262,13 @@ const TableContainer = ({
   <tbody>
     {getRowModel().rows.length === 0 ? (
       <tr>
-        <td colSpan={columns.length} className="text-center">No data found</td>
+        <td colSpan={columns.length} className="text-center" style={{fontSize:'14px',fontWeight:"bold"}}>No data found</td>
       </tr>
     ) : (
       getRowModel().rows.map(row => (
         <tr key={row.id}>
           {row.getVisibleCells().map(cell => (
-            <td key={cell.id} className={row.original._rowClass || ''} style={{ border: "1px solid #ccc", textAlign: "center" }}>
+            <td key={cell.id} className={row.original._rowClass || ''} style={{ border: "1px solid #ccc", textAlign: "center", fontSize:'14px'}}>
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </td>
           ))}

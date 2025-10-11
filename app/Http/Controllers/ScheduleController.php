@@ -11,6 +11,9 @@ use App\Models\Enquiry;
 use App\Models\ExamCode;    
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Events\StatusUpdated;
+use Illuminate\Support\Facades\Log;
+
 use Carbon\Carbon;
 
 class ScheduleController extends Controller
@@ -324,6 +327,21 @@ class ScheduleController extends Controller
             return response()->json(['message' => 'No valid fields provided for update'], Response::HTTP_BAD_REQUEST);
         }
         $schedule->update($updateData);
+        // Log::info('StatusUpdated event fired');
+        // event(new StatusUpdated(
+        //     $schedule->id,
+        //     $schedule->s_status,
+        //     $schedule->s_system_name,
+        //     $schedule->s_access_code,
+        //     $schedule->s_done_by
+        // ));
+
+        broadcast(new StatusUpdated( $schedule->s_id,
+            $schedule->s_status,
+            $schedule->s_system_name,
+            $schedule->s_access_code,
+            $schedule->s_done_by));
+
         // Return updated fields using frontend keys
         return response()->json([
             'message' => 'Fields updated successfully',

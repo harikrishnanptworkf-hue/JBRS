@@ -523,21 +523,21 @@ React.useEffect(() => {
 
   const addButtonCss = `
     .examcode-create-btn {
-      padding: 12.5px 38px;
+      padding: 6px 18px;
       border: 0;
-      border-radius: 100px;
+  border-radius: 100px;
       background-color: #27ae60;
       color: #ffffff;
-      font-weight: bold;
-      font-size: 1.08rem;
-      min-width: 140px;
-      transition: all 0.5s;
+      font-weight: 500;
+      font-size: 1rem;
+      min-width: 80px;
+      transition: all 0.3s;
       display: inline-block;
     }
     .examcode-create-btn:hover {
       background-color: #2ecc71;
-      box-shadow: 0 0 20px #2ecc7150;
-      transform: scale(1.1);
+      box-shadow: 0 0 10px #2ecc7150;
+      transform: scale(1.05);
     }
     .examcode-create-btn:active {
       background-color: #219150;
@@ -770,7 +770,7 @@ React.useEffect(() => {
   `;
 
   return (
-  <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
+  <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
       <style>{addButtonCss}</style>
       {/* Header Bar removed, eye button moved to Navbar */}
       {/* Animated show/hide for create/filter sections */}

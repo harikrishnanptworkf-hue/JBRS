@@ -529,9 +529,9 @@ function EnquiryList() {
             `}</style>
 
             <ReminderDeleteModal show={deleteModal} onDeleteClick={handleDeleteEnquiry} onCloseClick={() => setDeleteModal(false)} />
-                <div className="page-content" style={{  background: '#f6f8fa', padding: '0px', width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
+                <div className="page-content" style={{  background: '#fff', padding: '0px', width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
-                <div className="reminder-header-bar">
+                {/* <div className="reminder-header-bar"> */}
                     {/* <div style={{ display: 'flex', alignItems: 'center', gap: 18, justifyContent: 'flex-start' }}>
                         <button
                             type="button"
@@ -547,11 +547,11 @@ function EnquiryList() {
                             <div className="reminder-title-divider"></div>
                         </div>
                     </div> */}
-                </div>
+                {/* </div> */}
                 {/* Filter Bar */}
                 {showFullControls && (
                 <div className="reminder-filterbar" style={{ width: '100vw', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, padding: '18px 32px 0 32px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 21, color: '#1a2942', marginRight: 18 }}>Filter</div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#1a2942', marginRight: 18 }}>Filter</div>
                     {   roleId !== 2 && roleId !== 3 && (
                         <select className="reminder-input" value={filterAgent} onChange={e => setFilterAgent(e.target.value)} style={{ minWidth: 180 }}>
                             <option value="">All Agents</option>

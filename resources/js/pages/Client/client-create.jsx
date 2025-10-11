@@ -451,7 +451,7 @@ const ClientCreate = () => {
             `}</style>
       <div className="client-create-center-container">
         <div className="client-create-card">
-          <div className="page-content" style={{  background: '#f6f8fa', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
+          <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
             <Row className="justify-content-center">
               <Col lg="10" className="mx-auto" style={{width: "100%"}}>
                 <Card className="shadow rounded border-0">
@@ -463,8 +463,8 @@ const ClientCreate = () => {
                       <div className="row">
                         <div className="col-md-8 col-12">
                             <div>
-                              <label className="col-form-label fw-semibold form-label text-start">
-                                Type <span style={{ color: 'red' }}>*</span>
+                              <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>
+                                Type <span style={{ color: 'red'}}>*</span>
                               </label>
                               <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
                                 <option value="schedule">Schedule</option>
@@ -475,7 +475,7 @@ const ClientCreate = () => {
                             </div>
                         </div>
                         <div className="col-md-4 col-12">
-                          <label htmlFor="support_fee" className="col-form-label fw-semibold form-label text-start">Support fee</label>
+                          <label htmlFor="support_fee" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Support fee</label>
                           <Input
                             id="support_fee"
                             name="support_fee"
@@ -495,7 +495,7 @@ const ClientCreate = () => {
                       {/* Agent & Voucher Fee */}
                       <div className="row">
                         <div className="col-md-8 col-12">
-                          <label htmlFor="agent" className="col-form-label fw-semibold form-label text-start">Agent <span style={{ color: 'red' }}>*</span></label>
+                          <label htmlFor="agent" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Agent <span style={{ color: 'red' }}>*</span></label>
                           <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.agent} onChange={handleAgentChange}>
                             {agents.length !== 1 && <option value="">Select Agent</option>}
                             {agents.map(agent => (
@@ -507,7 +507,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                         <div className="col-md-4 col-12">
-                          <label htmlFor="voucher_fee" className="col-form-label fw-semibold form-label text-start">Voucher fee</label>
+                          <label htmlFor="voucher_fee" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Voucher fee</label>
                           <Input
                             id="voucher_fee"
                             name="voucher_fee"
@@ -527,7 +527,7 @@ const ClientCreate = () => {
                       {/* User & Total Fee */}
                       <div className="row">
                         <div className="col-md-8 col-12">
-                          <label htmlFor="user" className="col-form-label fw-semibold form-label text-start">User <span style={{ color: 'red' }}>*</span></label>
+                          <label htmlFor="user" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>User <span style={{ color: 'red' }}>*</span></label>
                           <select className="form-control rounded-pill px-3 py-2 reminder-input" value={validation.values.user} onChange={e => validation.setFieldValue('user', e.target.value)}>
                             {!validation.values.agent && <option value="">Select User</option>}
                             {validation.values.agent && users.length !== 1 && <option value="">Select User</option>}
@@ -540,7 +540,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                         <div className="col-md-4 col-12">
-                          <label htmlFor="total_fee" className="col-form-label fw-semibold form-label text-start">Total Fee</label>
+                          <label htmlFor="total_fee" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Total Fee</label>
                           <Input
                             id="total_fee"
                             name="total_fee"
@@ -560,7 +560,7 @@ const ClientCreate = () => {
                       {/* Group Name & Comment */}
                       <div className="row">
                         <div className="col-md-8 col-12">
-                          <label htmlFor="group_name" className="col-form-label fw-semibold form-label text-start">Group Name <span style={{ color: 'red' }}>*</span></label>
+                          <label htmlFor="group_name" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Group Name <span style={{ color: 'red' }}>*</span></label>
                           <Input
                             id="group_name"
                             name="group_name"
@@ -577,7 +577,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                         <div className="col-md-4 col-12">
-                          <label htmlFor="comment" className="col-form-label fw-semibold form-label text-start">Comment</label>
+                          <label htmlFor="comment" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Comment</label>
                           <Input
                             id="comment"
                             name="comment"
@@ -592,7 +592,7 @@ const ClientCreate = () => {
                       {/* Exam Code & Phone */}
                       <div className="row">
                         <div className="col-md-8 col-12">
-                          <label htmlFor="exam_code" className="col-form-label fw-semibold form-label text-start">Exam code <span style={{ color: 'red' }}>*</span></label>
+                          <label htmlFor="exam_code" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Exam code <span style={{ color: 'red' }}>*</span></label>
                           <CreatableSelect
                             id="exam_code"
                             name="exam_code"
@@ -612,7 +612,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                         <div className="col-md-4 col-12">
-                          <label htmlFor="phone" className="col-form-label fw-semibold form-label text-start">Phone</label>
+                          <label htmlFor="phone" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Phone</label>
                           <Input
                             id="phone"
                             name="phone"
@@ -634,7 +634,7 @@ const ClientCreate = () => {
                         <div className="row">
                       {(location.state?.editType || formType === 'schedule') ? (
                           <div className="col-md-8 col-12">
-                            <label htmlFor="timezone" className="col-form-label fw-semibold form-label text-start">Timezone <span style={{ color: 'red' }}>*</span></label>
+                            <label htmlFor="timezone" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Timezone <span style={{ color: 'red' }}>*</span></label>
                             <Select
                               id="timezone"
                               name="timezone"
@@ -652,7 +652,7 @@ const ClientCreate = () => {
                           </div>
                       ) : <div className="col-md-8 col-12"></div>}
                           <div className="col-md-4 col-12">
-                            <label htmlFor="email" className="col-form-label fw-semibold form-label text-start">Email</label>
+                            <label htmlFor="email" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Email</label>
                             <Input
                               id="email"
                               name="email"
@@ -673,7 +673,7 @@ const ClientCreate = () => {
                       <div className="row">
                       {(location.state?.editType || formType === 'schedule') ? (
                         <div className="col-md-8 col-12">
-                          <label className="col-form-label fw-semibold form-label text-start">Date <span style={{ color: 'red' }}>*</span></label>
+                          <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Date <span style={{ color: 'red' }}>*</span></label>
                           <DatePicker
                             className="form-control rounded-pill px-3 py-2 reminder-input"
                             selected={validation.values.date ? new Date(validation.values.date) : null}
@@ -693,7 +693,7 @@ const ClientCreate = () => {
                         </div>
                       ) : <div className="col-md-8 col-12"></div>}
                         <div className="col-md-4 col-12">
-                          <label htmlFor="remind_remark" className="col-form-label fw-semibold form-label text-start">Remind remark</label>
+                          <label htmlFor="remind_remark" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Remind remark</label>
                           <Input
                             id="remind_remark"
                             name="remind_remark"
