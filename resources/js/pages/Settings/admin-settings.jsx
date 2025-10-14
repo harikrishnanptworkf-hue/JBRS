@@ -265,7 +265,6 @@ const Settings = () => {
     };
     try {
       const res = await api.get('/settings/custom-holidays', { params });
-      console.log('API /settings/custom-holidays result:', res.data); // DEBUG
       if (Array.isArray(res.data.data)) {
         setCustomHolidays(res.data.data);
         setCustomTotalRecords(res.data.total || res.data.data.length);

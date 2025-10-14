@@ -1,17 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { FaCog, FaKey } from "react-icons/fa"; // Import icons for settings and examcode
 
 const menuOptions = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Examcode", to: "/examcode" },
+  { label: "Scheduled", to: "/schedule" },
+  { label: "Enquiry", to: "/enquiry" },
   { label: "Reminder", to: "/reminders" },
   { label: "Client Create", to: "/client-create" },
-  { label: "Enquiry", to: "/enquiry" },
-  { label: "Scheduled", to: "/schedule" },
   { label: "Report", to: "/report" },
-  { label: "Settings", to: "/settings", hideFor: [2,3] },
 ];
-
+  
 const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -79,7 +77,8 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
               to={opt.to}
               className="navbar-dropdown-item"
               style={{
-                display: "block",
+                display: "flex",
+                alignItems: "center",
                 padding: "10px 24px",
                 color: "#1a2942",
                 fontWeight: 500,
@@ -92,7 +91,7 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
                 if (setSelectedMenu) setSelectedMenu(t ? t(opt.label) : opt.label);
               }}
             >
-              {t ? t(opt.label) : opt.label}
+              {opt.icon} {t ? t(opt.label) : opt.label}
             </Link>
           ))}
         </div>

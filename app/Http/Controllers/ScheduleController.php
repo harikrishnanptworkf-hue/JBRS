@@ -60,7 +60,7 @@ class ScheduleController extends Controller
         }
         // Exclude schedules with status 'done' from listing
         $query->where(function ($q) {
-            $q->where('s_status', '!=', 'DONE')
+            $q->whereNotIn('s_status', ['DONE', 'REVOKE'])
             ->orWhereNull('s_status');
         });
 
@@ -92,6 +92,10 @@ class ScheduleController extends Controller
         if ($request->filled('enddate')) {
             $toDate = Carbon::parse($request->input('enddate'))->setTimezone('UTC')->format('Y-m-d');
             $query->whereDate('s_date', '<=', $toDate);
+        }
+        if ($request->filled('date')) {
+            $currentDate = Carbon::parse($request->input('current_date'))->setTimezone('UTC')->format('Y-m-d');
+            $query->whereDate('s_date', $currentDate);
         }
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -486,4 +490,15 @@ class ScheduleController extends Controller
         ]);
     }
     // Optionally, add a filterManagedData method if needed
+
+    public function updateRevokeReason(Request $request, $id)
+    {
+  
+
+        $schedule = Schedule::findOrFail($id);
+        $schedule->s_revoke_reason = $request->input('s_revoke_reason');
+        $schedule->save();
+
+        return response()->json(['message' => 'Revoke reason updated successfully.']);
+    }
 }

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Button } from "reactstrap"; // Import Button from reactstrap
+import { FaCalendarDay, FaPlus } from "react-icons/fa"; // Import icons for buttons
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -120,7 +122,7 @@ function ScheduleList() {
 
     // Fetch data with filters (Enquiry style)
     const [serverIST, setServerIST] = useState(null);
-    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortState.sortBy, sortDir = sortState.sortOrder, searchVal = search) => {
+    const fetchSchedules = (page = 1, pageSize = customPageSize, sortField = sortState.sortBy, sortDir = sortState.sortOrder, searchVal = search, dateFilter = null) => {
         setLoading(true);
         const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
         // Map frontend sort keys to backend sort keys
@@ -155,7 +157,8 @@ function ScheduleList() {
                 examcode_id: filterExamCode,
                 status: filterStatus,
                 startdate: formatDate(filterStartDate),
-                enddate: formatDate(filterEndDate)
+                enddate: formatDate(filterEndDate),
+                date: dateFilter ? formatDate(new Date(dateFilter)) : undefined // Add date filter
             }
         })
             .then(res => {
@@ -296,7 +299,19 @@ function ScheduleList() {
         debouncedSaveField(s_id, field, value, rowData);
     };
 
+    const [statusChangeModal, setStatusChangeModal] = useState(false);
+    const [statusChangeData, setStatusChangeData] = useState({});
+
+    const [revokeModal, setRevokeModal] = useState(false);
+    const [revokeReason, setRevokeReason] = useState("");
+
     const handleStatusChange = (s_id, value, rowData) => {
+        if (value === 'REVOKE') {
+            setStatusChangeData({ s_id, value, rowData });
+            setRevokeModal(true);
+            return;
+        }
+
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
@@ -305,12 +320,78 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
-        if (value === 'DONE' || value === 'RESCHEDULE' || value === 'REVOKE' ) {
-            // Remove from list after a short delay to allow backend update
+
+        if (value === 'DONE') {
+            setStatusChangeModal(true); // Show the modal for DONE status
+            setStatusChangeData({ s_id, value, rowData });
+            return; // Exit to prevent immediate filtering
+        }
+    };
+
+    const confirmStatusChange = () => {
+        const { s_id, value, rowData } = statusChangeData;
+        setRowEdits(prev => ({
+            ...prev,
+            [s_id]: {
+                ...prev[s_id],
+                status: value
+            }
+        }));
+        debouncedSaveField(s_id, 'status', value, rowData);
+
+        if (value === 'DONE' || value === 'REVOKE') {
             setTimeout(() => {
                 setSchedules(prev => prev.filter(row => row.s_id !== s_id));
-            }, 600); // match debounce delay
+            }, 600);
         }
+        setStatusChangeModal(false);
+    };
+
+    const confirmRevokeStatusChange = () => {
+        const { s_id, value, rowData } = statusChangeData;
+        if (!revokeReason.trim()) { 
+            toast.error("Please provide the reason for revoking.");
+            return;
+        }
+
+        setRowEdits(prev => ({
+            ...prev,
+            [s_id]: {
+                ...prev[s_id],
+                status: value
+            }
+        }));
+        debouncedSaveField(s_id, 'status', value, rowData);
+
+        // Save revoke reason to the backend
+        api.post(`/schedule/${s_id}/revoke-reason`, { s_revoke_reason: revokeReason })
+            .then(response => {
+                toast.success(response.data.message);
+            })
+            .catch(error => {
+                toast.error(error.response?.data?.message || 'Failed to save revoke reason');
+            });
+
+        setTimeout(() => {
+            setSchedules(prev => prev.filter(row => row.s_id !== s_id));
+        }, 600);
+
+        setRevokeModal(false);
+        setRevokeReason("");
+    };
+
+    const cancelStatusChange = () => {
+        const { s_id, rowData } = statusChangeData;
+        // Revert to the previous status
+        setRowEdits(prev => ({
+            ...prev,
+            [s_id]: {
+                ...prev[s_id],
+                status: rowData.status // Restore the original status
+            }
+        }));
+        setStatusChangeModal(false);
+        setStatusChangeData({});
     };
 
     // Inline editable cell
@@ -567,6 +648,12 @@ const columns = useMemo(() => [
                         <i className="mdi mdi-delete-outline" />
                     </button>
                 </li>
+                <li>
+                    {/* Add InfoButton to rows where status is REVOKE and reason is not empty */}
+                    {cellProps.row.original.status === 'REVOKE' && cellProps.row.original.reason && (
+                        <InfoButton reason={cellProps.row.original.reason} />
+                    )}
+                </li>
             </ul>
         )
     },  
@@ -600,6 +687,63 @@ const columns = useMemo(() => [
         ) : null
     );
 
+    // New Reminder Warning Modal
+    const ReminderWarningModal = ({ show, onConfirmClick, onCloseClick }) => (
+        show ? (
+            <div className="examcode-modal-backdrop">
+                <div className="examcode-modal">
+                    <div className="examcode-modal-icon" style={{ color: 'orange' }}>
+                        <i className="mdi mdi-alert-outline"></i> {/* Warning triangle icon */}
+                    </div>
+                    <div className="examcode-modal-title" style={{ color: 'orange' }}>Warning</div>
+                    <div className="examcode-modal-message">Are you sure you want to mark this schedule as <b>DONE</b>?</div>
+                    <div className="examcode-modal-btns">
+                        <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
+                        <button className="examcode-delete-btn" onClick={onConfirmClick} type="button" style={{ backgroundColor: 'orange', color: 'white' }}>Confirm</button>
+                    </div>
+                </div>
+            </div>
+        ) : null
+    );
+
+    // New Reminder Revoke Modal
+    const ReminderRevokeModal = ({ show, onConfirmClick, onCloseClick, reason, setReason }) => {
+        const textareaRef = React.useRef(null);
+
+        React.useEffect(() => {
+            if (show && textareaRef.current) {
+                textareaRef.current.focus();
+                textareaRef.current.setSelectionRange(reason.length, reason.length); // Set cursor to the end
+            }
+        }, [show, reason]);
+
+        return (
+            show ? (
+                <div className="examcode-modal-backdrop">
+                    <div className="examcode-modal">
+                        <div className="examcode-modal-icon" style={{ color: 'orange' }}>
+                            <i className="mdi mdi-alert-outline"></i> {/* Warning triangle icon */}
+                        </div>
+                        <div className="examcode-modal-title" style={{ color: 'orange' }}>Warning</div>
+                        <div className="examcode-modal-message">Are you sure you want to change the status to REVOKE? Please provide the reason below:</div>
+                        <textarea
+                            ref={textareaRef} // Attach ref to the textarea
+                            className="examcode-reason-textarea"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Enter reason here..."
+                            style={{ width: '100%', marginTop: '10px', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                        />
+                        <div className="examcode-modal-btns" style={{ marginTop: '10px' }}>
+                            <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
+                            <button className="examcode-delete-btn" onClick={onConfirmClick} type="button" style={{ backgroundColor: 'orange', color: 'white' }}>Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null
+        );
+    };
+
     useEffect(() => {
         if (location.state && location.state.created) {
             toast.success('New schedule created successfully!');
@@ -616,6 +760,24 @@ const columns = useMemo(() => [
         setFilterStartDate(null);
         setFilterEndDate(null);
         setSearch("");
+    };
+
+    // Add event listener for Today's Schedule button
+useEffect(() => {
+    const handleTodaySchedule = () => {
+        const today = new Date();
+        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
+    };
+    window.addEventListener('filterTodaySchedule', handleTodaySchedule);
+    return () => window.removeEventListener('filterTodaySchedule', handleTodaySchedule);
+}, [customPageSize, sortState, search]);
+
+    const handleTodaySchedule = () => {
+        const today = new Date();
+        const formatDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        setFilterStartDate(today);
+        setFilterEndDate(today);
     };
 
     // Highlight row red if IST time >= indian_time column
@@ -757,6 +919,18 @@ const columns = useMemo(() => [
                 show={deleteModal}
                 onDeleteClick={handleDeleteSchedule}
                 onCloseClick={() => setDeleteModal(false)}
+            />
+            <ReminderWarningModal
+                show={statusChangeModal}
+                onConfirmClick={confirmStatusChange}
+                onCloseClick={cancelStatusChange}
+            />
+            <ReminderRevokeModal
+                show={revokeModal}
+                onConfirmClick={confirmRevokeStatusChange}
+                onCloseClick={() => setRevokeModal(false)}
+                reason={revokeReason}
+                setReason={setRevokeReason}
             />
                 <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}

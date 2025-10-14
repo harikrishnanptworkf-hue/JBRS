@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{schedule}', [ScheduleController::class, 'destroy'])->name('destroy');
         Route::patch('{schedule}/fields', [ScheduleController::class, 'updateFields']);
         Route::post('/check-office-time', [ScheduleController::class, 'checkOfficeTime']);
+        Route::post('/{schedule}/revoke-reason', [ScheduleController::class, 'updateRevokeReason']);
     });
 
     Route::prefix('timezone')->name('timezone.')->group(function () {
