@@ -5,8 +5,6 @@ import { Link, useNavigate } from "react-router-dom";
 import withRouter from "../Common/withRouter";
 import ProfileMenu from "../CommonForBoth/TopbarDropdown/ProfileMenu";
 import NavbarDropdownButton from "./NavbarDropdownButton";
-import classname from "classnames";
-import { FaCalendarDay, FaPlus } from "react-icons/fa";
 
 //i18n
 import { withTranslation } from "react-i18next";
