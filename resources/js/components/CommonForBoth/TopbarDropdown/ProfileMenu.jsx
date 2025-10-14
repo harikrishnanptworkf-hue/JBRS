@@ -6,7 +6,6 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "reactstrap";
-import { FaCog, FaKey, FaUserCircle } from "react-icons/fa"; // Import icons for settings, examcode, and a modern user icon
 
 //i18n
 import { withTranslation } from "react-i18next";

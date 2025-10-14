@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaCog, FaKey } from "react-icons/fa"; // Import icons for settings and examcode
 
 const menuOptions = [
   { label: "Scheduled", to: "/schedule" },

@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button } from "reactstrap"; // Import Button from reactstrap
-import { FaCalendarDay, FaPlus } from "react-icons/fa"; // Import icons for buttons
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
