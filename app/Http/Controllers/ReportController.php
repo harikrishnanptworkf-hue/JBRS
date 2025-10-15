@@ -12,8 +12,9 @@ class ReportController extends Controller
         $page = (int) $request->input('page', 1);
 
         $user = $request->user();
-        $query = Schedule::with(['user', 'agent','examcode'])
-            ->whereNotNull('s_status');
+        $query = Schedule::with(['user', 'agent', 'examcode'])
+            ->whereNotNull('s_status')
+            ->where('s_status', '!=', 'SELECT');
 
         // If logged-in user is role_id 2, only show schedules where agent_id = user id
         if ($user && $user->role_id == 2) {
