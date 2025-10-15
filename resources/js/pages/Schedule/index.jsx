@@ -69,7 +69,7 @@ function ScheduleList() {
     const [fromRecord, setFromRecord] = useState(0);
     const [toRecord, setToRecord] = useState(0);
     // Default sort: Indian Time column, latest first
-    const [sortState, setSortState] = useState({ sortBy: 'indian_time', sortOrder: 'desc' });
+    const [sortState, setSortState] = useState({ sortBy: 'indian_time', sortOrder: 'asc' });
     const [deleteModal, setDeleteModal] = useState(false);
     const [timezones, setTimezones] = useState([]);
     const [rowEdits, setRowEdits] = useState({});
