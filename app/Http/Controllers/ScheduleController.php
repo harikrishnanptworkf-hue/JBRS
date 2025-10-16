@@ -12,6 +12,8 @@ use App\Models\ExamCode;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Events\StatusUpdated;
+use App\Events\ClientCreated;
+use App\Events\ClientUpdated;
 use Illuminate\Support\Facades\Log;
 
 use Carbon\Carbon;
@@ -243,6 +245,8 @@ class ScheduleController extends Controller
 
         $schedule = Schedule::create($scheduleData);
 
+        broadcast(new ClientCreated($schedule));
+
         return response()->json([
             'message' => 'Schedule created successfully',
             'data'    => $schedule,
@@ -302,6 +306,7 @@ class ScheduleController extends Controller
         ];
 
         $schedule->update($scheduleData);
+        broadcast(new ClientUpdated($schedule));
 
         return response()->json([
             'message' => 'Schedule updated successfully',

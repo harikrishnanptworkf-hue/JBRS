@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Echo from 'laravel-echo';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -53,6 +54,24 @@ function ScheduleList() {
                     return updated;
                 });
             });
+    }, []);
+
+    useEffect(() => {
+        if (window.Echo) {
+            window.Echo.channel('clientcreate')
+                .listen('.ClientCreated', (e) => {
+                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
+                });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (window.Echo) {
+            window.Echo.channel('clientupdate')
+                .listen('.ClientUpdated', (e) => {
+                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
+                });
+        }
     }, []);
 
     // Removed duplicate Echo listener for StatusUpdated
@@ -686,39 +705,133 @@ const columns = useMemo(() => [
     );
 
     // New Reminder Warning Modal
-    const ReminderWarningModal = ({ show, onConfirmClick, onCloseClick }) => (
-        show ? (
-            <div className="examcode-modal-backdrop">
-                <div className="examcode-modal">
-                    <div className="examcode-modal-icon" style={{ color: 'orange' }}>
-                        <i className="mdi mdi-alert-outline"></i> {/* Warning triangle icon */}
-                    </div>
-                    <div className="examcode-modal-title" style={{ color: 'orange' }}>Warning</div>
-                    <div className="examcode-modal-message">Are you sure you want to mark this schedule as <b>DONE</b>?</div>
-                    <div className="examcode-modal-btns">
-                        <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
-                        <button className="examcode-delete-btn" onClick={onConfirmClick} type="button" style={{ backgroundColor: 'orange', color: 'white' }}>Confirm</button>
-                    </div>
-                </div>
-            </div>
-        ) : null
-    );
-
-    // New Reminder Revoke Modal
-    const ReminderRevokeModal = ({ show, onConfirmClick, onCloseClick, reason, setReason }) => {
-        const textareaRef = React.useRef(null);
+    const ReminderWarningModal = ({ show, onConfirmClick, onCloseClick }) => {
+        const modalRef = React.useRef(null);
+        const confirmRef = React.useRef(null);
+        const prevActiveRef = React.useRef(null);
 
         React.useEffect(() => {
-            if (show && textareaRef.current) {
-                textareaRef.current.focus();
-                textareaRef.current.setSelectionRange(reason.length, reason.length); // Set cursor to the end
+            if (show) {
+                // save previously focused element
+                prevActiveRef.current = document.activeElement;
+                // clear any focused editable cell to prevent focus steal
+                try { if (typeof setFocusedCell === 'function') setFocusedCell(null); } catch (e) {}
+                try { prevActiveRef.current && prevActiveRef.current.blur(); } catch (e) {}
+
+                // focus confirm button
+                setTimeout(() => {
+                    if (confirmRef.current) confirmRef.current.focus();
+                }, 0);
+
+                // disable focus outside modal
+                disableFocusOutside(modalRef, true);
+
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        onCloseClick();
+                        return;
+                    }
+                    if (e.key !== 'Tab') return;
+                    const focusable = modalRef.current.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+                    if (!focusable || focusable.length === 0) return;
+                    const nodes = Array.prototype.slice.call(focusable);
+                    const idx = nodes.indexOf(document.activeElement);
+                    let nextIdx = 0;
+                    if (e.shiftKey) {
+                        nextIdx = (idx <= 0) ? nodes.length - 1 : idx - 1;
+                    } else {
+                        nextIdx = (idx === -1 || idx === nodes.length - 1) ? 0 : idx + 1;
+                    }
+                    e.preventDefault();
+                    nodes[nextIdx].focus();
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                return () => document.removeEventListener('keydown', handleKeyDown);
+            } else {
+                // restore previous focus
+                try { if (prevActiveRef.current && typeof prevActiveRef.current.focus === 'function') prevActiveRef.current.focus(); } catch (e) {}
             }
-        }, [show, reason]);
+        }, [show, onCloseClick]);
 
         return (
             show ? (
                 <div className="examcode-modal-backdrop">
-                    <div className="examcode-modal">
+                    <div className="examcode-modal" ref={modalRef} role="dialog" aria-modal="true">
+                        <div className="examcode-modal-icon" style={{ color: 'orange' }}>
+                            <i className="mdi mdi-alert-outline"></i> {/* Warning triangle icon */}
+                        </div>
+                        <div className="examcode-modal-title" style={{ color: 'orange' }}>Warning</div>
+                        <div className="examcode-modal-message">Are you sure you want to mark this schedule as <b>DONE</b>?</div>
+                        <div className="examcode-modal-btns">
+                            <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
+                            <button ref={confirmRef} className="examcode-delete-btn" onClick={onConfirmClick} type="button" style={{ backgroundColor: 'orange', color: 'white' }}>Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null
+        );
+    };
+
+    // New Reminder Revoke Modal
+    const ReminderRevokeModal = ({ show, onConfirmClick, onCloseClick, reason, setReason }) => {
+        const textareaRef = React.useRef(null);
+        const modalRef = React.useRef(null);
+        const prevActiveRef = React.useRef(null);
+
+        React.useEffect(() => {
+            if (show) {
+                // store previously focused element so we can restore on close
+                prevActiveRef.current = document.activeElement;
+                // clear any focused editable cell to prevent focus steal
+                try { if (typeof setFocusedCell === 'function') setFocusedCell(null); } catch(e){}
+                // blur previous active element
+                try { prevActiveRef.current && prevActiveRef.current.blur(); } catch (e) {}
+
+                // focus textarea at end
+                setTimeout(() => {
+                    if (textareaRef.current) {
+                        textareaRef.current.focus();
+                        const len = typeof reason === 'string' ? reason.length : 0;
+                        try { textareaRef.current.setSelectionRange(len, len); } catch (e) {}
+                    }
+                }, 0);
+
+                // disable focus outside modal
+                disableFocusOutside(modalRef, true);
+
+                // attach keydown listener for focus trap
+                const handleKeyDown = (e) => {
+                    if (e.key !== 'Tab') return;
+                    const focusable = modalRef.current.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+                    if (!focusable || focusable.length === 0) return;
+                    const nodes = Array.prototype.slice.call(focusable);
+                    const idx = nodes.indexOf(document.activeElement);
+                    let nextIdx = 0;
+                    if (e.shiftKey) {
+                        nextIdx = (idx <= 0) ? nodes.length - 1 : idx - 1;
+                    } else {
+                        nextIdx = (idx === -1 || idx === nodes.length - 1) ? 0 : idx + 1;
+                    }
+                    e.preventDefault();
+                    nodes[nextIdx].focus();
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                return () => {
+                    document.removeEventListener('keydown', handleKeyDown);
+                    disableFocusOutside(modalRef, false);
+                };
+            } else {
+                // restore previous focus
+                try { if (prevActiveRef.current && typeof prevActiveRef.current.focus === 'function') prevActiveRef.current.focus(); } catch (e) {}
+                disableFocusOutside(modalRef, false);
+            }
+        }, [show, onCloseClick]);
+
+        return (
+            show ? (
+                <div className="examcode-modal-backdrop">
+                    <div className="examcode-modal" ref={modalRef} role="dialog" aria-modal="true">
                         <div className="examcode-modal-icon" style={{ color: 'orange' }}>
                             <i className="mdi mdi-alert-outline"></i> {/* Warning triangle icon */}
                         </div>
@@ -740,6 +853,74 @@ const columns = useMemo(() => [
                 </div>
             ) : null
         );
+    };
+
+    // Helper to disable focusable elements outside a modal while it's open
+    const modifiedFocusableRef = React.useRef(new Set());
+    // store previous disabled/tabindex state for restoration
+    const priorFocusableStateRef = React.useRef(new Map());
+    const disableFocusOutside = (modalEl, disable) => {
+        // We'll target form controls and focusable elements.
+        const allSelector = 'input, textarea, select, button, a[href], [tabindex]';
+        if (disable) {
+            modifiedFocusableRef.current = new Set();
+            priorFocusableStateRef.current = new Map();
+            const all = Array.from(document.querySelectorAll(allSelector));
+            all.forEach(el => {
+                // If modal ref isn't ready, skip
+                if (!modalEl || !modalEl.current) return;
+                // Skip elements that are inside the modal
+                if (modalEl.current.contains(el)) return;
+
+                // Remember this element so we can restore it later
+                modifiedFocusableRef.current.add(el);
+
+                const prev = { prevDisabled: undefined, prevTabindex: undefined };
+
+                // If the element has a disabled property (inputs, buttons, selects, textarea), store and disable it
+                try {
+                    if ('disabled' in el) {
+                        prev.prevDisabled = el.disabled;
+                        el.disabled = true; // prevent typing/clicks
+                    }
+                } catch (e) {}
+
+                // Store previous tabindex (if any) and set to -1 to remove from tab order
+                try {
+                    if (el.hasAttribute && el.hasAttribute('tabindex')) {
+                        prev.prevTabindex = el.getAttribute('tabindex');
+                    } else {
+                        prev.prevTabindex = null;
+                    }
+                    el.setAttribute('tabindex', '-1');
+                } catch (e) {}
+
+                priorFocusableStateRef.current.set(el, prev);
+            });
+
+            const page = document.querySelector('.page-content');
+            if (page) page.classList.add('modal-inactive');
+        } else {
+            // Restore previous states
+            priorFocusableStateRef.current.forEach((prev, el) => {
+                try {
+                    if ('disabled' in el && typeof prev.prevDisabled !== 'undefined') {
+                        el.disabled = prev.prevDisabled;
+                    }
+                } catch (e) {}
+                try {
+                    if (prev.prevTabindex === null) {
+                        el.removeAttribute('tabindex');
+                    } else if (typeof prev.prevTabindex !== 'undefined') {
+                        el.setAttribute('tabindex', prev.prevTabindex);
+                    }
+                } catch (e) {}
+            });
+            priorFocusableStateRef.current.clear();
+            modifiedFocusableRef.current.clear();
+            const page = document.querySelector('.page-content');
+            if (page) page.classList.remove('modal-inactive');
+        }
     };
 
     useEffect(() => {
@@ -912,6 +1093,7 @@ useEffect(() => {
                     }
                 }
                 .font-maroon { color: Maroon !important; }
+                .modal-inactive { pointer-events: none; user-select: none; filter: blur(0.2px); }
             `}</style>
             <ReminderDeleteModal
                 show={deleteModal}
