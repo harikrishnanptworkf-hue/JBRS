@@ -14,6 +14,7 @@ use Illuminate\Http\Response;
 use App\Events\StatusUpdated;
 use App\Events\ClientCreated;
 use App\Events\ClientUpdated;
+use App\Events\ClientDeleted;
 use Illuminate\Support\Facades\Log;
 
 use Carbon\Carbon;
@@ -367,6 +368,7 @@ class ScheduleController extends Controller
     public function destroy(Schedule $schedule)
     {
         $schedule->delete();
+        broadcast(new ClientDeleted());
         return response()->json(['message' => 'Schedule deleted successfully'], Response::HTTP_OK);
     }
 

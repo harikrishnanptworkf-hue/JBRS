@@ -87,8 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('report')->name('report.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
-        // Backend filter API for exam code and status (already handled by index)
-        // Example: /report?s_exam_code=CODE&s_status=STATUS
+        Route::get('/export', [ReportController::class, 'export'])->name('export');
     });
 
     Route::prefix('settings')->name('settings.')->group(function () {

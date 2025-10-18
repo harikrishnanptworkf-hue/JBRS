@@ -27,52 +27,25 @@ function ScheduleList() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
 
-    // Listen for StatusUpdated event and patch only the changed row in real-time
-    useEffect(() => {
-        if (!window.Echo) {
-            console.error('window.Echo is not defined!');
-            return;
-        }
-        window.Echo.channel('schedulechange')
-            .listen('.StatusUpdated', (e) => {
-                // TOP-LEVEL LOG: Confirm event handler is triggered
-                // Use event data directly
-                setSchedules(prev => {
-                    const updated = prev.map(row => {
-                        const eventId = e.id ?? e.s_id;
-                        if (row.s_id === eventId) {
-                            return {
-                                ...row,
-                                status: e.status,
-                                system_name: e.system_name,
-                                access_code: e.access_code,
-                                done_by: e.done_by
-                            };
-                        }
-                        return row;
-                    });
-                    return updated;
-                });
-            });
-    }, []);
+    // NOTE: Echo subscription effect moved below state declarations to avoid referencing
+    // variables (like currentPage/customPageSize/sortState) before they're initialized.
 
-    useEffect(() => {
-        if (window.Echo) {
-            window.Echo.channel('clientcreate')
-                .listen('.ClientCreated', (e) => {
-                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
-                });
-        }
-    }, []);
 
-    useEffect(() => {
-        if (window.Echo) {
-            window.Echo.channel('clientupdate')
-                .listen('.ClientUpdated', (e) => {
-                    fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
-                });
-        }
-    }, []);
+    const handleStatusUpdated = (e) => {
+        setSchedules(prev => {
+            const eventId = e.id ?? e.s_id;
+            return prev.map(row =>
+                row.s_id === eventId
+                    ? { ...row, status: e.status, system_name: e.system_name, access_code: e.access_code, done_by: e.done_by }
+                    : row
+            );
+        });
+    };
+
+    const handleClientChange = () => {
+        fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
+    };
+
 
     // Removed duplicate Echo listener for StatusUpdated
 
@@ -93,6 +66,39 @@ function ScheduleList() {
     const [timezones, setTimezones] = useState([]);
     const [rowEdits, setRowEdits] = useState({});
     const [focusedCell, setFocusedCell] = useState(null);
+
+    useEffect(() => {
+        if (!window.Echo) {
+            console.error('window.Echo is not defined!');
+            return;
+        }
+
+        const channelMap = [
+            { channel: 'schedulechange', event: '.StatusUpdated', handler: handleStatusUpdated },
+            { channel: 'clientcreate', event: '.ClientCreated', handler: handleClientChange },
+            { channel: 'clientupdate', event: '.ClientUpdated', handler: handleClientChange },
+            { channel: 'clientdelete', event: '.ClientDeleted', handler: handleClientChange }
+        ];
+
+        channelMap.forEach(({ channel, event, handler }) => {
+            try {
+                window.Echo.channel(channel).listen(event, handler);
+            } catch (e) {
+                console.error('Failed to attach Echo listener for', channel, event, e);
+            }
+        });
+
+        return () => {
+            channelMap.forEach(({ channel, event, handler }) => {
+                try {
+                    window.Echo.channel(channel).stopListening(event, handler);
+                } catch (e) {
+                    // ignore cleanup errors
+                }
+            });
+        };
+
+    }, [currentPage, customPageSize, sortState]);
 
     // Filter/search state
     const [search, setSearch] = useState("");
@@ -676,9 +682,16 @@ const columns = useMemo(() => [
     },  
 ], [sortState, handleEditSchedule, rowEdits, focusedCell, handleSortChange]);
 
-    const handlePageSizeChange = (newPageSize) => {
-        setCustomPageSize(newPageSize);
-        setCurrentPage(1);
+    const handlePageSizeChange = (newPageSizeRaw) => {
+        if (newPageSizeRaw === 'All') {
+            const allSize = totalRecords && totalRecords > 0 ? totalRecords : 1000000;
+            setCustomPageSize(allSize);
+            setCurrentPage(1);
+        } else {
+            const newPageSize = Number(newPageSizeRaw) || 20;
+            setCustomPageSize(newPageSize);
+            setCurrentPage(1);
+        }
     };
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
@@ -1221,13 +1234,13 @@ useEffect(() => {
                             <Label className="me-2 fw-semibold">Page size</Label>
                             <select
                                 className="form-select d-inline-block w-auto reminder-input"
-                                value={customPageSize}
-                                onChange={e => handlePageSizeChange(Number(e.target.value))}
+                                value={String(customPageSize)}
+                                onChange={e => handlePageSizeChange(e.target.value)}
                                 style={{ minWidth: 80 }}
                             >
-                                    <option key={'All'} value={'All'}>{'All'}</option>
+                                <option key={'All'} value={'All'}>{'All'}</option>
                                 {[5, 10, 20, 50, 100].map(size => (
-                                    <option key={size} value={size}>{size}</option>
+                                    <option key={size} value={String(size)}>{size}</option>
                                 ))}
                             </select>
                         </div>

@@ -7,7 +7,7 @@ import TableContainer from '../../components/Common/TableContainer';
 import api from '../../helpers/api';
 import { Col, Row, Card, CardBody, Input, Label } from "reactstrap";
 import Spinners from "../../components/Common/Spinner";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 
 function ReportList() {
     // Listen for filter button event from Navbar
@@ -24,7 +24,7 @@ function ReportList() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [reports, setReports] = useState([]);
-    const [isLoading, setLoading] = useState(true);
+    const [isLoading, setLoading] = useState(true); 
     const [fromRecord, setFromRecord] = useState(0);
     const [toRecord, setToRecord] = useState(0);
     const [users, setUsers] = useState([]);
@@ -42,6 +42,8 @@ function ReportList() {
     const [sortBy, setSortBy] = useState('s_id');
     const [sortOrder, setSortOrder] = useState('desc');
     const [roleId, setRoleId] = useState(null);
+    const [isAllSelected, setIsAllSelected] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
 
 
     const fetchReports = (page = 1, pageSize = customPageSize, sortField = sortBy, sortDir = sortOrder, searchVal = search) => {
@@ -120,29 +122,13 @@ function ReportList() {
     const columns = useMemo(() => [
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_id')}>
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                     SNo
-                    {sortBy === 's_id' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
                 </span>
             ),
-            accessorKey: 's_id',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_id}</span>
-        },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
-                    Agent
-                    {sortBy === 'agent' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'agent',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || cellProps.row.original.agent || ''}</span>
+            accessorKey: 'sno',
+            enableSorting: false,
+            cell: (cellProps) => <span>{(currentPage - 1) * customPageSize + cellProps.row.index + 1}</span>
         },
         {
             header: (
@@ -156,6 +142,19 @@ function ReportList() {
             accessorKey: 'user',
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.user?.name || cellProps.row.original.user || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('agent')}>
+                    Agent
+                    {sortBy === 'agent' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'agent',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || cellProps.row.original.agent || ''}</span>
         },
         {
             header: (
@@ -185,19 +184,6 @@ function ReportList() {
         },
         {
             header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('timezone')}>
-                    Timezone
-                    {sortBy === 'timezone' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'timezone',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_area || cellProps.row.original.timezone || ''}</span>
-        },
-        {
-            header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
                     Date
                     {sortBy === 'date' && (
@@ -222,19 +208,7 @@ function ReportList() {
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.formatted_s_date || cellProps.row.original.indian_time || ''}</span>
         },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('comment')}>
-                    Comment
-                    {sortBy === 'comment' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'comment',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_comment || cellProps.row.original.comment || ''}</span>
-        },
+
         {
             header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('done_by')}>
@@ -248,49 +222,7 @@ function ReportList() {
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_done_by || cellProps.row.original.done_by || ''}</span>
         },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('voucher_fee')}>
-                    Voucher Fee
-                    {sortBy === 'voucher_fee' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'voucher_fee',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_voucher_fee || cellProps.row.original.voucher_fee || ''}</span>
-        },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('support_fee')}>
-                    Support Fee
-                    {sortBy === 'support_fee' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'support_fee',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.s_support_fee || cellProps.row.original.support_fee || ''}</span>
-        },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('total_fees')}>
-                    Total Fees
-                    {sortBy === 'total_fees' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'total_fees',
-            enableSorting: true,
-            cell: (cellProps) => {
-                const voucher = parseFloat(cellProps.row.original.s_voucher_fee || cellProps.row.original.voucher_fee || 0);
-                const support = parseFloat(cellProps.row.original.s_support_fee || cellProps.row.original.support_fee || 0);
-                return <span>{voucher + support}</span>;
-            }
-        },
+       
         {
             header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('s_status')}>
@@ -304,11 +236,60 @@ function ReportList() {
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.s_status || cellProps.row.original.status || cellProps.row.original.e_status || ''}</span>
         },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('system_name')}>
+                    System Name
+                    {sortBy === 'system_name' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'system_name',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.s_system_name || cellProps.row.original.system_name || cellProps.row.original.system_name_display || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('access_code')}>
+                    Access Code
+                    {sortBy === 'access_code' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'access_code',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.s_access_code || cellProps.row.original.access_code || cellProps.row.original.access || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('comment')}>
+                    Comment ( Revoke comment )
+                    {sortBy === 'comment' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'comment',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.s_revoke_reason || ''}</span>
+        },
     ], [sortBy, sortOrder, handleSortChange]);
 
-    const handlePageSizeChange = (newPageSize) => {
-        setCustomPageSize(newPageSize);
-        setCurrentPage(1);
+    const handlePageSizeChange = (newPageSizeRaw) => {
+        // Accepts 'All' or string numeric values
+        if (newPageSizeRaw === 'All') {
+            const allSize = totalRecords && totalRecords > 0 ? totalRecords : 1000000;
+            setCustomPageSize(allSize);
+            setIsAllSelected(true);
+            setCurrentPage(1);
+        } else {
+            const newPageSize = Number(newPageSizeRaw) || 10;
+            setCustomPageSize(newPageSize);
+            setIsAllSelected(false);
+            setCurrentPage(1);
+        }
     };
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
@@ -322,6 +303,46 @@ function ReportList() {
         setStartDate(null);
         setEndDate(null);
         setSearch("");
+    };
+
+    const exportToExcel = async () => {
+        setExportLoading(true);
+        try {
+            // If All selected, request all records by passing pageSize = totalRecords
+            const pageSizeToUse = isAllSelected && totalRecords && totalRecords > 0 ? totalRecords : customPageSize;
+            const params = {
+                page: currentPage,
+                pageSize: pageSizeToUse,
+                search,
+                sortBy,
+                sortOrder,
+                agent_id: selectedAgent,
+                user_id: selectedUser,
+                s_group_name: selectedGroup,
+                s_exam_code: selectedExamCode,
+                s_status: selectedStatus,
+                start_date: startDate ? `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}` : undefined,
+                end_date: endDate ? `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}` : undefined,
+            };
+
+            const response = await api.get('/report/export', { params, responseType: 'blob' });
+            const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `report_${new Date().toISOString().slice(0,10)}.xlsx`;
+            a.download = filename.replace(/"/g, '') ;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Export failed', err);
+            // Show toast error instead of alert
+            try { toast.error('Excel export failed. Please try again.'); } catch (e) { /* ignore */ }
+        } finally {
+            setExportLoading(false);
+        }
     };
 
     return (
@@ -345,6 +366,13 @@ function ReportList() {
                 .examcode-update-btn { background: #2ba8fb; color: #fff; border: none; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, box-shadow 0.2s; margin-right: 8px; }
                 .examcode-update-btn:hover { background: #6fc5ff; box-shadow: 0 0 12px #6fc5ff50; }
                 .examcode-update-btn:active { background: #3d94cf; }
+                /* Export button specific styles */
+                .export-btn { background: linear-gradient(180deg,#168a13 0%,#0f5c0b 100%); color: #fff !important; border: none; border-radius: 10px; font-weight: 700; font-size: 0.95rem; padding: 8px 16px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 6px 18px rgba(15,92,11,0.15); transition: transform 0.08s ease, box-shadow 0.12s ease; }
+                .export-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(15,92,11,0.18); }
+                .export-btn:active { transform: translateY(0); }
+                .export-btn:disabled { opacity: 0.75; cursor: not-allowed; box-shadow: none; }
+                .export-btn .mdi { font-size: 18px; color: #fff; }
+                .export-btn .spinner-border { width: 18px; height: 18px; border-width: 2px; color: #fff; }
                 .examcode-cancel-btn { background: #f6f8fa; color: #1a2942; border: 1.5px solid #e3e6ef; border-radius: 100px; font-weight: 600; font-size: 1rem; padding: 8px 28px; transition: background 0.2s, color 0.2s; }
                 .examcode-cancel-btn:hover { background: #e3e6ef; color: #2ba8fb; }
                 .examcode-cancel-btn:active { background: #d0e7fa; }
@@ -455,18 +483,35 @@ function ReportList() {
                         )}
                     </div>
                     <div className="reminder-tablebar" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Label className="me-2 fw-semibold">Page size</Label>
                             <select
                                 className="form-select d-inline-block w-auto reminder-input"
-                                value={customPageSize}
-                                onChange={e => handlePageSizeChange(Number(e.target.value))}
+                                value={String(customPageSize)}
+                                onChange={e => handlePageSizeChange(e.target.value)}
                                 style={{ minWidth: 80 }}
                             >
+                                <option key={'All'} value={'All'}>{'All'}</option>
                                 {[5, 10, 20, 50, 100].map(size => (
-                                    <option key={size} value={size}>{size}</option>
+                                    <option key={size} value={String(size)}>{size}</option>
                                 ))}
                             </select>
+
+                            <button
+                                type="button"
+                                className="export-btn"
+                                title="Export to Excel"
+                                onClick={() => exportToExcel()}
+                                aria-label="Export to Excel"
+                                disabled={exportLoading}
+                            >
+                                {exportLoading ? (
+                                    <span className="spinner-border me-1" role="status" aria-hidden="true"></span>
+                                ) : (
+                                    <i className="mdi mdi-file-excel me-1" aria-hidden="true"></i>
+                                )}
+                                <span>{exportLoading ? 'Exporting...' : 'Export'}</span>
+                            </button>
                         </div>
                         <div>
                             <Input
