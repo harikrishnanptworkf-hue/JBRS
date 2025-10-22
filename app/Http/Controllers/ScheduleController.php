@@ -96,10 +96,20 @@ class ScheduleController extends Controller
             $toDate = Carbon::parse($request->input('enddate'))->setTimezone('UTC')->format('Y-m-d');
             $query->whereDate('s_date', '<=', $toDate);
         }
+
         if ($request->filled('date')) {
-            $currentDate = Carbon::parse($request->input('current_date'))->setTimezone('UTC')->format('Y-m-d');
-            $query->whereDate('s_date', $currentDate);
+            $timezone = 'Asia/Kolkata'; 
+            $selectedDate = Carbon::parse($request->input('date'), $timezone);
+
+            $startUtc = $selectedDate->copy()->startOfDay()->setTimezone('UTC');
+            $endUtc = $selectedDate->copy()->endOfDay()->setTimezone('UTC');
+
+            $query->whereBetween('s_date', [
+                $startUtc->toDateTimeString(),
+                $endUtc->toDateTimeString(),
+            ]);
         }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {

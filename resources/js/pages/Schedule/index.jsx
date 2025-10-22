@@ -17,6 +17,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import debounce from 'lodash.debounce';
 
 function ScheduleList() {
+    let todaySchedule = false;
     // Listen for filter button event from Navbar
     useEffect(() => {
         const handler = () => setShowFullControls(v => !v);
@@ -43,6 +44,13 @@ function ScheduleList() {
     };
 
     const handleClientChange = () => {
+        if(todaySchedule){
+            const today = new Date();
+            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
+            return;
+        }
+
         fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
     };
 
@@ -684,7 +692,8 @@ const columns = useMemo(() => [
 
     const handlePageSizeChange = (newPageSizeRaw) => {
         if (newPageSizeRaw === 'All') {
-            const allSize = totalRecords && totalRecords > 0 ? totalRecords : 1000000;
+            const allSize = 10000;
+            todaySchedule = false;
             setCustomPageSize(allSize);
             setCurrentPage(1);
         } else {
@@ -961,6 +970,7 @@ useEffect(() => {
         const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
     };
+    todaySchedule = true;
     window.addEventListener('filterTodaySchedule', handleTodaySchedule);
     return () => window.removeEventListener('filterTodaySchedule', handleTodaySchedule);
 }, [customPageSize, sortState, search]);
@@ -970,6 +980,7 @@ useEffect(() => {
         const formatDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         setFilterStartDate(today);
         setFilterEndDate(today);
+        todaySchedule = true;
     };
 
     // Highlight row red if IST time >= indian_time column
@@ -1001,7 +1012,7 @@ useEffect(() => {
                 }
                 // Only compare if both dates are valid
                 if (rowDate instanceof Date && !isNaN(rowDate) && serverDate instanceof Date && !isNaN(serverDate)) {
-                    if (serverDate.getTime() >= rowDate.getTime()) highlight = true;
+                    if (serverDate.getTime() >= rowDate.getTime() && row.status == 'SELECT') highlight = true;
                 }
             }
             return {
