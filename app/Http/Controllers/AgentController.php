@@ -63,7 +63,7 @@ class AgentController extends Controller
         return response()->json($user, 201);
     }
 
-    public function update(Request $request, User $user)
+    public function update(Request $request, User $agent)
     {
         $validated = $request->validate([
             'name' => 'required',
@@ -71,17 +71,17 @@ class AgentController extends Controller
             'password' => 'required',
         ]);
         // Check if username already exists for another agent
-        if (User::where('username', $validated['username'])->where('id', '!=', $user->id)->exists()) {
+        if (User::where('username', $validated['username'])->where('id', '!=', $agent->id)->exists()) {
             return response()->json(['message' => 'Username already exists'], 422);
         }
-        $user->name = $validated['name'];
-        $user->username = $validated['username'];
-        $user->role_id = 2;
-        $user->setRawAttributes([
+        $agent->name = $validated['name'];
+        $agent->username = $validated['username'];
+        $agent->role_id = 2;
+        $agent->setRawAttributes([
             'password' => $validated['password'],
-        ] + $user->getAttributes());
-        $user->save();
-        return response()->json($user);
+        ] + $agent->getAttributes());
+        $agent->save();
+        return response()->json($agent);
     }
 
     public function destroy(User $agent)
