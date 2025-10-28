@@ -1012,7 +1012,7 @@ useEffect(() => {
                 }
                 // Only compare if both dates are valid
                 if (rowDate instanceof Date && !isNaN(rowDate) && serverDate instanceof Date && !isNaN(serverDate)) {
-                    if (serverDate.getTime() >= rowDate.getTime() && row.status == 'SELECT') highlight = true;
+                    if (serverDate.getTime() >= rowDate.getTime() && (row.status == 'SELECT' || row.status == null)) highlight = true;
                 }
             }
             return {
