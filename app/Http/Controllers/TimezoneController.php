@@ -65,14 +65,16 @@ class TimezoneController extends Controller
     {
         $phpTimezones = \DateTimeZone::listIdentifiers();
         $carbonTimezones = array_map(function($tz) {
+            $carbon = Carbon::now(new \DateTimeZone($tz));
+            // Try to get abbreviation from Carbon
+            $abbr = $carbon->format('T');
             return [
                 'area' => $tz,
-                'offset' => Carbon::now(new \DateTimeZone($tz))->format('P'),
+                'offset' => $carbon->format('P'),
+                'abbreviation' => $abbr,
                 'source' => 'php',
             ];
         }, $phpTimezones);
-
-
         return response()->json($carbonTimezones);
     }
 }

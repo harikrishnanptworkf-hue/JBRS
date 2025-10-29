@@ -78,8 +78,8 @@ class ReportController extends Controller
 
 
         // Sorting
-        $sortBy = $request->input('sortBy', 's_id');
-        $sortOrder = $request->input('sortOrder', 'desc');
+    $sortBy = $request->input('sortBy', 'indian_time');
+    $sortOrder = $request->input('sortOrder', 'desc');
         // Allow only certain columns to be sorted for security
         $allowedSorts = [
             's_id', 'agent', 'user', 'group_name', 'exam_code', 'indian_time', 's_status',

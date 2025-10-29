@@ -20,7 +20,7 @@ function ReportList() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Report";
 
-    const [customPageSize, setCustomPageSize] = useState(10);
+    const [customPageSize, setCustomPageSize] = useState(50);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [reports, setReports] = useState([]);
@@ -39,8 +39,8 @@ function ReportList() {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [search, setSearch] = useState("");
-    const [sortBy, setSortBy] = useState('s_id');
-    const [sortOrder, setSortOrder] = useState('desc');
+    const [sortBy, setSortBy] = useState('indian_time');    
+    const [sortOrder, setSortOrder] = useState('asc');
     const [roleId, setRoleId] = useState(null);
     const [isAllSelected, setIsAllSelected] = useState(false);
     const [exportLoading, setExportLoading] = useState(false);
@@ -182,23 +182,23 @@ function ReportList() {
             enableSorting: true,
             cell: (cellProps) => <span>{cellProps.row.original.examcode?.ex_code || ''}</span>
         },
-        {
-            header: (
-                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
-                    Date
-                    {sortBy === 'date' && (
-                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                    )}
-                </span>
-            ),
-            accessorKey: 'date',
-            enableSorting: true,
-            cell: (cellProps) => <span>{cellProps.row.original.formatted_s_date_original || cellProps.row.original.date || ''}</span>
-        },
+        // {
+        //     header: (
+        //         <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+        //             Date
+        //             {sortBy === 'date' && (
+        //                 <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+        //             )}
+        //         </span>
+        //     ),
+        //     accessorKey: 'date',
+        //     enableSorting: true,
+        //     cell: (cellProps) => <span>{cellProps.row.original.formatted_s_date_original || cellProps.row.original.date || ''}</span>
+        // },
         {
             header: (
                 <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('indian_time')}>
-                    Indian Time
+                    Indian date time
                     {sortBy === 'indian_time' && (
                         <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
                     )}

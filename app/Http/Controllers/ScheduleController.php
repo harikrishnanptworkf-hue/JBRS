@@ -267,6 +267,7 @@ class ScheduleController extends Controller
     // Update an existing schedule
     public function update(Request $request, Schedule $schedule)
     {
+        $scheduleData = [];
         $validated = $request->validate([
             'agent'           => 'sometimes|required|integer',
             'user'            => 'nullable|integer',
@@ -315,6 +316,14 @@ class ScheduleController extends Controller
             's_remind_date'   => $validated['remind_date'] ?? $schedule->s_remind_date,
             's_remind_remark' => $validated['remind_remark'] ?? $schedule->s_remind_remark,
         ];
+
+        if ($schedule->s_status == "RESCHEDULE" && !empty($validated['date'])) {
+            $oldDate = $schedule->s_date ? Carbon::parse($schedule->s_date) : null;
+            $newDate = Carbon::parse($validated['date']);
+            if ($oldDate && !$oldDate->equalTo($newDate)) {
+                $scheduleData['s_status'] = null;
+            }
+        }
 
         $schedule->update($scheduleData);
         broadcast(new ClientUpdated($schedule));

@@ -61,7 +61,7 @@ function ScheduleList() {
     const [modal, setModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [schedule, setSchedule] = useState(null);
-    const [customPageSize, setCustomPageSize] = useState(20);
+    const [customPageSize, setCustomPageSize] = useState(50);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [schedules, setSchedules] = useState([]);
@@ -697,7 +697,7 @@ const columns = useMemo(() => [
             setCustomPageSize(allSize);
             setCurrentPage(1);
         } else {
-            const newPageSize = Number(newPageSizeRaw) || 20;
+            const newPageSize = Number(newPageSizeRaw) || 50;
             setCustomPageSize(newPageSize);
             setCurrentPage(1);
         }

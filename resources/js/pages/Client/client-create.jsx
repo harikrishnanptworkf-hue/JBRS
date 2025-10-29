@@ -321,7 +321,7 @@ const ClientCreate = () => {
   const timezoneOptions = Array.isArray(timezones)
     ? timezones.map(tz => ({
         value: tz.area || tz.id,
-        label: tz.area + (tz.offset ? ` (${tz.offset})` : '')
+        label: tz.area + (tz.abbreviation ? ` (${tz.abbreviation}` : '') + (tz.offset ? ` ${tz.offset})` : ''),
       }))
     : [];
 
