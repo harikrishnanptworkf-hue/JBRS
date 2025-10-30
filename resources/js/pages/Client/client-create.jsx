@@ -80,6 +80,13 @@ const ClientCreate = () => {
     });
     api.get('/timezone/get-full-timezones').then(res => {
       setTimezones(res.data || []);
+      const isEdit = location.state && location.state.editId;
+      if (!isEdit && !validation.values.timezone && Array.isArray(res.data)) {
+        const kolkata = res.data.find(tz => tz.area && tz.area.toLowerCase() === 'asia/kolkata');
+        if (kolkata) {
+          validation.setFieldValue('timezone', kolkata.area);
+        }
+      }
     });
     api.get('/examcodes', { params: { pageSize: 100 } }).then(res => {
       const options = Array.isArray(res.data.data)

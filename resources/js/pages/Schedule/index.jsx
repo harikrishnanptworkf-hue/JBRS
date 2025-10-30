@@ -76,6 +76,27 @@ function ScheduleList() {
     const [focusedCell, setFocusedCell] = useState(null);
 
     useEffect(() => {
+    const handleRefresh = () => {
+        // setActiveTab('defaultTab'); 
+            setCurrentPage(1);
+            setCustomPageSize(50);
+            setSortState({ sortBy: 'indian_time', sortOrder: 'asc' });
+            setFilterAgent('');
+            setFilterUser('');
+            setFilterGroup('');
+            setFilterExamCode('');
+            setFilterStatus('');
+            setFilterStartDate(null);
+            setFilterEndDate(null);
+            setSearch("");
+            setShowFullControls(false);
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        };
+        window.addEventListener('forcePageRefresh', handleRefresh);
+        return () => window.removeEventListener('forcePageRefresh', handleRefresh);
+    }, []);
+
+    useEffect(() => {
         if (!window.Echo) {
             console.error('window.Echo is not defined!');
             return;

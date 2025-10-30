@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const menuOptions = [
   { label: "Scheduled", to: "/schedule" },
@@ -13,6 +13,8 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const menuRef = useRef(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   useEffect(() => {
     if (!open) return;
     const handleClickAway = (e) => {
@@ -26,6 +28,20 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
     document.addEventListener("mousedown", handleClickAway);
     return () => document.removeEventListener("mousedown", handleClickAway);
   }, [open]);
+  // Helper to force rerender/reset if already on page
+  const handleMenuClick = (opt) => {
+    setOpen(false);
+    if (setSelectedMenu) setSelectedMenu(t ? t(opt.label) : opt.label);
+    if (location.pathname === opt.to) {
+      // If already on page, force scroll to top and trigger refresh event
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      // Set a unique value in sessionStorage to help page detect refresh
+      sessionStorage.setItem('forcePageRefresh', String(Date.now()));
+      window.dispatchEvent(new Event('forcePageRefresh'));
+    } else {
+      navigate(opt.to);
+    }
+  };
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -71,9 +87,8 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
           }}
         >
           {menuOptions.filter(opt => !(opt.hideFor && opt.hideFor.includes(roleId))).map(opt => (
-            <Link
+            <button
               key={opt.label}
-              to={opt.to}
               className="navbar-dropdown-item"
               style={{
                 display: "flex",
@@ -83,15 +98,17 @@ const NavbarDropdownButton = ({ roleId, t, setSelectedMenu }) => {
                 fontWeight: 500,
                 fontSize: "1.08rem",
                 textDecoration: "none",
+                background: "none",
+                border: "none",
+                width: "100%",
+                textAlign: "left",
                 transition: "background 0.2s, color 0.2s",
+                cursor: "pointer",
               }}
-              onClick={() => {
-                setOpen(false);
-                if (setSelectedMenu) setSelectedMenu(t ? t(opt.label) : opt.label);
-              }}
+              onClick={() => handleMenuClick(opt)}
             >
               {opt.icon} {t ? t(opt.label) : opt.label}
-            </Link>
+            </button>
           ))}
         </div>
       )}
