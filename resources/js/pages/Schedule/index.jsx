@@ -1004,10 +1004,17 @@ useEffect(() => {
         todaySchedule = true;
     };
 
+    // Realtime IST timer for row highlight
+    const [realtimeIST, setRealtimeIST] = useState(() => new Date().toISOString());
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setRealtimeIST(new Date().toISOString());
+        }, 1000); // update every 30 seconds
+        return () => clearInterval(interval);
+    }, []);
     // Highlight row red if IST time >= indian_time column
     const tableData = useMemo(() => {
-        if (!serverIST) return schedules;
-        const serverDate = new Date(serverIST);
+        const serverDate = new Date(realtimeIST);
         return schedules.map(row => {
             let highlight = false;
             if (row.indian_time) {
@@ -1041,7 +1048,7 @@ useEffect(() => {
                 _rowClass: highlight ? 'font-red' : (row.status && row.status.toUpperCase() === 'TAKEN' ? 'font-maroon' : ''),
             };
         });
-    }, [schedules, serverIST]);
+    }, [schedules, realtimeIST]);
             {/* Add red color for highlight */}
 
     return (
