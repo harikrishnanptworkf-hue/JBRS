@@ -1004,12 +1004,12 @@ useEffect(() => {
         todaySchedule = true;
     };
 
-    // Realtime IST timer for row highlight
+    // Realtime IST timer for row highlight (update every 60 seconds for smooth UX)
     const [realtimeIST, setRealtimeIST] = useState(() => new Date().toISOString());
     useEffect(() => {
         const interval = setInterval(() => {
             setRealtimeIST(new Date().toISOString());
-        }, 1000); // update every 30 seconds
+        }, 60000); // update every 60 seconds
         return () => clearInterval(interval);
     }, []);
     // Highlight row red if IST time >= indian_time column
