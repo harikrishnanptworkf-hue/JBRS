@@ -289,14 +289,8 @@ class EnquiryController extends Controller
                 })
                 ->distinct()
                 ->get();
-            $examcodes = Schedule::select('s_exam_code as ex_code')
-                                ->whereNotNull('s_exam_code')
-                                ->where('s_exam_code', '!=', '')
-                                ->when($roleId && $roleId == 3, function ($query) use ($sessionUser) {
-                                    $query->where('s_user_id', $sessionUser['id']);
-                                })
-                                ->distinct()
-                                ->get();
+        $examcodes = ExamCode::select('id', 'ex_code')->get();
+
         }
         return response()->json([
             'users' => $users,
