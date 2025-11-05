@@ -22,9 +22,13 @@ class ReportController extends Controller
             ->whereNotNull('s_status')
             ->where('s_status', '!=', 'SELECT');
 
-        // If logged-in user is role_id 2, only show schedules where agent_id = user id
-        if ($user && $user->role_id == 2) {
-            $query->where('s_agent_id', $user->id);
+        // Scope by role: agents (role_id=2) see their agent rows; users (role_id=3) see their own rows
+        if ($user) {
+            if ((int)$user->role_id === 2) {
+                $query->where('s_agent_id', $user->id);
+            } elseif ((int)$user->role_id === 3) {
+                $query->where('s_user_id', $user->id);
+            }
         }
 
         // Filter by user_id
@@ -78,8 +82,8 @@ class ReportController extends Controller
 
 
         // Sorting
-    $sortBy = $request->input('sortBy', 'indian_time');
-    $sortOrder = $request->input('sortOrder', 'desc');
+        $sortBy = $request->input('sortBy', 'indian_time');
+        $sortOrder = $request->input('sortOrder', 'desc');
         // Allow only certain columns to be sorted for security
         $allowedSorts = [
             's_id', 'agent', 'user', 'group_name', 'exam_code', 'indian_time', 's_status',
@@ -110,6 +114,7 @@ class ReportController extends Controller
         }
 
         $schedules =  $query->get();
+
         return response()->json([
             'data' => $schedules,
             'total' => $total,
@@ -129,8 +134,12 @@ class ReportController extends Controller
             ->whereNotNull('s_status')
             ->where('s_status', '!=', 'SELECT');
 
-        if ($user && $user->role_id == 2) {
-            $query->where('s_agent_id', $user->id);
+        if ($user) {
+            if ((int)$user->role_id === 2) {
+                $query->where('s_agent_id', $user->id);
+            } elseif ((int)$user->role_id === 3) {
+                $query->where('s_user_id', $user->id);
+            }
         }
 
         if ($request->filled('user_id') && $request->input('user_id') !== 'all') {
