@@ -12,6 +12,7 @@ class ExamCodeController extends Controller
         $search = $request->input('search');
         $sortBy = $request->input('sortBy', 'id');
         $sortDirection = $request->input('sortDirection', 'desc');
+        $pageSizeParam = $request->input('pageSize', 10);
         $query = ExamCode::query();
         if ($search) {
             $query->where('ex_code', 'like', "%$search%");
@@ -22,8 +23,15 @@ class ExamCodeController extends Controller
             $sortBy = 'id';
         }
         $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
-        $examcodes = $query->orderBy($sortBy, $sortDirection)
-            ->paginate($request->input('pageSize', 10));
+        // If pageSize is 'All' (case-insensitive), return all records without pagination
+        if (strtolower((string)$pageSizeParam) === 'all') {
+            $all = $query->orderBy($sortBy, $sortDirection)->get();
+            return response()->json(['data' => $all, 'total' => $all->count()]);
+        }
+
+        // Fallback to numeric pagination
+        $pageSize = is_numeric($pageSizeParam) ? (int)$pageSizeParam : 10;
+        $examcodes = $query->orderBy($sortBy, $sortDirection)->paginate($pageSize);
         // Return only data array for frontend compatibility
         return response()->json(['data' => $examcodes->items(), 'total' => $examcodes->total()]);
     }

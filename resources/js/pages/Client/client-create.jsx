@@ -88,7 +88,7 @@ const ClientCreate = () => {
         }
       }
     });
-    api.get('/examcodes', { params: { pageSize: 100 } }).then(res => {
+    api.get('/examcodes', { params: { pageSize: 'All' } }).then(res => {
       const options = Array.isArray(res.data.data)
         ? res.data.data.map(ec => ({ value: ec.id, label: ec.ex_code }))
         : [];
