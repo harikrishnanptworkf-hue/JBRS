@@ -12,7 +12,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 
-const INACTIVITY_LIMIT_MS = 14400000; 
+const INACTIVITY_LIMIT_MS = 60000; 
 
 function createActivityChannel() {
   return eventChannel((emit) => {
