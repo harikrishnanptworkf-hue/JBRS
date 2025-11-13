@@ -359,12 +359,12 @@ function Pending() {
                 end_date: endDate ? `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}` : undefined,
             };
 
-            const response = await api.get('/report/export', { params, responseType: 'blob' });
+            const response = await api.get('/invoice/export', { params: { ...params, type: 'pending' }, responseType: 'blob' });
             const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `report_${new Date().toISOString().slice(0,10)}.xlsx`;
+            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `invoice_pending_${new Date().toISOString().slice(0,10)}.xlsx`;
             a.download = filename.replace(/"/g, '') ;
             document.body.appendChild(a);
             a.click();

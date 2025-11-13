@@ -9,6 +9,10 @@ use App\Models\Settings;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class InvoiceController extends Controller
 {
@@ -139,6 +143,33 @@ class InvoiceController extends Controller
         }
 
         $schedules =  $query->get();
+
+        // For completed tab, resolve account holder display name from bank_accounts when s_account_holder stores an ID
+        if (strtolower((string)$type) === 'completed' && $schedules->count() > 0) {
+            $numericIds = $schedules
+                ->filter(function($s){ return !empty($s->s_account_holder) && ctype_digit((string)$s->s_account_holder); })
+                ->map(function($s){ return (int)$s->s_account_holder; })
+                ->unique()
+                ->values()
+                ->all();
+
+            $accountsById = empty($numericIds)
+                ? collect()
+                : BankAccount::whereIn('id', $numericIds)->get()->keyBy('id');
+
+            foreach ($schedules as $s) {
+                $resolved = null;
+                if (!empty($s->s_account_holder) && ctype_digit((string)$s->s_account_holder)) {
+                    $acc = $accountsById[(int)$s->s_account_holder] ?? null;
+                    $resolved = $acc->account_name ?? null;
+                } elseif (!empty($s->s_account_holder)) {
+                    // Already a name
+                    $resolved = $s->s_account_holder;
+                }
+                // Attach a derived attribute for frontend consumption
+                $s->account_holder_name = $resolved;
+            }
+        }
         return response()->json([
             'data' => $schedules,
             'total' => $total,
@@ -321,5 +352,221 @@ class InvoiceController extends Controller
         }
         $absolutePath = Storage::disk('local')->path($relativePath);
         return response()->download($absolutePath, $filename);
+    }
+
+    /**
+     * Export Pending/Completed invoice listings to Excel (or CSV fallback).
+     * Mirrors filters/sorting from index(), and scopes rows by type:
+     * - type=pending => schedules without invoice number
+     * - type=completed => schedules with invoice number
+     */
+    public function export(Request $request)
+    {
+        $type = strtolower((string)($request->query('type') ?? 'pending'));
+        $pageSize = $request->input('pageSize', null);
+        $page = (int) $request->input('page', 1);
+
+        $user = $request->user();
+        $query = Schedule::with(['user', 'agent', 'examcode'])
+            ->whereNotNull('s_status')
+            ->whereIn('s_status', ['REVOKE', 'DONE']);
+
+        if ($type === 'completed') {
+            $query->whereNotNull('s_invoice_number');
+        } else {
+            $query->whereNull('s_invoice_number');
+            $type = 'pending'; // normalize
+        }
+
+        // Role scoping
+        if ($user) {
+            if ((int)$user->role_id === 2) {
+                $query->where('s_agent_id', $user->id);
+            } elseif ((int)$user->role_id === 3) {
+                $query->where('s_user_id', $user->id);
+            }
+        }
+
+        // Filters
+        if ($request->filled('user_id') && $request->input('user_id') !== 'all') {
+            $query->where('s_user_id', $request->input('user_id'));
+        }
+        if ($request->filled('agent_id') && $request->input('agent_id') !== 'all') {
+            $query->where('s_agent_id', $request->input('agent_id'));
+        }
+        if ($request->filled('start_date')) {
+            try {
+                $start = Carbon::createFromFormat('Y-m-d', $request->input('start_date'), 'Asia/Kolkata')
+                    ->startOfDay()->setTimezone('UTC');
+                $query->where('s_date', '>=', $start->toDateTimeString());
+            } catch (\Exception $e) {}
+        }
+        if ($request->filled('end_date')) {
+            try {
+                $end = Carbon::createFromFormat('Y-m-d', $request->input('end_date'), 'Asia/Kolkata')
+                    ->endOfDay()->setTimezone('UTC');
+                $query->where('s_date', '<=', $end->toDateTimeString());
+            } catch (\Exception $e) {}
+        }
+        if ($request->filled('s_group_name')) {
+            $query->where('s_group_name', $request->input('s_group_name'));
+        }
+        if ($request->filled('s_exam_code')) {
+            $val = $request->input('s_exam_code');
+            $query->where(function($q) use ($val) {
+                $q->where('s_exam_code', $val)
+                  ->orWhereHas('examcode', function($q2) use ($val) {
+                      $q2->where('ex_code', $val)->orWhere('id', $val);
+                  });
+            });
+        }
+        if ($request->filled('s_status')) {
+            $query->where('s_status', 'like', '%' . $request->input('s_status') . '%');
+        }
+
+        // Sorting
+        $sortBy = $request->input('sortBy', 's_date');
+        $sortOrder = $request->input('sortOrder', 'desc');
+        $sortMap = [
+            'agent' => 's_agent_id',
+            'user' => 's_user_id',
+            'group_name' => 's_group_name',
+            'exam_code' => 's_exam_code',
+            'indian_time' => 's_date',
+            'status' => 's_status',
+            'done_by' => 's_done_by',
+            's_invoice_number' => 's_invoice_number',
+            's_amount' => 's_amount',
+        ];
+        $sortColumn = $sortMap[$sortBy] ?? $sortBy;
+        $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortColumn, $sortOrder);
+
+        $total = $query->count();
+        if ($pageSize === 'All' || $pageSize === 'all' || is_null($pageSize) || (int)$pageSize >= $total) {
+            $items = $query->get();
+        } else {
+            $per = (int)$pageSize ?: 10;
+            $items = $query->skip(($page - 1) * $per)->take($per)->get();
+        }
+
+        // Build rows based on tab type
+        $rows = [];
+        $sno = 1;
+        foreach ($items as $s) {
+            if ($type === 'completed') {
+                $rows[] = [
+                    'SNo' => $sno++,
+                    'User' => $s->user->name ?? ($s->s_user_id ?? ''),
+                    'Agent' => $s->agent->name ?? ($s->s_agent_id ?? ''),
+                    'Group Name' => $s->s_group_name ?? '',
+                    'Exam Code' => $s->examcode->ex_code ?? $s->s_exam_code ?? '',
+                    'Indian Time' => $s->formatted_s_date ?? '',
+                    'Invoice No' => $s->s_invoice_number ?? '',
+                    'Amount' => $s->s_amount ?? '',
+                    'Account Holder' => (function($v){
+                        if (empty($v)) return '';
+                        if (ctype_digit((string)$v)) {
+                            $acc = \App\Models\BankAccount::find((int)$v);
+                            return $acc->account_name ?? '';
+                        }
+                        return $v; // already a name
+                    })($s->s_account_holder ?? ''),
+                    'Status' => $s->s_status ?? '',
+                    'System Name' => $s->s_system_name ?? $s->system_name ?? '',
+                    'Access Code' => $s->s_access_code ?? $s->access_code ?? '',
+                ];
+            } else {
+                // pending
+                $rows[] = [
+                    'SNo' => $sno++,
+                    'User' => $s->user->name ?? ($s->s_user_id ?? ''),
+                    'Agent' => $s->agent->name ?? ($s->s_agent_id ?? ''),
+                    'Group Name' => $s->s_group_name ?? '',
+                    'Exam Code' => $s->examcode->ex_code ?? $s->s_exam_code ?? '',
+                    'Indian Time' => $s->formatted_s_date ?? '',
+                    'Done By' => $s->s_done_by ?? '',
+                    'Status' => $s->s_status ?? '',
+                    'System Name' => $s->s_system_name ?? $s->system_name ?? '',
+                    'Access Code' => $s->s_access_code ?? $s->access_code ?? '',
+                    'Comment' => $s->s_revoke_reason ?? '',
+                ];
+            }
+        }
+
+        // Generate spreadsheet (or CSV fallback)
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $headers = array_keys($rows[0] ?? ($type === 'completed'
+                ? ['SNo','User','Agent','Group Name','Exam Code','Indian Time','Invoice No','Amount','Account Holder','Status','System Name','Access Code']
+                : ['SNo','User','Agent','Group Name','Exam Code','Indian Time','Done By','Status','System Name','Access Code','Comment']));
+
+            // Header row
+            $col = 1;
+            foreach ($headers as $h) {
+                $sheet->setCellValueByColumnAndRow($col, 1, $h);
+                $col++;
+            }
+
+            // Style header similar to Report export
+            $headerRange = 'A1:' . $sheet->getCellByColumnAndRow(count($headers), 1)->getCoordinate();
+            $sheet->getStyle($headerRange)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0271B9');
+            $sheet->getStyle($headerRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle($headerRange)->getFont()->setBold(true)->setSize(14);
+            $sheet->getRowDimension(1)->setRowHeight(26);
+
+            $spreadsheet->getDefaultStyle()->getFont()->setName('Calibri')->setSize(12);
+            $sheet->getDefaultColumnDimension()->setWidth(18);
+            $sheet->getDefaultRowDimension()->setRowHeight(20);
+
+            // Data rows
+            $rowNum = 2;
+            foreach ($rows as $r) {
+                $col = 1;
+                foreach ($headers as $h) {
+                    $sheet->setCellValueByColumnAndRow($col, $rowNum, $r[$h] ?? '');
+                    $col++;
+                }
+                $rowNum++;
+            }
+
+            for ($i = 1; $i <= count($headers); $i++) {
+                $sheet->getColumnDimensionByColumn($i)->setAutoSize(true);
+            }
+
+            $writer = new Xlsx($spreadsheet);
+            $filename = 'invoice_' . $type . '_' . date('Y-m-d_His') . '.xlsx';
+
+            $response = new StreamedResponse(function() use ($writer) {
+                $writer->save('php://output');
+            });
+            $disposition = $response->headers->makeDisposition('attachment', $filename);
+            $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            $response->headers->set('Content-Disposition', $disposition);
+            return $response;
+
+        } catch (\Error $e) {
+            // CSV fallback
+            $callback = function() use ($rows, $type) {
+                $out = fopen('php://output', 'w');
+                if (empty($rows)) {
+                    fputcsv($out, ['No data']);
+                } else {
+                    $headers = array_keys($rows[0]);
+                    fputcsv($out, $headers);
+                    foreach ($rows as $r) {
+                        fputcsv($out, array_values($r));
+                    }
+                }
+                fclose($out);
+            };
+            $filename = 'invoice_' . $type . '_' . date('Y-m-d_His') . '.csv';
+            return response()->stream($callback, 200, [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        }
     }
 }

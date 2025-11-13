@@ -142,6 +142,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('invoice')->name('invoice.')->group(function () {
+        // Define static routes BEFORE parameterized routes to avoid /export being captured by /{type}
+        Route::get('/export', [InvoiceController::class, 'export'])->name('export');
         Route::get('/{type}', [InvoiceController::class, 'index'])->name('index');
         Route::post('/', [InvoiceController::class, 'store'])->name('store');
         Route::put('/{agent}', [InvoiceController::class, 'update'])->name('update');

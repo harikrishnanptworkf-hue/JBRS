@@ -242,9 +242,12 @@ function Completed() {
         },
         {
             header: 'Account Holder',
-            accessorKey: 's_account_holder',
+            accessorKey: 'account_holder_name',
             enableSorting: false,
-            cell: (cellProps) => <span>{cellProps.row.original.s_account_holder || ''}</span>
+            cell: (cellProps) => {
+                const r = cellProps.row.original;
+                return <span>{r.account_holder_name || r.s_account_holder || ''}</span>;
+            }
         },
 
         // Removed Done By column as per requirement
@@ -382,12 +385,12 @@ function Completed() {
                 end_date: endDate ? `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}` : undefined,
             };
 
-            const response = await api.get('/report/export', { params, responseType: 'blob' });
+            const response = await api.get('/invoice/export', { params: { ...params, type: 'completed' }, responseType: 'blob' });
             const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `report_${new Date().toISOString().slice(0,10)}.xlsx`;
+            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `invoice_completed_${new Date().toISOString().slice(0,10)}.xlsx`;
             a.download = filename.replace(/"/g, '') ;
             document.body.appendChild(a);
             a.click();
