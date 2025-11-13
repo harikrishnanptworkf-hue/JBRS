@@ -395,11 +395,7 @@ const ClientCreate = () => {
           validation.setFieldError('amount', 'Amount must be greater than 0');
           blocked = true;
         }
-        if (!validation.values.account || String(validation.values.account).trim() === '') {
-          validation.setFieldTouched('account', true, false);
-          validation.setFieldError('account', 'Account is required');
-          blocked = true;
-        }
+        // Account optional: backend will use default if missing
         if (blocked) {
           // Field-specific errors already set; no generic banner needed
           return;
@@ -540,11 +536,7 @@ const ClientCreate = () => {
         validation.setFieldError('exam_name', 'Exam name is required');
         blocked = true;
       }
-      if (!validation.values.account || String(validation.values.account).trim() === '') {
-        validation.setFieldTouched('account', true, false);
-        validation.setFieldError('account', 'Account is required');
-        blocked = true;
-      }
+      // Account optional for preview as well
       if (blocked) {
         // Field-specific errors already set; no generic banner needed for view action
         return;
@@ -1014,7 +1006,7 @@ const ClientCreate = () => {
 
                               {/* Account under Amount */}
                               <div className="mt-3">
-                                <label htmlFor="account" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Account <span style={{ color: 'red' }}>*</span></label>
+                                <label htmlFor="account" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Account (optional)</label>
                                 <select
                                   id="account"
                                   name="account"
