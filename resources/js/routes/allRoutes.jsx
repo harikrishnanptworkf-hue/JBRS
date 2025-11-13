@@ -1,7 +1,6 @@
 
 //Invoices
-import InvoicesList from "../pages/Invoices/invoices-list";
-import InvoiceDetail from "../pages/Invoices/invoices-detail";
+
 
 // Authentication related pages
 import Login from "../pages/Authentication/Login";
@@ -109,6 +108,12 @@ import Settings from "../pages/Settings/admin-settings";
 
 //examcode
 import ExamCode from "../pages/Examcode/index";
+
+//invoice
+import Invoice from "../pages/Invoices/index";
+
+import Accounts from "../pages/Accounts/index";
+import AccountsCreate from "../pages/Accounts/form";
 
 
 const authProtectedRoutes = [
@@ -287,6 +292,15 @@ const authProtectedRoutes = [
 
   //examcode
   { path: "/examcode", component: <ExamCode /> },
+
+
+  { path: "/invoice", component: <Invoice /> },
+
+  { path: "/accounts", component: <Accounts /> },
+
+
+  { path: "/accounts/create", component: <AccountsCreate /> },
+
 
   
 ];

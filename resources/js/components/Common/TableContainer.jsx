@@ -102,7 +102,6 @@ const TableContainer = ({
   endDate,
   setEndDate
 }) => {
-
   const [columnFilters, setColumnFilters] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');
 
@@ -218,7 +217,6 @@ const TableContainer = ({
 
       <div className={divClassName ? divClassName : "table-responsive"}>
 <Table
-  hover
   className={tableClass}
   bordered={isBordered}
   style={{ borderCollapse: "separate", borderSpacing: "1px 0px"}} 

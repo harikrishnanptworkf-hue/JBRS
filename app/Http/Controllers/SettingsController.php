@@ -150,4 +150,46 @@ class SettingsController extends Controller
             ->get(['h_day', 'h_is_active']);
         return response()->json($holidays);
     }
+
+    // Get default account id from settings
+    public function getDefaultAccount()
+    {
+        // Prefer lookup by s_name
+        $val = Settings::where('s_name', 'default_account')->value('s_value');
+        $accountId = $val !== null && $val !== '' ? (int)$val : null;
+        return response()->json(['account_id' => $accountId]);
+    }
+
+    // Set default account id into settings (optionally clear by sending null)
+    public function setDefaultAccount(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'nullable|integer',
+        ]);
+        $accountId = $request->input('account_id');
+        // Ensure a single row exists for default_account; try to keep id=11 if present
+        $settings = Settings::where('s_name', 'default_account')->first();
+        if (!$settings) {
+            // If row with id=11 exists, reuse it; else create new
+            $byId = Settings::find(11);
+            if ($byId) {
+                $byId->s_name = 'default_account';
+                $byId->s_value = $accountId;
+                $byId->save();
+                return response()->json(['success' => true, 'account_id' => $accountId]);
+            }
+            $settings = new Settings();
+            $settings->s_name = 'default_account';
+            $settings->s_value = $accountId;
+            // Try to set id=11 if table allows, ignore errors if not
+            try {
+                $settings->id = 11;
+            } catch (\Throwable $e) {}
+            $settings->save();
+        } else {
+            $settings->s_value = $accountId;
+            $settings->save();
+        }
+        return response()->json(['success' => true, 'account_id' => $accountId]);
+    }
 }

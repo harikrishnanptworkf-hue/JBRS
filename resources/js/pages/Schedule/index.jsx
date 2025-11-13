@@ -1063,6 +1063,10 @@ useEffect(() => {
                 .reminder-table-shadow { box-shadow: 0 4px 24px rgba(44,62,80,0.10), 0 1.5px 4px rgba(44,62,80,0.08); border-radius: 18px; overflow: hidden; }
                 .reminder-table-shadow table {overflow: hidden; background: #fff; }
                 .reminder-table-shadow th, .reminder-table-shadow td { border-radius: 0 !important; }
+                /* Disable table row hover background change */
+                .reminder-table-shadow .table-hover tbody tr:hover { background-color: inherit !important; }
+                .reminder-table-shadow .table-hover tbody tr:hover > td,
+                .reminder-table-shadow .table-hover tbody tr:hover > th { background-color: inherit !important; }
                 .examcode-action-btn { border: none; background: #f6f8fa; color: #2ba8fb; border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 1.5px 8px rgba(44,62,80,0.04); transition: background 0.2s, color 0.2s, box-shadow 0.2s; margin-right: 4px; position: relative; }
                 .examcode-action-btn.edit { color: #2ba8fb; }
                 .examcode-action-btn:hover { background: #e3e6ef; box-shadow: 0 2px 12px rgba(44,62,80,0.10); }

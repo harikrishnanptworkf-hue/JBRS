@@ -33,7 +33,6 @@ class ScheduleController extends Controller
     $sortByMap = [
         'formatted_s_date' => 's_date',
         'indian_time' => 's_date',
-        // add other mappings as needed
     ];
     if (isset($sortByMap[$sortBy])) {
         $sortBy = $sortByMap[$sortBy];
@@ -114,6 +113,7 @@ class ScheduleController extends Controller
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('s_group_name', 'like', "%$search%")
+                                    ->orWhere('s_exam_name', 'like', "%$search%")
                   ->orWhere('s_exam_code', 'like', "%$search%")
                   ->orWhere('s_location', 'like', "%$search%")
                   ->orWhere('s_email', 'like', "%$search%")
@@ -212,12 +212,16 @@ class ScheduleController extends Controller
             'agent'           => 'required|integer',
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
+            'bill_to'         => 'nullable|string|max:191',
+            'exam_name'       => 'nullable|string|max:191',
             'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
             'date'            => ['nullable', 'date_format:Y-m-d H:i:s'],
             'location'        => 'nullable|string|max:191',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
+            'amount'          => 'nullable|numeric',
+            'account_holder'  => 'nullable|string|max:191',
             'comment'         => 'nullable|string',
             'email'           => 'nullable|string|max:191',
             'phone'           => 'nullable|string|max:20',
@@ -241,12 +245,16 @@ class ScheduleController extends Controller
             's_agent_id'      => $validated['agent'],
             's_user_id'       => $validated['user'] ?? null,
             's_group_name'    => $validated['group_name'] ?? null,
+            's_bill_to'       => $validated['bill_to'] ?? ($validated['group_name'] ?? null),
+            's_exam_name'     => $validated['exam_name'] ?? null,
             's_exam_code'     => $validated['exam_code_id'] ?? null,
             's_area'          => $request->input('timezone') ?? null,
             's_date'          => $validated['date'] ?? null,
             's_location'      => $validated['location'] ?? null,
             's_support_fee'   => $validated['support_fee'] ?? null,
             's_voucher_fee'   => $validated['voucher_fee'] ?? null,
+            's_amount'        => $validated['amount'] ?? null,
+            's_account_holder'=> $validated['account_holder'] ?? ($request->input('account') ?? null),
             's_comment'       => $validated['comment'] ?? null,
             's_email'         => $validated['email'] ?? null,
             's_phone'         => $validated['phone'] ?? null,
@@ -272,11 +280,15 @@ class ScheduleController extends Controller
             'agent'           => 'sometimes|required|integer',
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
+            'bill_to'         => 'nullable|string|max:191',
+            'exam_name'       => 'nullable|string|max:191',
             'exam_code'       => 'nullable|string|max:45',
             'date'            => ['nullable', 'date_format:Y-m-d H:i:s'],
             'location'        => 'nullable|string|max:191',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
+            'amount'          => 'nullable|numeric',
+            'account_holder'  => 'nullable|string|max:191',
             'comment'         => 'nullable|string',
             'email'           => 'nullable|string|max:191',
             'phone'           => 'nullable|string|max:20',
@@ -305,11 +317,15 @@ class ScheduleController extends Controller
             's_agent_id'      => $validated['agent'] ?? $schedule->s_agent_id,
             's_user_id'       => $validated['user'] ?? $schedule->s_user_id,
             's_group_name'    => $validated['group_name'] ?? $schedule->s_group_name,
+            's_bill_to'       => array_key_exists('bill_to', $validated) ? $validated['bill_to'] : ($schedule->s_bill_to ?? $schedule->s_group_name),
+            's_exam_name'     => array_key_exists('exam_name', $validated) ? $validated['exam_name'] : $schedule->s_exam_name,
             's_exam_code'     => $examCodeId ?? $schedule->s_exam_code,
             's_date'          => $validated['date'] ?? $schedule->s_date,
             's_location'      => $validated['location'] ?? $schedule->s_location,
             's_support_fee'   => $validated['support_fee'] ?? $schedule->s_support_fee,
             's_voucher_fee'   => $validated['voucher_fee'] ?? $schedule->s_voucher_fee,
+            's_amount'        => array_key_exists('amount', $validated) ? $validated['amount'] : $schedule->s_amount,
+            's_account_holder'=> array_key_exists('account_holder', $validated) ? $validated['account_holder'] : ($request->has('account') ? $request->input('account') : $schedule->s_account_holder),
             's_comment'       => $validated['comment'] ?? $schedule->s_comment,
             's_email'         => $validated['email'] ?? $schedule->s_email,
             's_phone'         => $validated['phone'] ?? $schedule->s_phone,

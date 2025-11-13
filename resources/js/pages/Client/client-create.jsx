@@ -50,6 +50,7 @@ const ClientCreate = () => {
   const [users, setUsers] = useState([]);
   const [timezones, setTimezones] = useState([]);
   const [examCodeOptions, setExamCodeOptions] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
   const [submitType, setSubmitType] = useState('');
@@ -60,6 +61,11 @@ const ClientCreate = () => {
   const [pendingSubmitValues, setPendingSubmitValues] = useState(null);
   const [ISTDisplay, setISTDisplay] = useState('');
   const [startDate, setstartDate] = useState(null);
+  const [pendingAccountHolder, setPendingAccountHolder] = useState('');
+  // Invoice generate confirmation modal state
+  const [showInvoiceConfirm, setShowInvoiceConfirm] = useState(false);
+  // Inline error state for invoice actions instead of alert popups
+  const [invoiceGeneralError, setInvoiceGeneralError] = useState('');
 
   useEffect(() => {
     api.get('/enquiries/filter-managed-data').then(res => {
@@ -88,13 +94,34 @@ const ClientCreate = () => {
         }
       }
     });
-    api.get('/examcodes', { params: { pageSize: 'All' } }).then(res => {
+      api.get('/examcodes', { params: { pageSize: 'All' } }).then(res => {
       const options = Array.isArray(res.data.data)
         ? res.data.data.map(ec => ({ value: ec.id, label: ec.ex_code }))
         : [];
       setExamCodeOptions(options);
     });
+    // Try to load accounts for the Account select (optional, non-blocking)
+    api.get('/accounts', { params: { pageSize: 100 } }).then(res => {
+      const list = (res?.data?.data || res?.data || [])
+      setAccounts(Array.isArray(list) ? list : []);
+    }).catch(() => setAccounts([]));
   }, []);
+
+  // If we have a pending account holder name from record load, try to preselect matching account once accounts are available
+  useEffect(() => {
+    if (!pendingAccountHolder || !Array.isArray(accounts) || accounts.length === 0) return;
+    // Only set if account field is not already set
+    if (validation.values.account) return;
+    const holder = String(pendingAccountHolder).trim().toLowerCase();
+    const match = accounts.find(acc => {
+      const nameFields = [acc?.account_name, acc?.name, acc?.title, acc?.label];
+      return nameFields.some(n => n && String(n).trim().toLowerCase() === holder);
+    });
+    if (match && (match.id ?? match.value)) {
+      validation.setFieldValue('account', String(match.id ?? match.value));
+      setPendingAccountHolder('');
+    }
+  }, [accounts, pendingAccountHolder]);
 
   // Fetch users for selected agent
   const handleAgentChange = async (e) => {
@@ -121,15 +148,19 @@ const ClientCreate = () => {
   const validation = useFormik({
     initialValues: {
       group_name: '',
+      bill_to: '',
+      exam_name: '',
       exam_code: '',
       date: '',
       support_fee: '',
       voucher_fee: '',
       total_fee: '',
+      amount: '',
       email: '',
       phone: '',
       agent: '',
       user: '',
+      account: '',
       timezone: '',
       location: '',
       comment: '',
@@ -145,6 +176,7 @@ const ClientCreate = () => {
         otherwise: schema => schema.notRequired()
       }),
       group_name: Yup.string().required('Group name is required'),
+  bill_to: Yup.string().when([], { is: () => location.state?.from === 'invoice', then: s => s.required('Bill to is required'), otherwise: s => s.notRequired() }),
       exam_code: Yup.string().required('Exam code is required'),
       date: Yup.mixed().when([], {
         is: () => formType === 'schedule',
@@ -157,12 +189,22 @@ const ClientCreate = () => {
       voucher_fee: Yup.number()
         .typeError('Voucher fee must be a number')
         .min(0, 'Voucher fee cannot be negative'),
+      amount: Yup.number()
+        .typeError('Amount must be a number')
+        .min(0, 'Amount cannot be negative')
+        .nullable(true),
       email: Yup.string().email('Invalid email'),
       phone: Yup.string()
         .matches(/^[+]?\d{10,15}$/, 'Invalid phone number')
     }),
     onSubmit: async (values) => {
       try {
+        const formattedDate = formatDateToYMDHMS(values.date);
+        const redirectToInvoicePending = () => {
+          // Prefer query param (more universal), also pass state for pages reading from state
+          navigate('/invoice?tab=pending', { state: { activeTab: 'pending' } });
+        };
+
         let exam_code_id = '';
         let exam_code_text = '';
         // Find selected exam code option
@@ -189,12 +231,16 @@ const ClientCreate = () => {
             }
           }
         }
-        // Prepare payload with exam_code_id
-        const payload = { ...values, exam_code_id, exam_code: exam_code_text };
+        // Prepare payload with normalized date and exam_code_id
+        const payload = { ...values, date: formattedDate, exam_code_id, exam_code: exam_code_text };
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
           await api.post('/schedule', payload);
           await api.delete(`/enquiries/${location.state.editId}`);
-          navigate('/schedule');
+          if (location.state?.from === 'invoice') {
+            redirectToInvoicePending();
+          } else {
+            navigate('/schedule');
+          }
         } else if (!location.state?.editType && formType === 'enquiry') {
           try {
             const res = await api.post('/enquiries', payload);
@@ -204,11 +250,19 @@ const ClientCreate = () => {
           }
         } else if (!location.state?.editType && formType === 'schedule') {
           await api.post('/schedule', payload);
-          navigate('/schedule');
+          if (location.state?.from === 'invoice') {
+            redirectToInvoicePending();
+          } else {
+            navigate('/schedule');
+          }
         } else if (location.state?.editType === 'schedule') {
           // Use PUT to update existing schedule instead of POST
           await api.put(`/schedule/${location.state.editId}`, payload);
-          navigate('/schedule');
+          if (location.state?.from === 'invoice') {
+            redirectToInvoicePending();
+          } else {
+            navigate('/schedule');
+          }
         }
       } catch (err) {
         alert('Error: ' + (err?.message || 'Unknown error'));
@@ -318,6 +372,197 @@ const ClientCreate = () => {
     setPendingSubmitValues(null);
   };
 
+  // Invoice actions
+  const handleInvoiceGenerate = async () => {
+    try {
+      // Client-side guards for invoice context
+      if (location.state?.from === 'invoice') {
+        const amountVal = parseFloat(validation.values.amount);
+        setInvoiceGeneralError('');
+        let blocked = false;
+        if (!validation.values.exam_name || String(validation.values.exam_name).trim() === '') {
+          validation.setFieldTouched('exam_name', true, false);
+          validation.setFieldError('exam_name', 'Exam name is required');
+          blocked = true;
+        }
+        if (!validation.values.bill_to || String(validation.values.bill_to).trim() === '') {
+          validation.setFieldTouched('bill_to', true, false);
+          validation.setFieldError('bill_to', 'Bill to is required');
+          blocked = true;
+        }
+        if (isNaN(amountVal) || amountVal <= 0) {
+          validation.setFieldTouched('amount', true, false);
+          validation.setFieldError('amount', 'Amount must be greater than 0');
+          blocked = true;
+        }
+        if (!validation.values.account || String(validation.values.account).trim() === '') {
+          validation.setFieldTouched('account', true, false);
+          validation.setFieldError('account', 'Account is required');
+          blocked = true;
+        }
+        if (blocked) {
+          // Field-specific errors already set; no generic banner needed
+          return;
+        }
+      }
+      // 1. Persist or update schedule before generating invoice (per request)
+      const persistScheduleBeforeInvoice = async () => {
+        // Only attempt if in schedule context or converting enquiry to schedule
+        const isScheduleContext = formType === 'schedule';
+        if (!isScheduleContext) return location.state?.editId || null; // nothing to save, try to use existing id
+        // Build exam code (id + text) similar to submit logic
+        let exam_code_id = '';
+        let exam_code_text = '';
+        const rawExamCode = validation.values.exam_code;
+        const selectedOption = examCodeOptions.find(opt => opt.value === rawExamCode || opt.label === rawExamCode);
+        if (selectedOption) {
+          exam_code_id = selectedOption.value;
+          exam_code_text = selectedOption.label;
+        } else if (rawExamCode) {
+          try {
+            const checkRes = await api.get('/examcodes', { params: { search: rawExamCode } });
+            const found = Array.isArray(checkRes.data.data) && checkRes.data.data.find(e => e.ex_code === rawExamCode);
+            if (found) {
+              exam_code_id = found.id;
+              exam_code_text = found.ex_code;
+            } else {
+              const createRes = await api.post('/examcodes', { exam_code: rawExamCode });
+              if (createRes.data?.id) {
+                exam_code_id = createRes.data.id;
+              } else if (createRes.data?.data?.id) {
+                exam_code_id = createRes.data.data.id;
+              }
+              exam_code_text = rawExamCode;
+            }
+          } catch (e) {
+            setInvoiceGeneralError('Failed resolving exam code before invoice generation.');
+            return false;
+          }
+        }
+        const formattedDate = formatDateToYMDHMS(validation.values.date);
+        const schedulePayload = {
+          ...validation.values,
+          date: formattedDate,
+          exam_code_id,
+          exam_code: exam_code_text,
+          // Ensure backend receives account holder if it expects it
+          account_holder: validation.values.account,
+          bill_to: validation.values.bill_to || validation.values.group_name,
+        };
+        try {
+          if (location.state?.editType === 'enquiry' && formType === 'schedule') {
+            const createRes = await api.post('/schedule', schedulePayload);
+            const newId = createRes?.data?.data?.s_id || createRes?.data?.data?.id || null;
+            await api.delete(`/enquiries/${location.state.editId}`);
+            return newId;
+          } else if (!location.state?.editType && formType === 'schedule') {
+            const createRes = await api.post('/schedule', schedulePayload);
+            const newId = createRes?.data?.data?.s_id || createRes?.data?.data?.id || null;
+            return newId;
+          } else if (location.state?.editType === 'schedule') {
+            await api.put(`/schedule/${location.state.editId}`, schedulePayload);
+            return location.state.editId;
+          }
+          return location.state?.editId || null;
+        } catch (err) {
+          setInvoiceGeneralError('Failed to save/update schedule before invoice generation.');
+          return null;
+        }
+      };
+      const scheduleId = await persistScheduleBeforeInvoice();
+      if (!scheduleId) return; // Abort invoice generation if we couldn't determine an id
+
+      const amountVal = parseFloat(validation.values.amount);
+      if (isNaN(amountVal) || amountVal <= 0) {
+        validation.setFieldTouched('amount', true, false);
+        validation.setFieldError('amount', 'Amount must be greater than 0');
+        return;
+                                <label htmlFor="exam_name" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Exam Name <span style={{ color: 'red' }}>*</span></label>
+      }
+
+      // First generate and persist the PDF; backend returns metadata including invoice number
+  const res = await api.post('/invoice/generate-pdf', { schedule_id: scheduleId });
+  const invoiceNumber = res?.data?.invoice_number || `invoice_${scheduleId}`;
+  // Then download using the dedicated download endpoint to avoid corrupted files
+  const dl = await api.get(`/invoice/download/${scheduleId}`, { responseType: 'blob' });
+      const blob = new Blob([dl.data], { type: dl.headers['content-type'] || 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+  // After generating, go back to Invoice page Pending tab and trigger success toast
+  navigate('/invoice?tab=pending&invoiceGenerated=1', { state: { activeTab: 'pending', invoiceGenerated: true } });
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to generate invoice PDF';
+      setInvoiceGeneralError(msg);
+    }
+  };
+  const handleInvoiceView = () => {
+    try {
+      // Resolve exam code text
+      let examCodeText = '';
+      const opt = examCodeOptions.find(o => o.value === validation.values.exam_code || o.label === validation.values.exam_code);
+      if (opt) {
+        examCodeText = opt.label;
+      } else if (validation.values.exam_code) {
+        examCodeText = validation.values.exam_code;
+      }
+
+      // Resolve account number (optional; backend falls back to ***********)
+      let accountNumber = '';
+      const selectedAcc = accounts.find(acc => String(acc?.id ?? acc?.value ?? '') === String(validation.values.account ?? ''));
+      accountNumber = selectedAcc?.account_number || selectedAcc?.number || selectedAcc?.name || selectedAcc?.account_name || validation.values.account || '';
+
+      const amount = validation.values.amount;
+      setInvoiceGeneralError('');
+      let blocked = false;
+      if (!amount) {
+        validation.setFieldTouched('amount', true, false);
+        validation.setFieldError('amount', 'Amount is required');
+        blocked = true;
+      }
+      if (!examCodeText) {
+        validation.setFieldTouched('exam_code', true, false);
+        validation.setFieldError('exam_code', 'Exam code is required');
+        blocked = true;
+      }
+      if (!validation.values.bill_to || String(validation.values.bill_to).trim() === '') {
+        validation.setFieldTouched('bill_to', true, false);
+        validation.setFieldError('bill_to', 'Bill to is required');
+        blocked = true;
+      }
+      if (!validation.values.exam_name || String(validation.values.exam_name).trim() === '') {
+        validation.setFieldTouched('exam_name', true, false);
+        validation.setFieldError('exam_name', 'Exam name is required');
+        blocked = true;
+      }
+      if (!validation.values.account || String(validation.values.account).trim() === '') {
+        validation.setFieldTouched('account', true, false);
+        validation.setFieldError('account', 'Account is required');
+        blocked = true;
+      }
+      if (blocked) {
+        // Field-specific errors already set; no generic banner needed for view action
+        return;
+      }
+
+      const params = new URLSearchParams({
+        amount: String(amount),
+        account_number: String(accountNumber),
+        exam_code: String(examCodeText),
+        bill_to: String(validation.values.bill_to || validation.values.group_name || 'Customer'),
+        amount_paid: String(amount),
+      });
+      const base = window.location.origin;
+      const url = `${base}/api/invoice/preview?${params.toString()}`;
+      window.open(url, '_blank', 'noopener');
+    } catch (e) {}
+  };
+
   useEffect(() => {
     const s = parseFloat(validation.values.support_fee) || 0;
     const v = parseFloat(validation.values.voucher_fee) || 0;
@@ -391,40 +636,56 @@ const ClientCreate = () => {
               }
               validation.setValues({
                 group_name: data.s_group_name || '',
+                bill_to: data.s_bill_to || data.s_group_name || '',
+                exam_name: data.s_exam_name || data.exam_name || '',
                 exam_code: data.s_exam_code || '',
                 date: dateValue,
                 support_fee: data.s_support_fee || '',
                 voucher_fee: data.s_voucher_fee || '',
                 total_fee: data.total_fee || '',
+                amount: data.s_amount || data.amount || '',
                 email: data.s_email || '',
                 phone: data.s_phone || '',
                 agent: data.s_agent_id || '',
                 user: data.s_user_id || '',
+                account: data.s_account_id || data.account_id || data.s_account || '',
                 timezone: timezone,
                 location: data.s_location || '',
                 comment: data.s_comment || '',
                 remind_date: data.s_remind_date || '',
                 remind_remark: data.s_remind_remark || '',
               });
+              // If we have only the account holder name, preselect matching account once list loads
+              if (!data?.s_account_id && !data?.account_id && data?.s_account_holder) {
+                setPendingAccountHolder(data.s_account_holder);
+              }
               setFormType('schedule');
             } else if (location.state.editType === 'enquiry') {
               validation.setValues({
                 group_name: data.e_group_name || '',
+                bill_to: data.e_bill_to || data.e_group_name || '',
+                exam_name: data.e_exam_name || data.exam_name || '',
                 exam_code: data.e_exam_code || '',
                 date: '',
                 support_fee: data.e_support_fee || '',
                 voucher_fee: data.e_voucher_fee || '',
                 total_fee: data.total_fee || '',
+                amount: data.e_amount || data.amount || '',
                 email: data.e_email || '',
                 phone: data.e_phone || '',
                 agent: data.e_agent_id || '',
                 user: data.e_user_id || '',
+                account: data.e_account_id || data.account_id || data.e_account || '',
                 timezone: '',
                 location: data.e_location || '',
                 comment: data.e_comment || '',
                 remind_date: data.e_remind_date || '',
                 remind_remark: data.e_remind_remark || '',
               });
+              // For enquiry context, also respect an account holder value if present
+              if (!data?.e_account_id && !data?.account_id && data?.e_account_holder) {
+                setPendingAccountHolder(data.e_account_holder);
+              }
               setFormType('schedule');
             }
           } catch (err) {}
@@ -697,6 +958,82 @@ const ClientCreate = () => {
                           {validation.touched.date && validation.errors.date && (
                             <div className="text-danger small mt-1">{validation.errors.date}</div>
                           )}
+                          {location.state?.from === 'invoice' && (
+                            <>
+                              <div className="mt-3">
+                                <label htmlFor="bill_to" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Bill To <span style={{ color: 'red' }}>*</span></label>
+                                <Input
+                                  id="bill_to"
+                                  name="bill_to"
+                                  type="text"
+                                  className="form-control rounded-pill px-3 py-2 reminder-input"
+                                  placeholder="Enter Bill To..."
+                                  value={validation.values.bill_to}
+                                  onChange={validation.handleChange}
+                                />
+                                {validation.touched.bill_to && validation.errors.bill_to && (
+                                  <div className="text-danger small mt-1">{validation.errors.bill_to}</div>
+                                )}
+                              </div>
+                              <div className="mt-3">
+                                <label htmlFor="exam_name" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Exam Name <span style={{ color: 'red' }}>*</span></label>
+                                <Input
+                                  id="exam_name"
+                                  name="exam_name"
+                                  type="text"
+                                  className="form-control rounded-pill px-3 py-2 reminder-input"
+                                  placeholder="Enter exam name..."
+                                  value={validation.values.exam_name}
+                                  onChange={validation.handleChange}
+                                />
+                              </div>
+                            </>
+                          )}
+
+                          {location.state?.from === 'invoice' && (
+                            <>
+                              {/* Amount under Date */}
+                              <div className="mt-3">
+                                <label htmlFor="amount" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Amount <span style={{ color: 'red' }}>*</span></label>
+                                <Input
+                                  id="amount"
+                                  name="amount"
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control rounded-pill px-3 py-2 reminder-input"
+                                  placeholder="Enter amount..."
+                                  value={validation.values.amount}
+                                  onChange={validation.handleChange}
+                                  onBlur={validation.handleBlur}
+                                  invalid={validation.touched.amount && !!validation.errors.amount}
+                                />
+                                {validation.touched.amount && validation.errors.amount && (
+                                  <div className="text-danger small mt-1">{validation.errors.amount}</div>
+                                )}
+                              </div>
+
+                              {/* Account under Amount */}
+                              <div className="mt-3">
+                                <label htmlFor="account" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Account <span style={{ color: 'red' }}>*</span></label>
+                                <select
+                                  id="account"
+                                  name="account"
+                                  className="form-control rounded-pill px-3 py-2 reminder-input"
+                                  value={validation.values.account}
+                                  onChange={e => validation.setFieldValue('account', e.target.value)}
+                                >
+                                  <option value="">Select Account</option>
+                                  {accounts.map(acc => {
+                                    const label = acc?.name || acc?.account_name || acc?.title || acc?.label || (acc?.id ? `Account ${acc.id}` : 'Unknown');
+                                    const value = acc?.id ?? acc?.value ?? '';
+                                    return (
+                                      <option key={`${value}-${label}`} value={value}>{label}</option>
+                                    );
+                                  })}
+                                </select>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : <div className="col-md-8 col-12"></div>}
                         <div className="col-md-4 col-12">
@@ -713,7 +1050,7 @@ const ClientCreate = () => {
                         </div>
                       </div>
                       <div className="row justify-content-center mt-4">
-                        <div className="col-lg-4">
+                        <div className={`col-lg-12 d-flex align-items-center gap-2 ${location.state?.from === 'invoice' ? 'flex-nowrap' : 'justify-content-center'}`}>
                           {location.state && location.state.editType && (
                             <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
                               Save Schedule
@@ -728,6 +1065,20 @@ const ClientCreate = () => {
                             <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
                               Save Enquiry
                             </Button>
+                          )}
+                          {location.state?.from === 'invoice' && (
+                            <>
+                              <Button type="button" style={{backgroundColor:'#2ba8fb'}} onClick={() => setShowInvoiceConfirm(true)} className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">
+                                Invoice Generate
+                              </Button>
+                              <span role="button" onClick={handleInvoiceView} className="d-inline-flex align-items-center ms-2 text-primary fw-bold" style={{cursor: 'pointer'}}>
+                                <i className="mdi mdi-file-document-outline me-1" />
+                                View Invoice
+                              </span>
+                              {invoiceGeneralError && (
+                                <div className="text-danger ms-3 small fw-semibold" style={{maxWidth:'300px'}}>{invoiceGeneralError}</div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -751,6 +1102,33 @@ const ClientCreate = () => {
                           <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
                             <button className="examcode-save-btn" style={{background:'#2ba8fb', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}} onClick={handleCheckModalOk} type="button">OK</button>
                             <button className="examcode-cancel-btn" onClick={handleCheckModalCancel} type="button">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {showInvoiceConfirm && (
+                      <div className="examcode-modal-backdrop" style={{zIndex: 2100, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <div className="examcode-modal" style={{minWidth: 360, maxWidth: '90vw', borderRadius: 18, boxShadow: '0 8px 32px rgba(44,62,80,0.18)', padding: '28px 34px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                          <div className="examcode-modal-icon" style={{fontSize: 52, color: '#ffb300', marginBottom: 14}}>
+                            <i className="mdi mdi-alert-outline"></i>
+                          </div>
+                          <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 24, color: '#1a2942', marginBottom: 10}}>Warning</div>
+                          <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 16, textAlign: 'center'}}>
+                            Generating the invoice PDF cannot be reverted. Make sure all details (Amount, Exam Code, Account, Group Name, Exam Name) are correct.
+                          </div>
+                          <div className="mb-3" style={{fontSize: 14, color: '#6c7a89'}}>Do you want to proceed?</div>
+                          <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
+                            <button
+                              className="examcode-save-btn"
+                              style={{background:'#2ba8fb', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}}
+                              type="button"
+                              onClick={async () => { setShowInvoiceConfirm(false); await handleInvoiceGenerate(); }}
+                            >Proceed</button>
+                            <button
+                              className="examcode-cancel-btn"
+                              type="button"
+                              onClick={() => setShowInvoiceConfirm(false)}
+                            >Cancel</button>
                           </div>
                         </div>
                       </div>

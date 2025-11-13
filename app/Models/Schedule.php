@@ -18,11 +18,14 @@ class Schedule extends Model
         's_agent_id',
         's_user_id',
         's_group_name',
+        's_bill_to',
         's_exam_code',
         's_date',
         's_location',
         's_support_fee',
         's_voucher_fee',
+        's_amount',
+        's_account_holder',
         's_comment',
         's_email',
         's_phone',
@@ -35,6 +38,8 @@ class Schedule extends Model
         's_system_name',
         's_access_code',
         's_done_by',
+        's_exam_name',
+        's_invoice_number'
     ];
 
     protected $appends = ['formatted_created_at', 'formatted_updated_at', 'formatted_s_date','formatted_s_date_original'];

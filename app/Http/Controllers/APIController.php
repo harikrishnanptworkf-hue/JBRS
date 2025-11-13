@@ -108,9 +108,9 @@ class APIController extends Controller
     // Logout
     public function logout(Request $request)
     {
-    $request->user()->currentAccessToken()->delete();
-    session()->forget('user'); // Clear user session
-    return response()->json(['message' => 'Logged out'], 200);
+        $request->user()->currentAccessToken()->delete();
+        session()->forget('user'); // Clear user session
+        return response()->json(['message' => 'Logged out'], 200);
     }
 
     // custom register

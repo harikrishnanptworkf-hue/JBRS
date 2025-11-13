@@ -26,18 +26,19 @@ import "react-datepicker/dist/react-datepicker.css"
 //Import Breadcrumb
 import Breadcrumbs from "../../components/Common/Breadcrumb"
 import api from '../../helpers/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import TableContainer from '../../components/Common/TableContainer';
 import { format } from 'date-fns';
 import CustomAlert from '../../components/Common/CustomAlert';
-import AdminList from './agent';
-import UserList from './user';
+import Pending from './pending';
+import Completed from './completed';
 
 const Settings = () => {
   //meta title
   document.title="Settings";
 
   const navigate = useNavigate();
+  const location = useLocation();
   // Redirect to dashboard if role_id is 2 or 3
   const authUser = sessionStorage.getItem("authUser");
   if (authUser) {
@@ -52,6 +53,33 @@ const Settings = () => {
 
   // Tabs state
   const [activeTab, setActiveTab] = useState('1');
+
+  // Initialize active tab from query (?tab=completed|pending) or navigation state
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const tabParam = params.get('tab') || (location.state && location.state.activeTab);
+      if (tabParam) {
+        const normalized = String(tabParam).toLowerCase();
+        if (normalized === 'completed' || normalized === '2') setActiveTab('2');
+        else if (normalized === 'pending' || normalized === '1') setActiveTab('1');
+      }
+    } catch (e) { /* no-op */ }
+  }, [location.search, location.state]);
+
+  // Show toast when coming back from invoice generation (state or query flag)
+  useEffect(() => {
+    try {
+      const stateFlag = location.state && location.state.invoiceGenerated;
+      const params = new URLSearchParams(location.search || '');
+      const queryFlag = params.get('invoiceGenerated');
+      if (stateFlag || queryFlag) {
+        // Force Pending tab (where toast requested) then show notification
+        if (activeTab !== '1') setActiveTab('1');
+        showNotification('Invoice generated successfully', 'success');
+      }
+    } catch (e) { /* no-op */ }
+  }, [location.state, location.search]);
   // Sub-tabs for General Settings
   const [generalSubTab, setGeneralSubTab] = useState('office');
 
@@ -463,12 +491,6 @@ const Settings = () => {
       `}</style>
         <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
 
-          {/* <div className="examcode-header-bar">
-            <div>
-              <div className="examcode-title-text">Admin Settings</div>
-              <div className="examcode-title-divider"></div>
-            </div>
-          </div> */}
           <Row>
             <Col lg="12">
               <Card className="examcode-table-shadow">
@@ -476,254 +498,28 @@ const Settings = () => {
                   <Nav tabs>
                     <NavItem>
                       <NavLink className={classnames({ active: activeTab === '1' })} onClick={() => setActiveTab('1')} style={{ cursor: 'pointer' }}>
-                        <i className="mdi mdi-cog-outline" style={{ marginRight: 6 }}></i>
-                        <span style={{ color: activeTab === '1' ? '#2ba8fb' : undefined, fontWeight: activeTab === '1' ? 'bold' : undefined }}>General Settings</span>
+                        <i className="mdi mdi-clock-outline" style={{ marginRight: 6 }}></i>
+                        <span style={{ color: activeTab === '1' ? '#2ba8fb' : undefined, fontWeight: activeTab === '1' ? 'bold' : undefined }}>Pending</span>
                       </NavLink>
                     </NavItem>
                     <NavItem>
                       <NavLink className={classnames({ active: activeTab === '2' })} onClick={() => setActiveTab('2')} style={{ cursor: 'pointer' }}>
-                        <i className="mdi mdi-account-tie-outline" style={{ marginRight: 6 }}></i>
-                        <span style={{ color: activeTab === '2' ? '#2ba8fb' : undefined, fontWeight: activeTab === '2' ? 'bold' : undefined }}>Agent Management</span>
-                      </NavLink>
-                    </NavItem>
-                    <NavItem>
-                      <NavLink className={classnames({ active: activeTab === '3' })} onClick={() => setActiveTab('3')} style={{ cursor: 'pointer' }}>
-                        <i className="mdi mdi-account-group-outline" style={{ marginRight: 6 }}></i>
-                        <span style={{ color: activeTab === '3' ? '#2ba8fb' : undefined, fontWeight: activeTab === '3' ? 'bold' : undefined }}>User Management</span>
+                        <i className="mdi mdi-check-circle-outline" style={{ marginRight: 6 }}></i>
+                        <span style={{ color: activeTab === '2' ? '#2ba8fb' : undefined, fontWeight: activeTab === '2' ? 'bold' : undefined }}>Completed</span>
                       </NavLink>
                     </NavItem>
                   </Nav>
-                  <TabContent activeTab={activeTab} className="pt-4">
-                    <TabPane tabId="1">
-                      <CardTitle className="mb-4 text-left ps-4" style={{fontSize: "1.5rem"}}>General Settings</CardTitle>
-                      {/* Sub-tabs for General Settings */}
-                      <div className="examcode-tablebar" style={{alignItems:'center', justifyContent: 'flex-start', display: 'flex', gap: 16, minHeight: 56, padding: '18px 32px 0 32px', width: '100%', boxSizing: 'border-box'}}>
-                        <button className={generalSubTab==='office' ? 'examcode-update-btn' : 'examcode-cancel-btn'} style={{minWidth:120}} onClick={()=>setGeneralSubTab('office')}>Office Time</button>
-                        <button className={generalSubTab==='holiday' ? 'examcode-update-btn' : 'examcode-cancel-btn'} style={{minWidth:180}} onClick={()=>setGeneralSubTab('holiday')}>Holiday Management</button>
-                        <button className={generalSubTab==='custom' ? 'examcode-update-btn' : 'examcode-cancel-btn'} style={{minWidth:180}} onClick={()=>setGeneralSubTab('custom')}>Custom Holiday</button>
-                      </div>
-                      {/* Office Time Tab */}
-                      {generalSubTab === 'office' && (
-                        <>
-                        <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Office time</h5>
-                        <Row style={{ marginLeft: '70px', marginTop: '22px' }} className="mb-3 align-items-end g-4">
-                          <Col md={6} lg={5} xl={4} className="d-flex align-items-end gap-4">
-                            <div style={{ flex: 1 }}>
-                              <Label>From time</Label>
-                              <Row className="g-2 align-items-end">
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeFromHour} onChange={e => setOfficeFromHour(e.target.value)}>
-                                    {[...Array(12)].map((_, i) => (
-                                      <option key={i+1} value={String(i+1).padStart(2, '0')}>{String(i+1).padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </Col>
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeFromMinute} onChange={e => setOfficeFromMinute(e.target.value)}>
-                                    {[...Array(60)].map((_, i) => (
-                                      <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </Col>
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeFromPeriod} onChange={e => setOfficeFromPeriod(e.target.value)}>
-                                    <option value="AM">AM</option>
-                                    <option value="PM">PM</option>
-                                  </select>
-                                </Col>
-                              </Row>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <Label>To time</Label>
-                              <Row className="g-2 align-items-end">
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeToHour} onChange={e => setOfficeToHour(e.target.value)}>
-                                    {[...Array(12)].map((_, i) => (
-                                      <option key={i+1} value={String(i+1).padStart(2, '0')}>{String(i+1).padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </Col>
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeToMinute} onChange={e => setOfficeToMinute(e.target.value)}>
-                                    {[...Array(60)].map((_, i) => (
-                                      <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </Col>
-                                <Col xs={4}>
-                                  <select className="form-control" value={officeToPeriod} onChange={e => setOfficeToPeriod(e.target.value)}>
-                                    <option value="AM">AM</option>
-                                    <option value="PM">PM</option>
-                                  </select>
-                                </Col>
-                              </Row>
-                            </div>
-                          </Col>
-                        </Row>
-                        <div style={{ marginLeft: '500px', marginTop: '20px'}}>
-                          <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Save</button>
-                        </div>
-                        </>
-                      )}
-                      {/* Holiday Management Tab */}
-                      {generalSubTab === 'holiday' && (
-                        <>
-                        <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Holiday management by day</h5>
-                        <Row style={{ marginLeft: '70px', marginTop: '22px' }} className="mb-3 align-items-center">
-                          <Col md={8} lg={6} xl={5}>
-                            <ul className="list-group list-group-flush">
-                              {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(day => (
-                                <li key={day} className="list-group-item d-flex align-items-center gap-3 py-2 px-0 border-0">
-                                  <input
-                                    className="form-check-input me-2"
-                                    type="checkbox"
-                                    id={`chk-${day}`}
-                                    checked={weekHolidays[day]}
-                                    onChange={() => handleWeekHolidayChange(day)}
-                                  />
-                                  <label className="form-check-label" htmlFor={`chk-${day}`}>{day}</label>
-                                </li>
-                              ))}
-                            </ul>
-                          </Col>
-                        </Row>
-                        <div style={{ marginLeft: '500px', marginTop: '20px'}}>
-                          <button className=" examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Save</button>
-                        </div>
-                        </>
-                      )}
-                      {/* Custom Holiday Tab */}
-                      {generalSubTab === 'custom' && (
-                        <>
-                        <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Custom day holiday</h5>
-                        <Row style={{ marginLeft: '70px', marginTop: '22px', maxWidth: 900, gap: 0, alignItems: 'end', display: 'flex' }} className="mb-3">
-                          <Col md={4} className="mb-2" style={{marginRight: '16px', minWidth: 220}}>
-                            <Label className="fw-semibold">Date</Label>
-                            <DatePicker
-                              className="examcode-input"
-                              selected={customDate}
-                              onChange={setCustomDate}
-                              dateFormat="dd/MM/yyyy"
-                              placeholderText="Select date"
-                            />
-                          </Col>
-                          <Col md={5} className="mb-2" style={{minWidth: 220}}>
-                            <Label className="fw-semibold">Reason</Label>
-                            <Input
-                              className="examcode-input"
-                              type="text"
-                              value={customReason}
-                              onChange={e => setCustomReason(e.target.value)}
-                              placeholder="Enter reason"
-                            />
-                          </Col>
-                          <Col md={2} className="mb-2 d-flex align-items-end" style={{minWidth: 140, justifyContent: 'flex-end'}}>
-                            <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Create</button>
-                          </Col>
-                        </Row>
-                        <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Custom holiday listing</h5>
-                        <Row style={{ marginLeft: '70px', marginTop: '22px' }}>
-                          <Col xs={12} className="examcode-table-shadow">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                              {/* Page size selector left */}
-                              <div>
-                                <Label className="me-2 fw-semibold" style={{marginBottom:0}}>Page size</Label>
-                                <select
-                                  className="form-select d-inline-block w-auto examcode-input"
-                                  value={customPageSize}
-                                  onChange={e => { setCustomPageSize(Number(e.target.value)); setCustomCurrentPage(1); }}
-                                  style={{ minWidth: 80 }}
-                                >
-                                  {[5, 10, 20, 50, 100].map(size => (
-                                    <option key={size} value={size}>{size}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              {/* Search right */}
-                              <div>
-                                <Input
-                                  type="search"
-                                  className="form-control d-inline-block w-auto examcode-input"
-                                  style={{ minWidth: 280, maxWidth: 340, width: 320, marginLeft: 'auto' }}
-                                  placeholder="Search..."
-                                  value={customSearch || ''}
-                                  onChange={e => { setCustomSearch(e.target.value); setCustomCurrentPage(1); }}
-                                />
-                              </div>
-                            </div>
-                            <TableContainer
-                              columns={columns}
-                              data={customHolidays}
-                              isCustomPageSize={false}
-                              isGlobalFilter={false}
-                              isJobListGlobalFilter={false}
-                              isPagination={true}
-                              tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
-                              pagination="pagination"
-                              paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                              customPageSize={customPageSize}
-                              currentPage={customCurrentPage}
-                              totalRecords={customTotalRecords}
-                              onPageSizeChange={setCustomPageSize}
-                              onPageChange={setCustomCurrentPage}
-                              fromRecord={(customCurrentPage - 1) * customPageSize + 1}
-                              toRecord={Math.min(customCurrentPage * customPageSize, customTotalRecords)}
-                              onSortChange={(field, order) => {
-                                // Toggle between desc, asc, and no sort
-                                if (customSortBy === field && customSortOrder === 'desc') {
-                                  setCustomSortOrder('asc');
-                                } else if (customSortBy === field && customSortOrder === 'asc') {
-                                  setCustomSortBy('ch_date'); // default sort field
-                                  setCustomSortOrder('desc'); // default sort order
-                                } else {
-                                  setCustomSortBy(field);
-                                  setCustomSortOrder(order);
-                                }
-                                setCustomCurrentPage(1);
-                              }}
-                            />
-                          </Col>
-                        </Row>
-                        </>
-                      )}
-                    </TabPane>
-                    <TabPane tabId="2">
-                      {/* <CardTitle className="mb-4" style={{fontSize: "1.5rem"}}>Agent Management</CardTitle> */}
-                      <div>
-                        <AdminList />
-                      </div>
-                    </TabPane>
-                    <TabPane tabId="3">
-                      {/* <CardTitle  className="mb-4" style={{fontSize: "1.5rem"}}>User Management</CardTitle> */}
-                      <div>
-                        <UserList />
-                      </div>
-                    </TabPane>
-                  </TabContent>
                 </CardBody>
               </Card>
             </Col>
           </Row>
 
-          {/* Delete confirmation modal (Examcode style) */}
-          {showDeleteModal && (
-            <div className="examcode-modal-backdrop" style={{zIndex: 2000, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-              <div className="examcode-modal" style={{minWidth: 340, maxWidth: '90vw', borderRadius: 18, boxShadow: '0 8px 32px rgba(44,62,80,0.18)', padding: '24px 32px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                <div className="examcode-modal-icon" style={{fontSize: 48, color: '#ff4d4f', marginBottom: 12}}>
-                  <i className="mdi mdi-alert-circle-outline"></i>
-                </div>
-                <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Delete Custom Holiday?</div>
-                <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 24, textAlign: 'center'}}>Are you sure you want to delete this custom holiday? This action cannot be undone.</div>
-                <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
-                  <button className="examcode-cancel-btn" onClick={() => setShowDeleteModal(false)} type="button">Cancel</button>
-                  <button className="examcode-save-btn" style={{background:'#ff4d4f', color:'#fff', border:'none', borderRadius:100, fontWeight:600, fontSize:'1rem', padding:'8px 28px'}} onClick={() => handleDeleteCustomHoliday(deleteRowId)} type="button">Delete</button>
-                </div>
-              </div>
-            </div>
-          )}
+     
 
-          <CustomAlert open={notification.open} message={notification.message} severity={notification.severity} onClose={() => setNotification({ ...notification, open: false })} />
-      </div>
+      {activeTab === '1' && <Pending />}
+      {activeTab === '2' && <Completed />}
+      <CustomAlert open={notification.open} message={notification.message} severity={notification.severity} onClose={() => setNotification({ ...notification, open: false })} />
+    </div>
     </>
   )
 }

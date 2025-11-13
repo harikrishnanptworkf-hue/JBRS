@@ -100,6 +100,30 @@ const ProfileMenu = props => {
         >
           {roleId !== 2 && roleId !== 3 && ( // Ensure roleId is compared as a string
             <>
+
+             <Link
+                to="/invoice"
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose(); // Use handleClose to close with animation
+                }}
+              >
+              <i className="mdi mdi-file-document-outline me-2" style={{ fontSize: '1.2rem' }}></i>                
+              <span>{props.t("Invoice")}</span>
+              </Link>
+              <Link
+                to="/accounts"
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose(); // Use handleClose to close with animation
+                }}
+              >
+                <i className="mdi mdi-bank-outline me-2" style={{ fontSize: '1.2rem' }}></i>
+                <span>{props.t("Accounts")}</span>
+              </Link>
+
               <Link
                 to="/examcode"
                 className="dropdown-item"
@@ -111,6 +135,7 @@ const ProfileMenu = props => {
                 <i className="mdi mdi-key-outline me-2" style={{ fontSize: '1.2rem' }}></i>
                 <span>{props.t("Examcode")}</span>
               </Link>
+              
               <Link
                 to="/settings"
                 className="dropdown-item"

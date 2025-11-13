@@ -38,7 +38,11 @@ const Navbar = props => {
       '/report': 'Report',
       '/dashboard': 'Dashboard',
       '/examcode': 'Examcode',
+      '/accounts': 'Accounts',
+      '/accounts/create': 'Accounts',
       '/settings': 'Settings',
+      '/invoices': 'Invoice',
+      '/invoice': 'Invoice',
     };
     if (menuMap[path]) {
       setSelectedMenu(menuMap[path]);

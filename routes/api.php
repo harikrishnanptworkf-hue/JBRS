@@ -12,7 +12,9 @@ use App\Http\Controllers\RevokedController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ExamCodeController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\InvoiceController;
 
 
 
@@ -39,6 +41,9 @@ Route::post('/logout', function (Request $request) {
 Route::post('/register', [APIController::class, 'register']);
 Route::post('/forget-password', [APIController::class, 'forget_pass']);
 Route::post('/reset-password', [APIController::class, 'reset_pass']);
+
+// Public invoice preview (no auth so it can open in a new tab without headers)
+Route::get('/invoice/preview', [InvoiceController::class, 'generatePdfPreview'])->name('invoice.preview');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('enquiries')->name('enquiries.')->group(function () {
@@ -99,6 +104,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('custom-holidays/{id}', [SettingsController::class, 'deleteCustomHoliday']);
         Route::get('office-time', [SettingsController::class, 'getOfficeTime']);
         Route::post('office-time', [SettingsController::class, 'saveOfficeTime']);
+        // Default account get/set
+        Route::get('default-account', [SettingsController::class, 'getDefaultAccount']);
+        Route::post('default-account', [SettingsController::class, 'setDefaultAccount']);
     });
 
     Route::prefix('examcodes')->name('examcodes.')->group(function () {
@@ -107,6 +115,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{examcode}', [ExamCodeController::class, 'show'])->name('show');
         Route::put('/{examcode}', [ExamCodeController::class, 'update'])->name('update');
         Route::delete('/{examcode}', [ExamCodeController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('accounts')->name('accounts.')->group(function () {
+        Route::get('/', [AccountController::class, 'index'])->name('index');
+        Route::post('/', [AccountController::class, 'store'])->name('store');
+        Route::get('/{account}', [AccountController::class, 'show'])->name('show');
+        Route::put('/{account}', [AccountController::class, 'update'])->name('update');
+        Route::delete('/{account}', [AccountController::class, 'destroy'])->name('destroy');
     });
 
     Route::prefix('users')->name('users.')->group(function () {
@@ -124,4 +140,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{agent}/assign-users', [AgentController::class, 'assignUsers']);
         Route::get('/{agent}/users', [AgentController::class, 'getAgentUsers']);
     });
+
+    Route::prefix('invoice')->name('invoice.')->group(function () {
+        Route::get('/{type}', [InvoiceController::class, 'index'])->name('index');
+        Route::post('/', [InvoiceController::class, 'store'])->name('store');
+        Route::put('/{agent}', [InvoiceController::class, 'update'])->name('update');
+        Route::delete('/{agent}', [InvoiceController::class, 'destroy'])->name('destroy');
+        Route::post('/{agent}/assign-users', [InvoiceController::class, 'assignUsers']);
+        Route::get('/{agent}/users', [InvoiceController::class, 'getAgentUsers']);
+        Route::post('/generate-pdf', [InvoiceController::class, 'generatePdf'])->name('generatePdf');
+        Route::get('/download/{scheduleId}', [InvoiceController::class, 'download'])->name('download');
+    });
+    
 });
