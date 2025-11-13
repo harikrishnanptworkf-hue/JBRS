@@ -140,7 +140,7 @@ const Layout = (props) => {
 
       <div id="layout-wrapper">
         <Navbar menuOpen={isMenuOpened} />
-        <div className="main-content">{props.children}</div>
+        <div className="main-content" style={{backgroundColor:'rgb(255, 255, 255)'}}>{props.children}</div>
         {/* <Footer /> */}
       </div>
 
