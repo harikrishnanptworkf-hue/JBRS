@@ -1,3 +1,5 @@
+  // Restrict role_id 2 or 3
+
 import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -5,6 +7,17 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "../../helpers/api";
 
 const AccountsForm = () => {
+    useEffect(() => {
+    const authUser = localStorage.getItem("authUser");
+    if (authUser) {
+      try {
+        const obj = JSON.parse(authUser);
+        if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (e) {}
+    }
+  }, [navigate]);
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();

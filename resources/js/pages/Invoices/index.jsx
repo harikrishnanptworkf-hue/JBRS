@@ -35,12 +35,23 @@ import Completed from './completed';
 
 const Settings = () => {
   //meta title
+    useEffect(() => {
+      const authUser = localStorage.getItem("authUser");
+      if (authUser) {
+        try {
+          const obj = JSON.parse(authUser);
+          if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+            window.location.replace("/dashboard");
+          }
+        } catch (e) {}
+      }
+    }, []);
   document.title="Settings";
 
   const navigate = useNavigate();
   const location = useLocation();
   // Redirect to dashboard if role_id is 2 or 3
-  const authUser = sessionStorage.getItem("authUser");
+  const authUser = localStorage.getItem("authUser");
   if (authUser) {
     try {
       const obj = JSON.parse(authUser);

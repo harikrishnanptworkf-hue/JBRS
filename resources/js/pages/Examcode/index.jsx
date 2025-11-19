@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Label, Input } from 'reactstrap';
 import DatePicker from 'react-datepicker';
@@ -9,6 +10,18 @@ import DeleteModal from '../../components/Common/DeleteModal';
 
 // Custom notification alert styled like modal with fade-out
 const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
+    // Restrict role_id 2 or 3
+  useEffect(() => {
+    const authUser = localStorage.getItem("authUser");
+    if (authUser) {
+      try {
+        const obj = JSON.parse(authUser);
+        if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+          window.location.replace("/dashboard");
+        }
+      } catch (e) {}
+    }
+  }, []);
   const [visible, setVisible] = React.useState(open);
   const [fade, setFade] = React.useState(false);
   React.useEffect(() => {

@@ -1,3 +1,5 @@
+  // Restrict role_id 2 or 3
+
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Label, Input } from 'reactstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,6 +10,17 @@ import DeleteModal from '../../components/Common/DeleteModal';
 
 // Custom notification alert styled like modal with fade-out
 const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
+    useEffect(() => {
+    const authUser = localStorage.getItem("authUser");
+    if (authUser) {
+      try {
+        const obj = JSON.parse(authUser);
+        if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (e) {}
+    }
+  }, [navigate]);
   const [visible, setVisible] = React.useState(open);
   const [fade, setFade] = React.useState(false);
   React.useEffect(() => {

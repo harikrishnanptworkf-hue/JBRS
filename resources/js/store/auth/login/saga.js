@@ -55,7 +55,6 @@ function* watchInactivity(history) {
   const tickChannel = yield call(createTickChannel, 1000);
   let lastActivityAt = Date.now();
   const limitSeconds = Math.floor(INACTIVITY_LIMIT_MS / 1000);
-  console.log(`[Inactivity] Watcher started. Limit: ${limitSeconds}s. Waiting for idle...`);
   try {
     while (true) {
       const { activity, tick } = yield race({
@@ -65,7 +64,6 @@ function* watchInactivity(history) {
 
       if (activity) {
         lastActivityAt = Date.now();
-        console.info('[Inactivity] Activity detected. Counter reset to 0s.');
         continue;
       }
 
@@ -73,7 +71,6 @@ function* watchInactivity(history) {
         const now = Date.now();
         const idleMs = now - lastActivityAt;
         const secondsIdle = Math.floor(idleMs / 1000);
-        console.log(`[Inactivity] Idle for ${secondsIdle}s`);
         if (idleMs >= INACTIVITY_LIMIT_MS) {
           // Try to use the existing UI logout link
           const clicked = yield call(clickLogoutLink);
@@ -111,7 +108,7 @@ function* loginUser({ payload: { user, history } }) {
         email: data.data.email,
         role_id: data.data.role_id,
       };
-      sessionStorage.setItem('authUser', JSON.stringify(logged_user));
+  localStorage.setItem('authUser', JSON.stringify(logged_user));
       yield put(logoutUserSuccess(logged_user));
 
       yield new Promise((resolve) => {
@@ -157,7 +154,9 @@ function* logoutUser({ payload: { history } }) {
   try {
     localStorage.removeItem('auth_token');
     window.localStorage.setItem('auth_token_event', Date.now().toString());
-    sessionStorage.removeItem("authUser");
+  localStorage.removeItem("authUser");
+    localStorage.removeItem('authUser');
+
     if (idleTask) {
       yield cancel(idleTask);
       idleTask = null;
@@ -172,18 +171,46 @@ function* logoutUser({ payload: { history } }) {
   }
 }
 
+
+// Helper: force logout if missing auth, using history if available
+function forceLogoutIfNoAuth(history) {
+  // Prevent redirect loop: skip on /login page
+  if (window.location.pathname === '/login') return;
+  const hasToken = !!localStorage.getItem('auth_token');
+  const hasUser = !!localStorage.getItem('authUser');
+  if (!hasToken || !hasUser) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('authUser');
+    if (typeof history === 'function') {
+      history('/login');
+    } else {
+      window.location.href = '/login';
+    }
+  }
+}
+
 function* authSaga() {
+  // On page load, check for missing auth and force logout if needed
+  yield call(forceLogoutIfNoAuth, undefined);
+
   // Start inactivity watcher if a session already exists on page load (e.g., refresh)
   yield fork(function* bootstrapInactivityOnLoad() {
     try {
       const hasToken = !!localStorage.getItem('auth_token');
-      const hasUser = !!sessionStorage.getItem('authUser');
+      const hasUser = !!localStorage.getItem('authUser');
       if ((hasToken || hasUser) && !idleTask) {
-        console.log('[Inactivity] Bootstrapping watcher from existing session.');
         idleTask = yield fork(watchInactivity, undefined);
       }
     } catch (e) {
       // no-op
+    }
+  });
+
+  // Periodically check for missing auth (in case storage is cleared elsewhere)
+  yield fork(function* periodicAuthCheck() {
+    while (true) {
+      yield delay(5000); // every 5 seconds
+      yield call(forceLogoutIfNoAuth, undefined);
     }
   });
 

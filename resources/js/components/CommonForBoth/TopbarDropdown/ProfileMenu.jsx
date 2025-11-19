@@ -42,14 +42,17 @@ const ProfileMenu = props => {
   }, [menu]);
 
   // Declare a new state variable, which we'll call "menu"
-  const [username, setusername] = useState("Admin");
+  const [username, setusername] = useState("");
   const [roleId, setRoleId] = useState(null); // Use state for roleId
 
   useEffect(() => {
-    const obj = JSON.parse(sessionStorage.getItem("authUser"));
-    if (obj) {
+    const obj = JSON.parse(localStorage.getItem("authUser"));
+    if (obj && obj.name) {
       setusername(obj.name);
       setRoleId(obj.role_id); // Set roleId in state
+    } else {
+      // If no user or name, force logout
+      window.location.href = '/login';
     }
   }, []);
 

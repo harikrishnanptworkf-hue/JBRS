@@ -27,9 +27,20 @@ import { createSelector } from "reselect";
 import { useNavigate } from "react-router-dom";
 
 const Login = props => {
+    useEffect(() => {
+      const authUser = localStorage.getItem("authUser");
+      if (authUser) {
+        try {
+          const obj = JSON.parse(authUser);
+          if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+            window.location.replace("/dashboard");
+          }
+        } catch (e) {}
+      }
+    }, []);
   // Prevent navigating to login if already authenticated
   // Do NOT clear sessionStorage here, only clear on explicit logout!
-  if (sessionStorage.getItem('authUser')) {
+  if (localStorage.getItem('authUser')) {
     window.location.replace('/dashboard');
     return null;
   }
