@@ -28,9 +28,6 @@ function ScheduleList() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
 
-    // NOTE: Echo subscription effect moved below state declarations to avoid referencing
-    // variables (like currentPage/customPageSize/sortState) before they're initialized.
-
 
     const handleStatusUpdated = (e) => {
         setSchedules(prev => {
@@ -989,6 +986,8 @@ useEffect(() => {
     const handleTodaySchedule = () => {
         const today = new Date();
         const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        setFilterStartDate(null);
+        setFilterEndDate(null);
         fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
     };
     todaySchedule = true;
