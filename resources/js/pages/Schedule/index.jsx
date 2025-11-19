@@ -982,18 +982,25 @@ const columns = useMemo(() => [
     };
 
     // Add event listener for Today's Schedule button
+
+// Robust Today Schedule event handler: clear all filters, set both start/end date to today, reload table for today
 useEffect(() => {
     const handleTodaySchedule = () => {
         const today = new Date();
-        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        setFilterStartDate(null);
-        setFilterEndDate(null);
-        fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
+        setFilterAgent('');
+        setFilterUser('');
+        setFilterGroup('');
+        setFilterExamCode('');
+        setFilterStatus('');
+        setSearch("");
+        setFilterStartDate(today);
+        setFilterEndDate(today);
+        setCurrentPage(1);
+        // fetchSchedules will be triggered by the filter state change effect
     };
-    todaySchedule = true;
     window.addEventListener('filterTodaySchedule', handleTodaySchedule);
     return () => window.removeEventListener('filterTodaySchedule', handleTodaySchedule);
-}, [customPageSize, sortState, search]);
+}, []);
 
     const handleTodaySchedule = () => {
         const today = new Date();
