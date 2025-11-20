@@ -18,6 +18,10 @@ import debounce from 'lodash.debounce';
 
 function ScheduleList() {
     let todaySchedule = false;
+    try {
+        todaySchedule = localStorage.getItem('todaySchedule') === 'true';
+    } catch (e) { todaySchedule = false; }
+
     // Listen for filter button event from Navbar
     useEffect(() => {
         const handler = () => setShowFullControls(v => !v);
@@ -41,13 +45,23 @@ function ScheduleList() {
     };
 
     const handleClientChange = () => {
-        if(todaySchedule){
+        // Always check localStorage for todaySchedule
+        let isToday = false;
+        try { isToday = localStorage.getItem('todaySchedule') === 'true'; } catch (e) { isToday = false; }
+        if(isToday){
             const today = new Date();
-            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            fetchSchedules(1, customPageSize, sortState.sortBy, sortState.sortOrder, search, formattedDate);
+            setFilterAgent('');
+            setFilterUser('');
+            setFilterGroup('');
+            setFilterExamCode('');
+            setFilterStatus('');
+            setSearch("");
+            setFilterStartDate(today);
+            setFilterEndDate(today);
+            setCurrentPage(1);
+            // fetchSchedules will be triggered by filter state change
             return;
         }
-
         fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
     };
 
@@ -979,6 +993,7 @@ const columns = useMemo(() => [
         setFilterStartDate(null);
         setFilterEndDate(null);
         setSearch("");
+        try { localStorage.setItem('todaySchedule', 'false'); } catch (e) {}
     };
 
     // Add event listener for Today's Schedule button
@@ -996,6 +1011,7 @@ useEffect(() => {
         setFilterStartDate(today);
         setFilterEndDate(today);
         setCurrentPage(1);
+        try { localStorage.setItem('todaySchedule', 'true'); } catch (e) {}
         // fetchSchedules will be triggered by the filter state change effect
     };
     window.addEventListener('filterTodaySchedule', handleTodaySchedule);

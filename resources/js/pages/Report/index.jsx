@@ -40,7 +40,7 @@ function ReportList() {
     const [endDate, setEndDate] = useState(null);
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState('indian_time');    
-    const [sortOrder, setSortOrder] = useState('asc');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [roleId, setRoleId] = useState(null);
     const [isAllSelected, setIsAllSelected] = useState(false);
     const [exportLoading, setExportLoading] = useState(false);

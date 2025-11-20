@@ -80,6 +80,30 @@ class ReportController extends Controller
             $query->where('s_status', 'like', '%' . $request->input('s_status') . '%');
         }
 
+        // Search filter (applies to user, agent, group, exam code, status, system name, access code, done by)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->whereHas('user', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%$search%");
+                })
+                ->orWhereHas('agent', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%$search%");
+                })
+                ->orWhere('s_group_name', 'like', "%$search%")
+                ->orWhere('s_exam_code', 'like', "%$search%")
+                ->orWhereHas('examcode', function($q2) use ($search) {
+                    $q2->where('ex_code', 'like', "%$search%");
+                })
+                ->orWhere('s_status', 'like', "%$search%")
+                ->orWhere('s_system_name', 'like', "%$search%")
+                ->orWhere('s_access_code', 'like', "%$search%")
+                ->orWhere('s_done_by', 'like', "%$search%")
+                ->orWhere('s_revoke_reason', 'like', "%$search%")
+                ;
+            });
+        }
+
 
         // Sorting
         $sortBy = $request->input('sortBy', 'indian_time');
@@ -148,22 +172,60 @@ class ReportController extends Controller
         if ($request->filled('agent_id') && $request->input('agent_id') !== 'all') {
             $query->where('s_agent_id', $request->input('agent_id'));
         }
+        // Date filters (convert to UTC like index)
         if ($request->filled('start_date')) {
-            $query->whereDate('s_date', '>=', $request->input('start_date'));
+            try {
+                $start = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('start_date'), 'Asia/Kolkata')
+                    ->startOfDay()
+                    ->setTimezone('UTC');
+                $query->where('s_date', '>=', $start->toDateTimeString());
+            } catch (\Exception $e) {}
         }
         if ($request->filled('end_date')) {
-            $query->whereDate('s_date', '<=', $request->input('end_date'));
+            try {
+                $end = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('end_date'), 'Asia/Kolkata')
+                    ->endOfDay()
+                    ->setTimezone('UTC');
+                $query->where('s_date', '<=', $end->toDateTimeString());
+            } catch (\Exception $e) {}
         }
         if ($request->filled('s_group_name')) {
             $query->where('s_group_name', $request->input('s_group_name'));
         }
         if ($request->filled('s_exam_code')) {
-            $query->where(function($q) use ($request) {
-                $q->where('s_exam_code', $request->input('s_exam_code'));
+            $val = $request->input('s_exam_code');
+            $query->where(function($q) use ($val) {
+                $q->where('s_exam_code', $val)
+                  ->orWhereHas('examcode', function($q2) use ($val) {
+                      $q2->where('ex_code', $val)->orWhere('id', $val);
+                  });
             });
         }
         if ($request->filled('s_status')) {
             $query->where('s_status', 'like', '%' . $request->input('s_status') . '%');
+        }
+        // Search filter (applies to user, agent, group, exam code, status, system name, access code, done by)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->whereHas('user', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%$search%");
+                })
+                ->orWhereHas('agent', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%$search%");
+                })
+                ->orWhere('s_group_name', 'like', "%$search%")
+                ->orWhere('s_exam_code', 'like', "%$search%")
+                ->orWhereHas('examcode', function($q2) use ($search) {
+                    $q2->where('ex_code', 'like', "%$search%");
+                })
+                ->orWhere('s_status', 'like', "%$search%")
+                ->orWhere('s_system_name', 'like', "%$search%")
+                ->orWhere('s_access_code', 'like', "%$search%")
+                ->orWhere('s_done_by', 'like', "%$search%")
+                ->orWhere('s_revoke_reason', 'like', "%$search%")
+                ;
+            });
         }
 
         // Sorting
