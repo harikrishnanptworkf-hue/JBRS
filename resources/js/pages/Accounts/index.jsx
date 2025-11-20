@@ -10,7 +10,11 @@ import DeleteModal from '../../components/Common/DeleteModal';
 
 // Custom notification alert styled like modal with fade-out
 const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
-    useEffect(() => {
+  const navigate = useNavigate();
+  const [visible, setVisible] = React.useState(open);
+  const [fade, setFade] = React.useState(false);
+    
+  useEffect(() => {
     const authUser = localStorage.getItem("authUser");
     if (authUser) {
       try {
@@ -21,8 +25,7 @@ const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
       } catch (e) {}
     }
   }, [navigate]);
-  const [visible, setVisible] = React.useState(open);
-  const [fade, setFade] = React.useState(false);
+
   React.useEffect(() => {
     if (open) {
       setVisible(true);

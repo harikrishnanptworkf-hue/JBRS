@@ -7,17 +7,6 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "../../helpers/api";
 
 const AccountsForm = () => {
-    useEffect(() => {
-    const authUser = localStorage.getItem("authUser");
-    if (authUser) {
-      try {
-        const obj = JSON.parse(authUser);
-        if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
-          navigate("/dashboard", { replace: true });
-        }
-      } catch (e) {}
-    }
-  }, [navigate]);
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
@@ -32,6 +21,18 @@ const AccountsForm = () => {
     swift_code: "",
     ifsc_code: "",
   });
+
+  useEffect(() => {
+    const authUser = localStorage.getItem("authUser");
+    if (authUser) {
+      try {
+        const obj = JSON.parse(authUser);
+        if (obj && (obj.role_id === 2 || obj.role_id === 3)) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (e) {}
+    }
+  }, [navigate]);
 
   React.useEffect(() => {
     document.title = editingId ? "Edit Account" : "Add Account";
