@@ -152,9 +152,13 @@ window.addEventListener('storage', (event) => {
 
 function* logoutUser({ payload: { history } }) {
   try {
+    try {
+      yield call(axios.post, '/logout');
+    } catch (e) {
+    }
     localStorage.removeItem('auth_token');
     window.localStorage.setItem('auth_token_event', Date.now().toString());
-  localStorage.removeItem("authUser");
+    localStorage.removeItem("authUser");
     localStorage.removeItem('authUser');
 
     if (idleTask) {

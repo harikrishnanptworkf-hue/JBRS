@@ -45,7 +45,8 @@ Route::post('/reset-password', [APIController::class, 'reset_pass']);
 // Public invoice preview (no auth so it can open in a new tab without headers)
 Route::get('/invoice/preview', [InvoiceController::class, 'generatePdfPreview'])->name('invoice.preview');
 
-Route::middleware('auth:sanctum')->group(function () {
+// Global middleware: force logout if session('user') is missing
+Route::middleware(['auth:sanctum', 'ensure.user.session'])->group(function () {
     Route::prefix('enquiries')->name('enquiries.')->group(function () {
         Route::get('/filter-managed-data', [EnquiryController::class, 'filterManagedData']);
 
