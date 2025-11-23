@@ -42,7 +42,7 @@ const UserCore = () => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [agentId, setAgentId] = useState('');
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState(50);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [search, setSearch] = useState('');
 	const [loading, setLoading] = useState(false);

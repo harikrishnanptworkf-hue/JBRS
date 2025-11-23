@@ -21,7 +21,7 @@ function Pending() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Invoice";
 
-    const [customPageSize, setCustomPageSize] = useState(50);
+    const [customPageSize, setCustomPageSize] = useState(100);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [reports, setReports] = useState([]);

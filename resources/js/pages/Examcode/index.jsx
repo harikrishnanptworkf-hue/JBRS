@@ -92,7 +92,7 @@ const Examcode = () => {
   const [editReminderMonth, setEditReminderMonth] = useState('');
   const [reminderMonths, setReminderMonths] = useState('');
   const [modalError, setModalError] = useState('');
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);

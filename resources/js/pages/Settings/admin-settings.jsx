@@ -629,13 +629,13 @@ const Settings = () => {
                             />
                           </Col>
                           <Col md={2} className="mb-2 d-flex align-items-end" style={{minWidth: 140, justifyContent: 'flex-end'}}>
-                            <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleSaveWeekHolidays} type="button">Create</button>
+                            <button className="examcode-save-btn examcode-create-btn btn btn-secondary"  onClick={handleAddCustomHoliday} type="button">Create</button>
                           </Col>
                         </Row>
                         <h5 className="ps-4" style={{marginTop: '40px',marginLeft: '17px'}}>Custom holiday listing</h5>
                         <Row style={{ marginLeft: '70px', marginTop: '22px' }}>
                           <Col xs={12} className="examcode-table-shadow">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
+                            <div className="d-flex justify-content-between align-items-center mb-2" style={{marginTop:"20px"}}>
                               {/* Page size selector left */}
                               <div>
                                 <Label className="me-2 fw-semibold" style={{marginBottom:0}}>Page size</Label>

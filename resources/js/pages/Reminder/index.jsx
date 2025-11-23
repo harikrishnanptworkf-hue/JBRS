@@ -18,7 +18,7 @@ function ReminderList() {
     }, []);
 
 
-    const [customPageSize, setCustomPageSize] = useState(10);
+    const [customPageSize, setCustomPageSize] = useState(100);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [reminders, setReminders] = useState([]);
