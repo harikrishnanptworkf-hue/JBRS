@@ -34,13 +34,27 @@ function ScheduleList() {
 
 
     const handleStatusUpdated = (e) => {
+        const eventId = e.id ?? e.s_id;
+        const newStatus = e.status;
         setSchedules(prev => {
-            const eventId = e.id ?? e.s_id;
-            return prev.map(row =>
-                row.s_id === eventId
-                    ? { ...row, status: e.status, system_name: e.system_name, access_code: e.access_code, done_by: e.done_by }
-                    : row
-            );
+            return prev.reduce((acc, row) => {
+                if (row.s_id === eventId) {
+                    // If remote system marks DONE or REVOKE remove row from table
+                    if (newStatus === 'DONE' || newStatus === 'REVOKE') {
+                        return acc; // skip adding
+                    }
+                    acc.push({
+                        ...row,
+                        status: newStatus,
+                        system_name: e.system_name,
+                        access_code: e.access_code,
+                        done_by: e.done_by
+                    });
+                } else {
+                    acc.push(row);
+                }
+                return acc;
+            }, []);
         });
     };
 
@@ -369,12 +383,18 @@ function ScheduleList() {
     const [revokeReason, setRevokeReason] = useState("");
 
     const handleStatusChange = (s_id, value, rowData) => {
+        // For confirmation-required statuses, defer saving until user confirms
+        if (value === 'DONE') {
+            setStatusChangeData({ s_id, value, rowData });
+            setStatusChangeModal(true);
+            return;
+        }
         if (value === 'REVOKE') {
             setStatusChangeData({ s_id, value, rowData });
             setRevokeModal(true);
             return;
         }
-
+        // Immediate save for other status values
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
@@ -383,16 +403,11 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
-
-        if (value === 'DONE') {
-            setStatusChangeModal(true); // Show the modal for DONE status
-            setStatusChangeData({ s_id, value, rowData });
-            return; // Exit to prevent immediate filtering
-        }
     };
 
     const confirmStatusChange = () => {
         const { s_id, value, rowData } = statusChangeData;
+        // Persist only now that user confirmed
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
@@ -401,22 +416,22 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
-
-        if (value === 'DONE' || value === 'REVOKE') {
+        if (value === 'DONE') {
+            // Remove row after slight delay for UX
             setTimeout(() => {
                 setSchedules(prev => prev.filter(row => row.s_id !== s_id));
-            }, 600);
+            }, 400);
         }
         setStatusChangeModal(false);
+        setStatusChangeData({});
     };
 
     const confirmRevokeStatusChange = () => {
         const { s_id, value, rowData } = statusChangeData;
-        if (!revokeReason.trim()) { 
-            toast.error("Please provide the reason for revoking.");
+        if (!revokeReason.trim()) {
+            toast.error('Please provide the reason for revoking.');
             return;
         }
-
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
@@ -425,36 +440,33 @@ function ScheduleList() {
             }
         }));
         debouncedSaveField(s_id, 'status', value, rowData);
-
-        // Save revoke reason to the backend
         api.post(`/schedule/${s_id}/revoke-reason`, { s_revoke_reason: revokeReason })
-            .then(response => {
-                toast.success(response.data.message);
-            })
-            .catch(error => {
-                toast.error(error.response?.data?.message || 'Failed to save revoke reason');
-            });
-
+            .then(r => toast.success(r.data.message))
+            .catch(err => toast.error(err.response?.data?.message || 'Failed to save revoke reason'));
         setTimeout(() => {
             setSchedules(prev => prev.filter(row => row.s_id !== s_id));
-        }, 600);
-
+        }, 400);
         setRevokeModal(false);
-        setRevokeReason("");
+        setRevokeReason('');
+        setStatusChangeData({});
     };
 
     const cancelStatusChange = () => {
-        const { s_id, rowData } = statusChangeData;
-        // Revert to the previous status
-        setRowEdits(prev => ({
-            ...prev,
-            [s_id]: {
-                ...prev[s_id],
-                status: rowData.status // Restore the original status
-            }
-        }));
+        // Simply close modal; no persistence happened yet
         setStatusChangeModal(false);
         setStatusChangeData({});
+        // Ensure any optimistic status edit is removed (we didn't set it, but defensive cleanup)
+        setRowEdits(prev => {
+            const { s_id } = statusChangeData;
+            if (!s_id) return prev;
+            const clone = { ...prev };
+            if (clone[s_id]) {
+                const { status, ...rest } = clone[s_id];
+                // If only status existed and was pending, remove whole entry
+                if (Object.keys(rest).length === 0) delete clone[s_id]; else clone[s_id] = rest;
+            }
+            return clone;
+        });
     };
 
     // Inline editable cell
