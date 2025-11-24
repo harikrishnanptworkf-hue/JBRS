@@ -343,37 +343,51 @@ function ScheduleList() {
         }
     };
 
-    // Debounced save for inline fields
-    const debouncedSaveField = useMemo(() => debounce(async (s_id, field, value, rowData) => {
-        try {
-            await api.patch(`/schedule/${s_id}/fields`, {
-                [field]: value
-            });
-            setSchedules(prev => prev.map(row =>
-                row.s_id === s_id ? { ...row, [field]: value } : row
-            ));
-            setRowEdits(prev => {
-                if (!prev[s_id]) return prev;
-                const updated = { ...prev };
-                updated[s_id] = { ...updated[s_id] };
-                delete updated[s_id][field];
-                if (Object.keys(updated[s_id]).length === 0) delete updated[s_id];
-                return updated;
-            });
-        } catch {
-            toast.error('Failed to update field.');
-        }
-    }, 500), []);
-
-    const handleFieldEdit = (s_id, field, value, rowData) => {
+    // Draft vs commit editing logic
+    const handleFieldDraft = (s_id, field, value) => {
         setRowEdits(prev => ({
             ...prev,
             [s_id]: {
                 ...prev[s_id],
-                [field]: value
+                [field]: value,
+                __dirty: true
             }
         }));
-        debouncedSaveField(s_id, field, value, rowData);
+    };
+
+    const handleFieldCommit = async (s_id, field, value, rowData) => {
+        // If nothing changed or already committed skip
+        const existing = rowEdits[s_id]?.[field];
+        if (existing === undefined || schedules.find(r => r.s_id === s_id)?.[field] === value) {
+            // Clean dirty flag if present
+            setRowEdits(prev => {
+                if (!prev[s_id]) return prev;
+                const clone = { ...prev };
+                delete clone[s_id][field];
+                if (Object.keys(clone[s_id]).filter(k => k !== '__dirty').length === 0) delete clone[s_id];
+                else if (clone[s_id].__dirty && Object.keys(clone[s_id]).length === 1) delete clone[s_id];
+                return clone;
+            });
+            return;
+        }
+        try {
+            await api.patch(`/schedule/${s_id}/fields`, { [field]: value });
+            setSchedules(prev => prev.map(row => row.s_id === s_id ? { ...row, [field]: value } : row));
+            setRowEdits(prev => {
+                if (!prev[s_id]) return prev;
+                const clone = { ...prev };
+                delete clone[s_id][field];
+                // Remove dirty marker if no other pending fields
+                if (clone[s_id].__dirty) {
+                    const keysLeft = Object.keys(clone[s_id]).filter(k => k !== '__dirty');
+                    if (keysLeft.length === 0) delete clone[s_id];
+                    else if (keysLeft.length > 0 && keysLeft.every(k => schedules.find(r => r.s_id === s_id)?.[k] === clone[s_id][k])) delete clone[s_id].__dirty;
+                }
+                return clone;
+            });
+        } catch (e) {
+            toast.error('Failed to update field.');
+        }
     };
 
     const [statusChangeModal, setStatusChangeModal] = useState(false);
@@ -470,48 +484,68 @@ function ScheduleList() {
     };
 
     // Inline editable cell
-    const EditableCell = React.memo(
-      ({ value: initialValue, onSave, cellKey, isFocused, onFocusCell }) => {
+    const EditableCell = React.memo(({ value: initialValue, cellKey, isFocused, onFocusCell, onDraft, onCommit, rowId, field }) => {
         const [value, setValue] = React.useState(initialValue);
+        const prevCellKey = React.useRef(cellKey);
         const inputRef = React.useRef(null);
-    // Remove debounce: save immediately for smooth typing
-                        // Only update value if cellKey changes (row changes), not on every render
-                        const prevCellKey = React.useRef(cellKey);
-                        React.useEffect(() => {
-                            if (prevCellKey.current !== cellKey) {
-                                setValue(initialValue);
-                                prevCellKey.current = cellKey;
-                            }
-                        }, [cellKey, initialValue]);
-    // Do not cancel debounce on unmount to avoid losing unsaved input
+
         React.useEffect(() => {
-          if (isFocused && inputRef.current) {
-            inputRef.current.focus();
-            inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
-          }
+            if (prevCellKey.current !== cellKey) {
+                setValue(initialValue);
+                prevCellKey.current = cellKey;
+            }
+        }, [cellKey, initialValue]);
+
+        React.useEffect(() => {
+            if (isFocused && inputRef.current) {
+                inputRef.current.focus();
+                inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
+            }
         }, [isFocused]);
-                        const handleChange = e => {
-                            const newValue = e.target.value;
-                            setValue(newValue);
-                            onSave(newValue); // save immediately
-                        };
-        const handleFocus = () => {
-          onFocusCell(cellKey);
+
+        const commit = () => {
+            onCommit(rowId, field, value);
         };
+        const handleChange = e => {
+            const v = e.target.value;
+            setValue(v);
+            onDraft(rowId, field, v);
+        };
+        const handleKeyDown = e => {
+            if (e.key === 'Enter') {
+                commit();
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                commit();
+                onFocusCell(prev => {
+                    // prev not used; compute next cell key based on direction
+                    const currentIndex = schedules.findIndex(r => r.s_id === rowId);
+                    if (currentIndex === -1) return cellKey;
+                    const delta = e.key === 'ArrowDown' ? 1 : -1;
+                    const nextIndex = currentIndex + delta;
+                    if (nextIndex < 0 || nextIndex >= schedules.length) return cellKey;
+                    const nextId = schedules[nextIndex].s_id;
+                    return `${nextId}-${field}`;
+                });
+            }
+        };
+        const handleBlur = () => commit();
+        const handleFocus = () => onFocusCell(cellKey);
+        // Unsaved styling
+        const dirty = rowEdits[rowId]?.__dirty && (rowEdits[rowId]?.[field] !== undefined);
         return (
-          <input
-            ref={inputRef}
-            key={cellKey}
-            type="text"
-            className="form-control form-control-sm reminder-input "
-            value={value}
-            onChange={handleChange}
-            onFocus={handleFocus}
-          />
+            <input
+                ref={inputRef}
+                key={cellKey}
+                type="text"
+                className={`form-control form-control-sm reminder-input ${dirty ? 'unsaved-draft' : ''}`}
+                value={value}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+            />
         );
-      },
-      (prevProps, nextProps) => prevProps.value === nextProps.value && prevProps.isFocused === nextProps.isFocused
-    );
+    }, (prev, next) => prev.value === next.value && prev.isFocused === next.isFocused && prev.rowId === next.rowId);
 const handleSortChange = columnId => {
     setSortState(prev => {
         if (prev.sortBy === columnId) {
@@ -646,11 +680,13 @@ const columns = useMemo(() => [
             return (
                 <EditableCell
                     value={edits.system_name ?? row.system_name ?? ''}
-                    onSave={val => handleFieldEdit(row.s_id, 'system_name', val, row)}
+                    rowId={row.s_id}
+                    field="system_name"
+                    onDraft={handleFieldDraft}
+                    onCommit={(id, f, v) => handleFieldCommit(id, f, v, row)}
                     cellKey={cellKey}
                     isFocused={focusedCell === cellKey}
                     onFocusCell={setFocusedCell}
-                    
                 />
             );
         }
@@ -666,7 +702,10 @@ const columns = useMemo(() => [
             return (
                 <EditableCell
                     value={edits.access_code ?? row.access_code ?? ''}
-                    onSave={val => handleFieldEdit(row.s_id, 'access_code', val, row)}
+                    rowId={row.s_id}
+                    field="access_code"
+                    onDraft={handleFieldDraft}
+                    onCommit={(id, f, v) => handleFieldCommit(id, f, v, row)}
                     cellKey={cellKey}
                     isFocused={focusedCell === cellKey}
                     onFocusCell={setFocusedCell}
@@ -685,7 +724,10 @@ const columns = useMemo(() => [
             return (
                 <EditableCell
                     value={edits.done_by ?? row.done_by ?? ''}
-                    onSave={val => handleFieldEdit(row.s_id, 'done_by', val, row)}
+                    rowId={row.s_id}
+                    field="done_by"
+                    onDraft={handleFieldDraft}
+                    onCommit={(id, f, v) => handleFieldCommit(id, f, v, row)}
                     cellKey={cellKey}
                     isFocused={focusedCell === cellKey}
                     onFocusCell={setFocusedCell}
