@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'ensure.user.session'])->group(function () {
         Route::get('/filter-managed-data', [ScheduleController::class, 'filterManagedData']);
 
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
+        Route::get('/export', [ScheduleController::class, 'export'])->name('export');
         Route::post('/', [ScheduleController::class, 'store'])->name('store');
         Route::get('/{schedule}', [ScheduleController::class, 'show'])->name('show');
         Route::put('/{schedule}', [ScheduleController::class, 'update'])->name('update');

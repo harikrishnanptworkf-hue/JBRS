@@ -168,6 +168,7 @@ function ScheduleList() {
     const [agentOptions, setAgentOptions] = useState([]);
     const [userOptions, setUserOptions] = useState([]);
     const [roleId, setRoleId] = useState(null);
+    const [exportLoading, setExportLoading] = useState(false);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -1073,6 +1074,46 @@ const columns = useMemo(() => [
         try { localStorage.setItem('todaySchedule', 'false'); } catch (e) {}
     };
 
+    // Export current filtered schedule list to Excel (mirrors Report export semantics)
+    const exportToExcel = async () => {
+        setExportLoading(true);
+        try {
+            // Determine pageSize to send (if user chose 'All', we just pass current customPageSize which may be large)
+            const pageSizeToUse = customPageSize;
+            const params = {
+                page: currentPage,
+                pageSize: pageSizeToUse,
+                search,
+                sortBy: sortState.sortBy,
+                sortOrder: sortState.sortOrder,
+                agent_id: filterAgent || undefined,
+                user_id: filterUser || undefined,
+                group_id: filterGroup || undefined,
+                examcode_id: filterExamCode || undefined,
+                status: filterStatus || undefined,
+                startdate: filterStartDate ? `${filterStartDate.getFullYear()}-${String(filterStartDate.getMonth()+1).padStart(2,'0')}-${String(filterStartDate.getDate()).padStart(2,'0')}` : undefined,
+                enddate: filterEndDate ? `${filterEndDate.getFullYear()}-${String(filterEndDate.getMonth()+1).padStart(2,'0')}-${String(filterEndDate.getDate()).padStart(2,'0')}` : undefined,
+            };
+            const response = await api.get('/schedule/export', { params, responseType: 'blob' });
+            const contentType = response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            const blob = new Blob([response.data], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const filename = response.headers['content-disposition'] ? response.headers['content-disposition'].split('filename=')[1] : `schedule_${new Date().toISOString().slice(0,10)}.${contentType.includes('sheet') ? 'xlsx' : (contentType.includes('csv') ? 'csv' : 'dat')}`;
+            a.download = filename.replace(/"/g,'');
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Schedule export failed', err);
+            try { toast.error('Schedule export failed. Please try again.'); } catch(e){}
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
     // Add event listener for Today's Schedule button
 
 // Robust Today Schedule event handler: clear all filters, set both start/end date to today, reload table for today
@@ -1240,6 +1281,13 @@ useEffect(() => {
                 .examcode-delete-btn:active {
                     background: #d9363e;
                 }
+                /* Export button styles (same as Report page) */
+                .export-btn { background: linear-gradient(180deg,#168a13 0%,#0f5c0b 100%); color: #fff !important; border: none; border-radius: 10px; font-weight: 700; font-size: 0.95rem; padding: 8px 16px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 6px 18px rgba(15,92,11,0.15); transition: transform 0.08s ease, box-shadow 0.12s ease; }
+                .export-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(15,92,11,0.18); }
+                .export-btn:active { transform: translateY(0); }
+                .export-btn:disabled { opacity: 0.75; cursor: not-allowed; box-shadow: none; }
+                .export-btn .mdi { font-size: 18px; color: #fff; }
+                .export-btn .spinner-border { width: 18px; height: 18px; border-width: 2px; color: #fff; }
                 @media (max-width: 700px) {
                     .reminder-header-bar, .reminder-filterbar, .examcode-modal {
                         flex-direction: column;
@@ -1385,6 +1433,21 @@ useEffect(() => {
                                     <option key={size} value={String(size)}>{size}</option>
                                 ))}
                             </select>
+                            <button
+                                type="button"
+                                className="export-btn ms-2"
+                                title="Export to Excel"
+                                onClick={() => exportToExcel()}
+                                aria-label="Export to Excel"
+                                disabled={exportLoading}
+                            >
+                                {exportLoading ? (
+                                    <span className="spinner-border me-1" role="status" aria-hidden="true"></span>
+                                ) : (
+                                    <i className="mdi mdi-file-excel me-1" aria-hidden="true"></i>
+                                )}
+                                <span>{exportLoading ? 'Exporting...' : 'Export'}</span>
+                            </button>
                         </div>
                         <div>
                             <Input

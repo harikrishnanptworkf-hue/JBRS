@@ -18,6 +18,10 @@ use App\Events\ClientDeleted;
 use Illuminate\Support\Facades\Log;
 
 use Carbon\Carbon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class ScheduleController extends Controller
 {
@@ -542,5 +546,169 @@ class ScheduleController extends Controller
         $schedule->save();
 
         return response()->json(['message' => 'Revoke reason updated successfully.']);
+    }
+
+    /**
+     * Export schedules (same filtering/sorting semantics as index) to Excel (XLSX) or CSV fallback.
+     * Mirrors Report export style but uses Schedule page filters: agent_id, user_id, group_id, examcode_id, status, startdate, enddate, search.
+     */
+    public function export(Request $request)
+    {
+        $sessionUser = session('user');
+        $roleId = $sessionUser['role_id'] ?? null;
+
+        $pageSize = $request->input('pageSize'); // could be numeric or 'All'
+        $page = (int) $request->input('page', 1);
+        $isAll = !$pageSize || strtolower($pageSize) === 'all';
+        
+        $sortBy = $request->input('sortBy', 's_id');
+        $sortOrder = strtolower($request->input('sortOrder', 'desc')) === 'asc' ? 'asc' : 'desc';
+        // Map frontend sort keys to DB columns
+        $sortMap = [
+            'agent' => 's_agent_id',
+            'user' => 's_user_id',
+            'group_name' => 's_group_name',
+            'exam_code' => 's_exam_code',
+            'indian_time' => 's_date',
+            'status' => 's_status',
+            'system_name' => 's_system_name',
+            'access_code' => 's_access_code',
+            'done_by' => 's_done_by',
+        ];
+        $sortColumn = $sortMap[$sortBy] ?? $sortBy;
+
+        $query = Schedule::with(['user','agent','examcode'])
+            ->where(function ($q) {
+                $q->whereNotIn('s_status', ['DONE','REVOKE'])
+                  ->orWhereNull('s_status');
+            });
+
+        // Role scoping
+        if ($roleId == 3) {
+            $query->where('s_user_id', $sessionUser['id']);
+        } elseif ($roleId == 2) {
+            $query->where('s_agent_id', $sessionUser['id']);
+        }
+
+        // Filters
+        if ($request->filled('agent_id')) {
+            $query->where('s_agent_id', $request->input('agent_id'));
+        }
+        if ($request->filled('user_id')) {
+            $query->where('s_user_id', $request->input('user_id'));
+        }
+        if ($request->filled('group_id')) {
+            $query->where('s_group_name', $request->input('group_id'));
+        }
+        if ($request->filled('examcode_id')) {
+            $query->where('s_exam_code', $request->input('examcode_id'));
+        }
+        if ($request->filled('status')) {
+            $query->where('s_status', $request->input('status'));
+        }
+        if ($request->filled('startdate')) {
+            try {
+                $fromDate = Carbon::parse($request->input('startdate'))
+                    ->setTimezone('UTC')
+                    ->startOfDay()
+                    ->format('Y-m-d');
+                $query->whereDate('s_date', '>=', $fromDate);
+            } catch (\Exception $e) {}
+        }
+        if ($request->filled('enddate')) {
+            try {
+                $toDate = Carbon::parse($request->input('enddate'))
+                    ->setTimezone('UTC')
+                    ->endOfDay()
+                    ->format('Y-m-d');
+                $query->whereDate('s_date', '<=', $toDate);
+            } catch (\Exception $e) {}
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('s_group_name', 'like', "%$search%")
+                  ->orWhere('s_exam_name', 'like', "%$search%")
+                  ->orWhere('s_exam_code', 'like', "%$search%")
+                  ->orWhere('s_location', 'like', "%$search%")
+                  ->orWhere('s_email', 'like', "%$search%")
+                  ->orWhere('s_phone', 'like', "%$search%")
+                  ->orWhere('s_comment', 'like', "%$search%")
+                  ->orWhereHas('user', function($uq) use ($search) { $uq->where('name','like',"%$search%"); })
+                  ->orWhereHas('agent', function($aq) use ($search) { $aq->where('name','like',"%$search%"); })
+                  ->orWhereHas('examcode', function($eq) use ($search) { $eq->where('ex_code','like',"%$search%"); });
+            });
+        }
+
+        $query->orderBy($sortColumn, $sortOrder);
+
+        $total = $query->count();
+        if ($isAll) {
+            $items = $query->get();
+        } else {
+            $per = (int)$pageSize ?: 10;
+            $items = $query->skip(($page - 1) * $per)->take($per)->get();
+        }
+
+        // Build rows
+        $rows = [];
+        $sno = 1;
+        foreach ($items as $s) {
+            $rows[] = [
+                'SNo' => $sno++,
+                'Agent' => $s->agent->name ?? '',
+                'User' => $s->user->name ?? '',
+                'Group Name' => $s->s_group_name ?? '',
+                'Exam Code' => $s->examcode->ex_code ?? ($s->s_exam_code ?? ''),
+                'Indian Time' => $s->s_date ? Carbon::parse($s->s_date,'UTC')->setTimezone('Asia/Kolkata')->format('d/m/Y-h:i A') : '',
+                'Status' => $s->s_status ?? '',
+                'System Name' => $s->s_system_name ?? '',
+                'Access Code' => $s->s_access_code ?? '',
+                'Done By' => $s->s_done_by ?? '',
+            ];
+        }
+
+        // Attempt XLSX
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $headers = array_keys($rows[0] ?? ['SNo','Agent','User','Group Name','Exam Code','Indian Time','Status','System Name','Access Code','Done By']);
+            $col = 1;
+            foreach ($headers as $h) { $sheet->setCellValueByColumnAndRow($col,1,$h); $col++; }
+            $headerRange = 'A1:' . $sheet->getCellByColumnAndRow(count($headers),1)->getCoordinate();
+            $sheet->getStyle($headerRange)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0271B9');
+            $sheet->getStyle($headerRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle($headerRange)->getFont()->setBold(true)->setSize(14);
+            $sheet->getRowDimension(1)->setRowHeight(26);
+            $spreadsheet->getDefaultStyle()->getFont()->setName('Calibri')->setSize(12);
+            $sheet->getDefaultColumnDimension()->setWidth(18);
+            $sheet->getDefaultRowDimension()->setRowHeight(20);
+            $rowNum = 2;
+            foreach ($rows as $r) {
+                $col = 1; foreach ($headers as $h) { $sheet->setCellValueByColumnAndRow($col,$rowNum,$r[$h] ?? ''); $col++; }
+                $rowNum++;
+            }
+            for ($i=1;$i<=count($headers);$i++){ $sheet->getColumnDimensionByColumn($i)->setAutoSize(true); }
+            $writer = new Xlsx($spreadsheet);
+            $filename = 'schedule_' . date('Y-m-d_His') . '.xlsx';
+            $response = new StreamedResponse(function() use ($writer){ $writer->save('php://output'); });
+            $disposition = $response->headers->makeDisposition('attachment', $filename);
+            $response->headers->set('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            $response->headers->set('Content-Disposition',$disposition);
+            return $response;
+        } catch (\Throwable $e) {
+            // Fallback CSV
+            $callback = function() use ($rows) {
+                $out = fopen('php://output','w');
+                if (empty($rows)) { fputcsv($out,['No data']); }
+                else { $headers = array_keys($rows[0]); fputcsv($out,$headers); foreach ($rows as $r){ fputcsv($out,array_values($r)); } }
+                fclose($out);
+            };
+            $filename = 'schedule_' . date('Y-m-d_His') . '.csv';
+            return response()->stream($callback,200,[
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"'
+            ]);
+        }
     }
 }
