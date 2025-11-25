@@ -396,6 +396,29 @@ function ScheduleList() {
     const [revokeModal, setRevokeModal] = useState(false);
     const [revokeReason, setRevokeReason] = useState("");
 
+    // Helper to commit status changes to backend (replaces removed debouncedSaveField)
+    const commitStatus = async (s_id, value, rowData) => {
+        try {
+            await api.patch(`/schedule/${s_id}/fields`, { status: value });
+            // Update schedules
+            setSchedules(prev => prev.map(r => r.s_id === s_id ? { ...r, status: value } : r));
+            // Clean rowEdits entry for status
+            setRowEdits(prev => {
+                const clone = { ...prev };
+                if (clone[s_id]) {
+                    delete clone[s_id].status;
+                    // Remove __dirty if no other pending fields
+                    const remainingKeys = Object.keys(clone[s_id]).filter(k => k !== '__dirty');
+                    if (remainingKeys.length === 0) delete clone[s_id];
+                    else if (remainingKeys.length === 0 && clone[s_id].__dirty) delete clone[s_id].__dirty;
+                }
+                return clone;
+            });
+        } catch (e) {
+            toast.error('Failed to update status.');
+        }
+    };
+
     const handleStatusChange = (s_id, value, rowData) => {
         // For confirmation-required statuses, defer saving until user confirms
         if (value === 'DONE') {
@@ -416,7 +439,7 @@ function ScheduleList() {
                 status: value
             }
         }));
-        debouncedSaveField(s_id, 'status', value, rowData);
+    commitStatus(s_id, value, rowData);
     };
 
     const confirmStatusChange = () => {
@@ -429,7 +452,7 @@ function ScheduleList() {
                 status: value
             }
         }));
-        debouncedSaveField(s_id, 'status', value, rowData);
+    commitStatus(s_id, value, rowData);
         if (value === 'DONE') {
             // Remove row after slight delay for UX
             setTimeout(() => {
@@ -453,7 +476,7 @@ function ScheduleList() {
                 status: value
             }
         }));
-        debouncedSaveField(s_id, 'status', value, rowData);
+    commitStatus(s_id, value, rowData);
         api.post(`/schedule/${s_id}/revoke-reason`, { s_revoke_reason: revokeReason })
             .then(r => toast.success(r.data.message))
             .catch(err => toast.error(err.response?.data?.message || 'Failed to save revoke reason'));
