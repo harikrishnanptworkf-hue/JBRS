@@ -59,11 +59,11 @@ function Pending() {
                 sortOrder: sortDir,
                 agent_id: selectedAgent,
                 user_id: selectedUser,
-                s_group_name: selectedGroup,
-                s_exam_code: selectedExamCode,
-                s_status: selectedStatus,
-                start_date: formatDate(startDate),
-                end_date: formatDate(endDate)
+                group_id: selectedGroup,
+                examcode_id: selectedExamCode,
+                status: selectedStatus,
+                startdate: formatDate(startDate),
+                enddate: formatDate(endDate)
             }
         })
             .then(res => {
@@ -352,11 +352,11 @@ function Pending() {
                 sortOrder,
                 agent_id: selectedAgent,
                 user_id: selectedUser,
-                s_group_name: selectedGroup,
-                s_exam_code: selectedExamCode,
-                s_status: selectedStatus,
-                start_date: startDate ? `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}` : undefined,
-                end_date: endDate ? `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}` : undefined,
+                group_id: selectedGroup,
+                examcode_id: selectedExamCode,
+                status: selectedStatus,
+                startdate: startDate ? `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}` : undefined,
+                enddate: endDate ? `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}` : undefined,
             };
 
             const response = await api.get('/invoice/export', { params: { ...params, type: 'pending' }, responseType: 'blob' });

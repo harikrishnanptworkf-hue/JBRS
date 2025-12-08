@@ -67,10 +67,17 @@ class InvoiceController extends Controller
         if ($request->filled('agent_id') && $request->input('agent_id') !== 'all') {
             $query->where('s_agent_id', $request->input('agent_id'));
         }
-        // Filter by start_date (treat supplied date as India time, convert to UTC range)
-        if ($request->filled('start_date')) {
+        // Normalize param names from UI: accept both legacy and new names
+        $startDateParam = $request->input('startdate') ?: $request->input('start_date');
+        $endDateParam = $request->input('enddate') ?: $request->input('end_date');
+        $groupParam = $request->input('group_id') ?: $request->input('s_group_name');
+        $examParam = $request->input('examcode_id') ?: $request->input('s_exam_code');
+        $statusParam = $request->input('status') ?: $request->input('s_status');
+
+        // Filter by start date (treat supplied date as India time, convert to UTC range)
+        if (!empty($startDateParam)) {
             try {
-                $start = Carbon::createFromFormat('Y-m-d', $request->input('start_date'), 'Asia/Kolkata')
+                $start = Carbon::createFromFormat('Y-m-d', $startDateParam, 'Asia/Kolkata')
                     ->startOfDay()
                     ->setTimezone('UTC');
                 $query->where('s_date', '>=', $start->toDateTimeString());
@@ -78,10 +85,10 @@ class InvoiceController extends Controller
                 // ignore invalid date formats
             }
         }
-        // Filter by end_date (treat supplied date as India time end of day, convert to UTC)
-        if ($request->filled('end_date')) {
+        // Filter by end date (treat supplied date as India time end of day, convert to UTC)
+        if (!empty($endDateParam)) {
             try {
-                $end = Carbon::createFromFormat('Y-m-d', $request->input('end_date'), 'Asia/Kolkata')
+                $end = Carbon::createFromFormat('Y-m-d', $endDateParam, 'Asia/Kolkata')
                     ->endOfDay()
                     ->setTimezone('UTC');
                 $query->where('s_date', '<=', $end->toDateTimeString());
@@ -90,12 +97,12 @@ class InvoiceController extends Controller
             }
         }
         // Backend filter for group
-        if ($request->filled('s_group_name')) {
-            $query->where('s_group_name', $request->input('s_group_name'));
+        if (!empty($groupParam)) {
+            $query->where('s_group_name', $groupParam);
         }
         // Backend filter for exam code (support id or code)
-        if ($request->filled('s_exam_code')) {
-            $val = $request->input('s_exam_code');
+        if (!empty($examParam)) {
+            $val = $examParam;
             $query->where(function($q) use ($val) {
                 $q->where('s_exam_code', $val)
                   ->orWhereHas('examcode', function($q2) use ($val) {
@@ -104,8 +111,35 @@ class InvoiceController extends Controller
             });
         }
         // Backend filter for status
-        if ($request->filled('s_status')) {
-            $query->where('s_status', 'like', '%' . $request->input('s_status') . '%');
+        if (!empty($statusParam)) {
+            $query->where('s_status', 'like', '%' . $statusParam . '%');
+        }
+
+        // Full-text-ish search across key fields and relations
+                if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('s_group_name', 'like', "%$search%")
+                  ->orWhere('s_exam_name', 'like', "%$search%")
+                  ->orWhere('s_location', 'like', "%$search%")
+                  ->orWhere('s_email', 'like', "%$search%")
+                  ->orWhere('s_phone', 'like', "%$search%")
+                  ->orWhere('s_comment', 'like', "%$search%")
+                  ->orWhere('s_system_name', 'like', "%$search%")
+                  ->orWhere('s_access_code', 'like', "%$search%")
+                  ->orWhere('s_done_by', 'like', "%$search%")
+                    ->orWhere('s_invoice_number', 'like', "%$search%")
+                    ->orWhere('s_revoke_reason', 'like', "%$search%")
+                    ->orWhere('s_account_holder', 'like', "%$search%")
+                  ->orWhereHas('user', function($uq) use ($search) { $uq->where('name','like',"%$search%"); })
+                  ->orWhereHas('agent', function($aq) use ($search) { $aq->where('name','like',"%$search%"); })
+                  ->orWhereHas('examcode', function($eq) use ($search) { $eq->where('ex_code','like',"%$search%"); });
+
+                // If numeric, allow matching exam code ID exactly
+                if (is_numeric($search)) {
+                    $q->orWhere('s_exam_code', (int) $search);
+                }
+            });
         }
 
 
@@ -144,8 +178,8 @@ class InvoiceController extends Controller
 
         $schedules =  $query->get();
 
-        // For completed tab, resolve account holder display name from bank_accounts when s_account_holder stores an ID
-        if (strtolower((string)$type) === 'completed' && $schedules->count() > 0) {
+        // Resolve account holder display and attach common derived fields for all rows
+        if ($schedules->count() > 0) {
             $numericIds = $schedules
                 ->filter(function($s){ return !empty($s->s_account_holder) && ctype_digit((string)$s->s_account_holder); })
                 ->map(function($s){ return (int)$s->s_account_holder; })
@@ -158,16 +192,26 @@ class InvoiceController extends Controller
                 : BankAccount::whereIn('id', $numericIds)->get()->keyBy('id');
 
             foreach ($schedules as $s) {
+                // Account holder display
                 $resolved = null;
                 if (!empty($s->s_account_holder) && ctype_digit((string)$s->s_account_holder)) {
                     $acc = $accountsById[(int)$s->s_account_holder] ?? null;
                     $resolved = $acc->account_name ?? null;
                 } elseif (!empty($s->s_account_holder)) {
-                    // Already a name
-                    $resolved = $s->s_account_holder;
+                    $resolved = $s->s_account_holder; // already a name
                 }
-                // Attach a derived attribute for frontend consumption
                 $s->account_holder_name = $resolved;
+
+                // Indian time formatted date for display
+                $s->formatted_s_date = $s->s_date
+                    ? Carbon::parse($s->s_date, 'UTC')->setTimezone('Asia/Kolkata')->format('d/m/Y-h:i A')
+                    : null;
+
+                // Ensure revoke comment key is present (frontend expects s_revoke_reason)
+                $s->s_revoke_reason = $s->s_revoke_reason ?? null;
+
+                // Invoice number already in s_invoice_number; expose alias if needed
+                $s->invoice_number = $s->s_invoice_number ?? null;
             }
         }
         return response()->json([
@@ -387,6 +431,13 @@ class InvoiceController extends Controller
             }
         }
 
+        // Normalize param names
+        $startDateParam = $request->input('startdate') ?: $request->input('start_date');
+        $endDateParam = $request->input('enddate') ?: $request->input('end_date');
+        $groupParam = $request->input('group_id') ?: $request->input('s_group_name');
+        $examParam = $request->input('examcode_id') ?: $request->input('s_exam_code');
+        $statusParam = $request->input('status') ?: $request->input('s_status');
+
         // Filters
         if ($request->filled('user_id') && $request->input('user_id') !== 'all') {
             $query->where('s_user_id', $request->input('user_id'));
@@ -394,25 +445,25 @@ class InvoiceController extends Controller
         if ($request->filled('agent_id') && $request->input('agent_id') !== 'all') {
             $query->where('s_agent_id', $request->input('agent_id'));
         }
-        if ($request->filled('start_date')) {
+        if (!empty($startDateParam)) {
             try {
-                $start = Carbon::createFromFormat('Y-m-d', $request->input('start_date'), 'Asia/Kolkata')
+                $start = Carbon::createFromFormat('Y-m-d', $startDateParam, 'Asia/Kolkata')
                     ->startOfDay()->setTimezone('UTC');
                 $query->where('s_date', '>=', $start->toDateTimeString());
             } catch (\Exception $e) {}
         }
-        if ($request->filled('end_date')) {
+        if (!empty($endDateParam)) {
             try {
-                $end = Carbon::createFromFormat('Y-m-d', $request->input('end_date'), 'Asia/Kolkata')
+                $end = Carbon::createFromFormat('Y-m-d', $endDateParam, 'Asia/Kolkata')
                     ->endOfDay()->setTimezone('UTC');
                 $query->where('s_date', '<=', $end->toDateTimeString());
             } catch (\Exception $e) {}
         }
-        if ($request->filled('s_group_name')) {
-            $query->where('s_group_name', $request->input('s_group_name'));
+        if (!empty($groupParam)) {
+            $query->where('s_group_name', $groupParam);
         }
-        if ($request->filled('s_exam_code')) {
-            $val = $request->input('s_exam_code');
+        if (!empty($examParam)) {
+            $val = $examParam;
             $query->where(function($q) use ($val) {
                 $q->where('s_exam_code', $val)
                   ->orWhereHas('examcode', function($q2) use ($val) {
@@ -420,8 +471,31 @@ class InvoiceController extends Controller
                   });
             });
         }
-        if ($request->filled('s_status')) {
-            $query->where('s_status', 'like', '%' . $request->input('s_status') . '%');
+        if (!empty($statusParam)) {
+            $query->where('s_status', 'like', '%' . $statusParam . '%');
+        }
+
+        // Search support in export too
+                if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('s_group_name', 'like', "%$search%")
+                  ->orWhere('s_exam_name', 'like', "%$search%")
+                  ->orWhere('s_location', 'like', "%$search%")
+                  ->orWhere('s_email', 'like', "%$search%")
+                  ->orWhere('s_phone', 'like', "%$search%")
+                  ->orWhere('s_comment', 'like', "%$search%")
+                  ->orWhere('s_system_name', 'like', "%$search%")
+                  ->orWhere('s_access_code', 'like', "%$search%")
+                  ->orWhere('s_done_by', 'like', "%$search%")
+                                    ->orWhere('s_invoice_number', 'like', "%$search%")
+                                    ->orWhere('s_revoke_reason', 'like', "%$search%")
+                                    ->orWhere('s_account_holder', 'like', "%$search%")
+                  ->orWhereHas('user', function($uq) use ($search) { $uq->where('name','like',"%$search%"); })
+                  ->orWhereHas('agent', function($aq) use ($search) { $aq->where('name','like',"%$search%"); })
+                  ->orWhereHas('examcode', function($eq) use ($search) { $eq->where('ex_code','like',"%$search%"); });
+                if (is_numeric($search)) { $q->orWhere('s_exam_code', (int)$search); }
+            });
         }
 
         // Sorting

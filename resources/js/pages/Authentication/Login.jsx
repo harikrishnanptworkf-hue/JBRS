@@ -51,6 +51,7 @@ const Login = props => {
   const dispatch = useDispatch();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleClick = () => {
     setUsername('admin');
@@ -209,18 +210,41 @@ const Login = props => {
                       </div>
                       <div className="mb-3">
                         <Label className="form-label">Password</Label>
-                        <Input
-                          name="password"
-                          className="login-modern-input"
-                          value={validation.values.password || ""}
-                          type="password"
-                          placeholder="Enter Password"
-                          onChange={validation.handleChange}
-                          onBlur={validation.handleBlur}
-                          invalid={
-                            validation.touched.password && validation.errors.password ? true : false
-                          }
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <Input
+                            name="password"
+                            className="login-modern-input"
+                            value={validation.values.password || ""}
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter Password"
+                            onChange={validation.handleChange}
+                            onBlur={validation.handleBlur}
+                            invalid={
+                              validation.touched.password && validation.errors.password ? true : false
+                            }
+                          />
+                          <button
+                            type="button"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            onClick={() => setShowPassword(p => !p)}
+                            style={{
+                              position: 'absolute',
+                              right: 10,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: '#6c757d'
+                            }}
+                          >
+                            {showPassword ? (
+                              <i className="mdi mdi-eye-off" style={{ fontSize: 20 }}></i>
+                            ) : (
+                              <i className="mdi mdi-eye" style={{ fontSize: 20 }}></i>
+                            )}
+                          </button>
+                        </div>
                         {validation.touched.password && validation.errors.password ? (
                           <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
                         ) : null}

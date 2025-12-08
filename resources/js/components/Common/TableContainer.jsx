@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import { Row, Table, Button, Col } from "reactstrap";
 import { Link } from "react-router-dom";
 
@@ -132,6 +132,60 @@ const TableContainer = ({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Refs for synchronized top/bottom horizontal scrollbars
+  const topScrollRef = useRef(null);
+  const bottomScrollRef = useRef(null);
+  const tableRef = useRef(null);
+
+  // Sync scroll positions between top and bottom scroll containers
+  useEffect(() => {
+    const topEl = topScrollRef.current;
+    const bottomEl = bottomScrollRef.current;
+    if (!topEl || !bottomEl) return;
+
+    const onTopScroll = () => {
+      if (bottomEl.scrollLeft !== topEl.scrollLeft) {
+        bottomEl.scrollLeft = topEl.scrollLeft;
+      }
+    };
+    const onBottomScroll = () => {
+      if (topEl.scrollLeft !== bottomEl.scrollLeft) {
+        topEl.scrollLeft = bottomEl.scrollLeft;
+      }
+    };
+
+    topEl.addEventListener('scroll', onTopScroll);
+    bottomEl.addEventListener('scroll', onBottomScroll);
+
+    return () => {
+      topEl.removeEventListener('scroll', onTopScroll);
+      bottomEl.removeEventListener('scroll', onBottomScroll);
+    };
+  }, []);
+
+  // Keep the top scrollbar width in sync with the bottom scroll container content width
+  useEffect(() => {
+    const topEl = topScrollRef.current;
+    const bottomEl = bottomScrollRef.current;
+    if (!topEl || !bottomEl) return;
+
+    const updateWidth = () => {
+      // Set an inner spacer to the full table width so the top bar can scroll
+      const inner = topEl.querySelector('.top-scroll-inner');
+      if (inner) {
+        inner.style.width = `${bottomEl.scrollWidth}px`;
+        inner.style.height = '1px';
+      }
+    };
+
+    updateWidth();
+
+    // Observe width changes on the bottom scroll container
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(bottomEl);
+    return () => ro.disconnect();
+  }, [data, columns]);
+
   const {
     getHeaderGroups,
     getRowModel,
@@ -215,8 +269,18 @@ const TableContainer = ({
         </div>
       </div>
 
-      <div className={divClassName ? divClassName : "table-responsive"}>
+      {/* Top synchronized scrollbar */}
+      <div
+        ref={topScrollRef}
+        className="table-responsive top-scrollbar"
+        style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, marginBottom: 6 }}
+      >
+        <div className="top-scroll-inner" />
+      </div>
+
+      <div ref={bottomScrollRef} className={divClassName ? divClassName : "table-responsive"}>
 <Table
+  ref={tableRef}
   className={tableClass}
   bordered={isBordered}
   style={{ borderCollapse: "separate", borderSpacing: "1px 0px"}} 

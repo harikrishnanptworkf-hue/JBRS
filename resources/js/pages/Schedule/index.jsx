@@ -59,10 +59,10 @@ function ScheduleList() {
     };
 
     const handleClientChange = () => {
-        // Always check localStorage for todaySchedule
+        // If this computer has "Today Schedule" mode enabled, auto-focus to today's range
         let isToday = false;
         try { isToday = localStorage.getItem('todaySchedule') === 'true'; } catch (e) { isToday = false; }
-        if(isToday){
+        if (isToday) {
             const today = new Date();
             setFilterAgent('');
             setFilterUser('');
@@ -76,7 +76,8 @@ function ScheduleList() {
             // fetchSchedules will be triggered by filter state change
             return;
         }
-        fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder);
+        // Otherwise, keep current filters and just refresh
+        fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder, search);
     };
 
 
