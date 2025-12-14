@@ -221,6 +221,7 @@ function EnquiryList() {
     };
 
     // Fix: Edit button logic
+    // Actual edit of enquiry (stay as enquiry)
     const handleEditEnquiry = async (row) => {
         try {
             // Always fetch latest data for edit
@@ -228,6 +229,16 @@ function EnquiryList() {
             navigate('/client-create', { state: { editId: row.id, editType: 'enquiry', enquiryData: res.data } });
         } catch (err) {
             toast.error('Failed to fetch enquiry details.');
+        }
+    };
+
+    // Convert enquiry to schedule (open client-create in schedule mode)
+    const handleConvertToSchedule = async (row) => {
+        try {
+            const res = await api.get(`/enquiries/${row.id}`);
+            navigate('/client-create', { state: { editId: row.id, editType: 'enquiry', enquiryData: res.data, forceSchedule: true } });
+        } catch (err) {
+            toast.error('Failed to open convert-to-schedule view.');
         }
     };
 
@@ -323,21 +334,27 @@ function EnquiryList() {
             cell: (cellProps) => <span>{cellProps.row.original.examcode?.ex_code || ''}</span>
 
         },
-        // {
-        //     header: (
-        //         <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
-        //             Date
-        //             {sortBy === 'date' && (
-        //                 <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
-        //                     {sortOrder === 'asc' ? '▲' : '▼'}
-        //                 </span>
-        //             )}
-        //         </span>
-        //     ),
-        //     accessorKey: 'date',
-        //     enableSorting: true,
-        //     cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
-        // },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleSortChange('date')}>
+                    Date
+                    {sortBy === 'date' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'date',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
+        },
+        {
+            header: 'Enquiry Comment',
+            accessorKey: 'e_enq_comment',
+            enableSorting: false,
+            cell: (cellProps) => <span>{cellProps.row.original.e_enq_comment || ''}</span>
+        },
         {
             header: 'Action',
             accessorKey: 'action',
@@ -348,12 +365,27 @@ function EnquiryList() {
                 return (
                     <ul className="list-unstyled hstack gap-1 mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
                         <li>
+                            {/* Convert to Schedule button (standard conversion icon) */}
+                            <button
+                                type="button"
+                                className="examcode-action-btn"
+                                style={{ color: '#2ba8fb', background: '#e6f7ff' }}
+                                onClick={() => handleConvertToSchedule({ ...cellProps.row.original, id: enquiryId })}
+                                id={`converttoschedule-${enquiryId}`}
+                                title="Convert to Schedule"
+                            >
+                                <i className="mdi mdi-calendar-arrow-right" style={{ color: '#2ba8fb' }} />
+                            </button>
+                        </li>
+                        <li>
+                            {/* Actual Edit Enquiry button (keep pencil icon) */}
                             <button
                                 type="button"
                                 className="examcode-action-btn edit"
                                 style={{ color: '#1a8cff', background: '#e6f2ff' }}
                                 onClick={() => handleEditEnquiry({ ...cellProps.row.original, id: enquiryId })}
                                 id={`edittooltip-${enquiryId}`}
+                                title="Edit Enquiry"
                             >
                                 <i className="mdi mdi-pencil-outline" style={{ color: '#1a8cff' }} />
                             </button>

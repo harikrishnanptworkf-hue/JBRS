@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-// use App\Models\Enquiry;
+use App\Models\Enquiry;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -30,40 +30,47 @@ class ReminderController extends Controller
         $sessionUser = session('user');
         $roleId = $sessionUser['role_id'] ?? null;
         $schedules = Schedule::with(['user', 'agent', 'examcode']);
+        $enquiries = Enquiry::with(['user', 'agent', 'examcode'])->whereNull('removed_at');
+        
         if ($roleId && $roleId == 3) {
             $schedules = $schedules->where('s_user_id', $sessionUser['id']);
+            $enquiries = $enquiries->where('e_user_id', $sessionUser['id']);
         } else if($roleId && $roleId == 2){
             $schedules = $schedules->where('s_agent_id', $sessionUser['id']);
+            $enquiries = $enquiries->where('e_agent_id', $sessionUser['id']);
         }
-        if ($agent) $schedules = $schedules->where('s_agent_id', $agent);
+        if ($agent) { $schedules = $schedules->where('s_agent_id', $agent); $enquiries = $enquiries->where('e_agent_id', $agent); }
 
-        if ($user) $schedules->where('s_user_id', $user);
-        if ($group) $schedules->where('s_group_name', $group);
-        if ($examcode) $schedules->where('s_exam_code', $examcode);
-        if ($reminddate) $schedules->whereDate('s_remind_date', $reminddate);
-        if ($dateStart) $schedules->whereDate('s_date', '>=', $dateStart);
-        if ($dateEnd) $schedules->whereDate('s_date', '<=', $dateEnd);
+        if ($user) { $schedules->where('s_user_id', $user); $enquiries->where('e_user_id', $user); }
+        if ($group) { $schedules->where('s_group_name', $group); $enquiries->where('e_group_name', $group); }
+        if ($examcode) { $schedules->where('s_exam_code', $examcode); $enquiries->where('e_exam_code', $examcode); }
+        if ($reminddate) { $schedules->whereDate('s_remind_date', $reminddate); /* enquiries remind calculated below */ }
+        if ($dateStart) { $schedules->whereDate('s_date', '>=', $dateStart); $enquiries->whereDate('e_date', '>=', $dateStart); }
+        if ($dateEnd) { $schedules->whereDate('s_date', '<=', $dateEnd); $enquiries->whereDate('e_date', '<=', $dateEnd); }
 
 
 
         // Search filter (case-insensitive, partial match)
         if ($search) {
             $schedules = $schedules->where(function($query) use ($search) {
-                $query->where('s_exam_code', 'like', "%$search%")
-                    ->orWhere('s_group_name', 'like', "%$search%")
-                    ->orWhereHas('user', function($q) use ($search) {
-                        $q->where('name', 'like', "%$search%") ;
-                    })
-                    ->orWhereHas('agent', function($q) use ($search) {
-                        $q->where('name', 'like', "%$search%") ;
-                    });
+                $query->where('s_group_name', 'like', "%$search%")
+                    ->orWhereHas('user', function($q) use ($search) { $q->where('name', 'like', "%$search%"); })
+                    ->orWhereHas('agent', function($q) use ($search) { $q->where('name', 'like', "%$search%"); })
+                    ->orWhereHas('examcode', function($q) use ($search) { $q->where('ex_code', 'like', "%$search%"); });
+            });
+            $enquiries = $enquiries->where(function($query) use ($search) {
+                $query->where('e_group_name', 'like', "%$search%")
+                    ->orWhereHas('user', function($q) use ($search) { $q->where('name', 'like', "%$search%"); })
+                    ->orWhereHas('agent', function($q) use ($search) { $q->where('name', 'like', "%$search%"); })
+                    ->orWhereHas('examcode', function($q) use ($search) { $q->where('ex_code', 'like', "%$search%"); });
             });
         }
 
 
         $merged = $schedules->get();
+        $enqList = $enquiries->get();
         $nowUtc = Carbon::now('UTC')->startOfDay();
-        // Calculate s_remind_date as s_date + ex_remind_year + ex_remind_month, filter by remind date <= today (UTC), display IST
+        // Calculate s_remind_date as s_date + ex_remind_year + ex_remind_month, always include
         $merged = $merged->filter(function($item) use ($nowUtc) {
             if ($item->s_date && $item->examcode) {
                 $sDate = Carbon::parse($item->s_date, 'UTC');
@@ -72,14 +79,35 @@ class ReminderController extends Controller
                 $remindDate = $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
                 $item->s_remind_date = $remindDate->toDateTimeString();
                 $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
-                // Show if today (UTC) is equal or after remind date (UTC, date only)
-                return $nowUtc->greaterThanOrEqualTo($remindDate->copy()->startOfDay());
+                // No need to check current date against remind date; always include
+                return true;
             } else {
                 $item->s_remind_date = null;
                 $item->s_remind_date_ist = null;
                 return false;
             }
         })->values();
+
+        // Enquiry reminders: remind date = e_date + 3 days
+        $enqReminders = $enqList->filter(function($item) use ($nowUtc) {
+            if ($item->e_date) {
+                $eDate = Carbon::parse($item->e_date, 'UTC');
+                $remindDate = $eDate->copy()->addDays(3);
+                // Normalize fields to resemble schedule structure for frontend reuse
+                $item->s_remind_date = $remindDate->toDateTimeString();
+                $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+                $item->s_group_name = $item->e_group_name;
+                $item->s_exam_code = $item->e_exam_code;
+                $item->s_user_id = $item->e_user_id;
+                $item->s_agent_id = $item->e_agent_id;
+                $item->s_id = $item->e_id; // use id for action handling
+                // No need to check current date against remind date; always include
+                return true;
+            }
+            return false;
+        })->values();
+        // Merge schedules and enquiries
+        $merged = $merged->merge($enqReminders)->values();
 
         // Sorting
         $sortBy = $request->input('sortBy', 'reminddate');
@@ -91,11 +119,11 @@ class ReminderController extends Controller
                 case 'user':
                     return $item->user->name ?? '';
                 case 'groupname':
-                    return $item->s_group_name ?? '';
+                    return $item->s_group_name ?? $item->e_group_name ?? '';
                 case 'examcode':
-                    return $item->s_exam_code ?? '';
+                    return $item->examcode->ex_code ?? '';
                 case 'date':
-                    return $item->s_date ?? null;
+                    return $item->s_date ?? $item->e_date ?? null;
                 case 'reminddate':
                 default:
                     return $item->s_remind_date ?? null;

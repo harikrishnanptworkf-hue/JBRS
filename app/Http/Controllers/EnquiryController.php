@@ -129,11 +129,14 @@ class EnquiryController extends Controller
             'group_name'      => 'nullable|string|max:45',
             'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
+            // Frontend sends date but for enquiries we will override to now on server
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:255',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
             'comment'         => 'nullable|string',
+            // New enquiry comment field
+            'e_enq_comment'   => 'nullable|string',
             'email'           => 'nullable|email|max:255',
             'phone'           => 'nullable|string|max:20',
             'remind_date'     => 'nullable|date',
@@ -149,6 +152,8 @@ class EnquiryController extends Controller
         if (!empty($validated['remind_date'])) {
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
         }
+        // Always set enquiry date on the server side (UTC now) to prevent client-side manipulation
+        $nowUtc = Carbon::now('UTC')->format('Y-m-d H:i:s');
         // Map client field names to DB column names
         $enquiryData = [
             'e_agent_id'      => $validated['agent'],
@@ -156,11 +161,13 @@ class EnquiryController extends Controller
             'e_group_name'    => $validated['group_name'] ?? null,
             'e_exam_code'     => $validated['exam_code_id'] ?? null,
             'e_area'          => $request->input('timezone') ?? null,
-            'e_date'          => $validated['date'] ?? null,
+            // Override with server timestamp for enquiries
+            'e_date'          => $nowUtc,
             'e_location'      => $validated['location'] ?? null,
             'e_support_fee'   => $validated['support_fee'] ?? null,
             'e_voucher_fee'   => $validated['voucher_fee'] ?? null,
             'e_comment'       => $validated['comment'] ?? null,
+            'e_enq_comment'   => $validated['e_enq_comment'] ?? null,
             'e_email'         => $validated['email'] ?? null,
             'e_phone'         => $validated['phone'] ?? null,
             'e_remind_date'   => $validated['remind_date'] ?? null,
@@ -192,12 +199,14 @@ class EnquiryController extends Controller
             'agent'           => 'sometimes|required|integer',
             'user'            => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
+            'exam_code_id'    => 'nullable|integer',
             'exam_code'       => 'nullable|string|max:45',
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:255',
             'support_fee'     => 'nullable|numeric',
             'voucher_fee'     => 'nullable|numeric',
             'comment'         => 'nullable|string',
+            'e_enq_comment'   => 'nullable|string',
             'email'           => 'nullable|email|max:255',
             'phone'           => 'nullable|string|max:20',
             'remind_date'     => 'nullable|date',
@@ -214,17 +223,25 @@ class EnquiryController extends Controller
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
         }
 
+        // Resolve exam code: prefer ID, fallback to text lookup
+        $examCodeId = $validated['exam_code_id'] ?? null;
+        if (!$examCodeId && !empty($validated['exam_code'])) {
+            $foundCode = ExamCode::where('ex_code', $validated['exam_code'])->first();
+            $examCodeId = $foundCode ? $foundCode->id : null;
+        }
+
         $enquiryData = [
             'e_agent_id'      => $validated['agent'] ?? $enquiry->e_agent_id,
             'e_user_id'       => $validated['user'] ?? $enquiry->e_user_id,
             'e_group_name'    => $validated['group_name'] ?? $enquiry->e_group_name,
-            'e_exam_code'     => $validated['exam_code'] ?? $enquiry->e_exam_code,
+            'e_exam_code'     => $examCodeId ?? $enquiry->e_exam_code,
             'e_area'          => $request->input('timezone') ?? $enquiry->e_area,
             'e_date'          => $validated['date'] ?? $enquiry->e_date,
             'e_location'      => $validated['location'] ?? $enquiry->e_location,
             'e_support_fee'   => $validated['support_fee'] ?? $enquiry->e_support_fee,
             'e_voucher_fee'   => $validated['voucher_fee'] ?? $enquiry->e_voucher_fee,
             'e_comment'       => $validated['comment'] ?? $enquiry->e_comment,
+            'e_enq_comment'   => $validated['e_enq_comment'] ?? $enquiry->e_enq_comment,
             'e_email'         => $validated['email'] ?? $enquiry->e_email,
             'e_phone'         => $validated['phone'] ?? $enquiry->e_phone,
             'e_remind_date'   => $validated['remind_date'] ?? $enquiry->e_remind_date,

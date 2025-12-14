@@ -44,6 +44,44 @@ function formatDateToYMDHMS(date) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }
 
+// For enquiry display: DD-MM-YYYY HH:MM:SS
+function formatDateToDMYHMS(date) {
+  if (!date) return '';
+  let d = date;
+  if (typeof d === 'string') {
+    // If already in desired format, return as is
+    if (/^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/.test(d)) return d;
+    d = new Date(d);
+  }
+  if (!(d instanceof Date) || isNaN(d)) return '';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
+}
+
+// Safely convert form value to a Date object for DatePicker
+function toDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value) ? null : value;
+  if (typeof value === 'string') {
+    // Support "YYYY-MM-DD HH:MM:SS" by converting to ISO-like
+    const isoLike = value.includes('T') ? value : value.replace(' ', 'T');
+    const d = new Date(isoLike);
+    return isNaN(d) ? null : d;
+  }
+  // Fallback: try Date constructor
+  try {
+    const d = new Date(value);
+    return isNaN(d) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
 const ClientCreate = () => {
   document.title = "Client";
   const [agents, setAgents] = useState([]);
@@ -164,39 +202,45 @@ const ClientCreate = () => {
       timezone: '',
       location: '',
       comment: '',
+      // New: enquiry specific comment field
+      e_enq_comment: '',
       remind_date: '',
       remind_remark: '',
     },
-    validationSchema: Yup.object({
-      agent: Yup.string().required('Agent is required'),
-      user: Yup.string().required('User is required'),
-      timezone: Yup.string().when([], {
-        is: () => formType === 'schedule',
-        then: schema => schema.required('Timezone is required'),
-        otherwise: schema => schema.notRequired()
-      }),
-      group_name: Yup.string().required('Group name is required'),
-  bill_to: Yup.string().when([], { is: () => location.state?.from === 'invoice', then: s => s.required('Bill to is required'), otherwise: s => s.notRequired() }),
-      exam_code: Yup.string().required('Exam code is required'),
-      date: Yup.mixed().when([], {
-        is: () => formType === 'schedule',
-        then: schema => schema.required('Date is required').test('is-date', 'Date is required', val => !!val),
-        otherwise: schema => schema.notRequired()
-      }),
-      support_fee: Yup.number()
-        .typeError('Support fee must be a number')
-        .min(0, 'Support fee cannot be negative'),
-      voucher_fee: Yup.number()
-        .typeError('Voucher fee must be a number')
-        .min(0, 'Voucher fee cannot be negative'),
-      amount: Yup.number()
-        .typeError('Amount must be a number')
-        .min(0, 'Amount cannot be negative')
-        .nullable(true),
-      email: Yup.string().email('Invalid email'),
-      phone: Yup.string()
-        .matches(/^[+]?\d{10,15}$/, 'Invalid phone number')
+  validationSchema: Yup.object({
+    agent: Yup.string().required('Agent is required'),
+    user: Yup.string().required('User is required'),
+    timezone: Yup.string().when([], {
+      is: () => formType === 'schedule',
+      then: (schema) => schema.required('Timezone is required'),
+      otherwise: (schema) => schema.notRequired()
     }),
+    group_name: Yup.string().required('Group name is required'),
+    bill_to: Yup.string().when([], {
+      is: () => location.state?.from === 'invoice',
+      then: (schema) => schema.required('Bill to is required'),
+      otherwise: (schema) => schema.notRequired()
+    }),
+    exam_code: Yup.string().required('Exam code is required'),
+    date: Yup.mixed().when([], {
+      is: () => formType === 'schedule',
+      then: (schema) => schema.test('is-date', 'Date is required', (val) => !!val),
+      otherwise: (schema) => schema.notRequired()
+    }),
+    support_fee: Yup.number()
+      .typeError('Support fee must be a number')
+      .min(0, 'Support fee cannot be negative'),
+    voucher_fee: Yup.number()
+      .typeError('Voucher fee must be a number')
+      .min(0, 'Voucher fee cannot be negative'),
+    amount: Yup.number()
+      .typeError('Amount must be a number')
+      .min(0, 'Amount cannot be negative')
+      .nullable(true),
+    email: Yup.string().email('Invalid email'),
+    phone: Yup.string()
+      .matches(/^[+]?\d{10,15}$/, 'Invalid phone number')
+  }),
     onSubmit: async (values) => {
       try {
         const formattedDate = formatDateToYMDHMS(values.date);
@@ -231,22 +275,35 @@ const ClientCreate = () => {
             }
           }
         }
-        // Prepare payload with normalized date and exam_code_id
-        const payload = { ...values, date: formattedDate, exam_code_id, exam_code: exam_code_text };
+    // Prepare payload with normalized date and exam_code_id
+    const payload = { ...values, date: formattedDate, exam_code_id, exam_code: exam_code_text };
+        // Convert enquiry to schedule
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
-          await api.post('/schedule', payload);
+          // Include source enquiry id for linkage
+          const schedulePayload = { ...payload, s_enq_id: location.state.editId };
+          await api.post('/schedule', schedulePayload);
+          // Soft delete the enquiry
           await api.delete(`/enquiries/${location.state.editId}`);
           if (location.state?.from === 'invoice') {
             redirectToInvoicePending();
           } else {
             navigate('/schedule');
           }
+        // Create new enquiry
         } else if (!location.state?.editType && formType === 'enquiry') {
           try {
             const res = await api.post('/enquiries', payload);
             navigate('/enquiry', { state: { created: true } });
           } catch (err) {
             alert('Failed to save enquiry: ' + (err?.message || 'Unknown error'));
+          }
+        // Edit existing enquiry
+        } else if (location.state?.editType === 'enquiry' && formType === 'enquiry') {
+          try {
+            await api.put(`/enquiries/${location.state.editId}`, payload);
+            navigate('/enquiry', { state: { updated: true } });
+          } catch (err) {
+            alert('Failed to update enquiry: ' + (err?.message || 'Unknown error'));
           }
         } else if (!location.state?.editType && formType === 'schedule') {
           await api.post('/schedule', payload);
@@ -589,10 +646,16 @@ const ClientCreate = () => {
 
   useEffect(() => {
     if (formType === 'enquiry') {
-      validation.setFieldValue('date', '', false);
+      // For creating a new enquiry (no edit context), show current date as read-only display.
+      // When editing an existing enquiry, we keep the original created date from API.
+      if (!location.state?.editType) {
+        const now = new Date();
+        validation.setFieldValue('date', formatDateToDMYHMS(now), false);
+      }
+      // Always clear timezone in enquiry mode
       validation.setFieldValue('timezone', '', false);
     }
-  }, [formType]);
+  }, [formType, location.state]);
 
   useEffect(() => {
     async function fetchAndPopulate() {
@@ -658,7 +721,8 @@ const ClientCreate = () => {
                 bill_to: data.e_bill_to || data.e_group_name || '',
                 exam_name: data.e_exam_name || data.exam_name || '',
                 exam_code: data.e_exam_code || '',
-                date: '',
+                // For enquiry edit: display formatted date string if available, else keep blank
+                date: data.formatted_e_date || '',
                 support_fee: data.e_support_fee || '',
                 voucher_fee: data.e_voucher_fee || '',
                 total_fee: data.total_fee || '',
@@ -671,6 +735,7 @@ const ClientCreate = () => {
                 timezone: '',
                 location: data.e_location || '',
                 comment: data.e_comment || '',
+                e_enq_comment: data.e_enq_comment || '',
                 remind_date: data.e_remind_date || '',
                 remind_remark: data.e_remind_remark || '',
               });
@@ -678,7 +743,8 @@ const ClientCreate = () => {
               if (!data?.e_account_id && !data?.account_id && data?.e_account_holder) {
                 setPendingAccountHolder(data.e_account_holder);
               }
-              setFormType('schedule');
+              // If coming from Convert to Schedule, switch to schedule mode; otherwise stay in enquiry edit mode
+              setFormType(location.state?.forceSchedule ? 'schedule' : 'enquiry');
             }
           } catch (err) {}
         }
@@ -726,12 +792,16 @@ const ClientCreate = () => {
                               <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>
                                 Type <span style={{ color: 'red'}}>*</span>
                               </label>
-                              <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
-                                <option value="schedule">Schedule</option>
-                                 {!(location.state && location.state.editType) && (
-                                   <option value="enquiry">Enquiry</option>
-                                 )}
-                              </select>
+                              {location.state?.editType === 'enquiry' ? (
+                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'enquiry'} disabled>
+                                  <option value="enquiry">Enquiry</option>
+                                </select>
+                              ) : (
+                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
+                                  <option value="schedule">Schedule</option>
+                                  <option value="enquiry">Enquiry</option>
+                                </select>
+                              )}
                             </div>
                         </div>
                         <div className="col-md-4 col-12">
@@ -817,7 +887,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                       </div>
-                      {/* Group Name & Comment */}
+                      {/* Group Name & Comment (and Enquiry Comment for enquiry) */}
                       <div className="row">
                         <div className="col-md-8 col-12">
                           <label htmlFor="group_name" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Group Name <span style={{ color: 'red' }}>*</span></label>
@@ -890,9 +960,9 @@ const ClientCreate = () => {
                           )}
                         </div>
                       </div>
-                      {/* Timezone & Email */}
+                      {/* Timezone (Schedule) or Enquiry Comment (Enquiry) & Email */}
                         <div className="row">
-                      {(location.state?.editType || formType === 'schedule') ? (
+                      {(formType === 'schedule') ? (
                           <div className="col-md-8 col-12">
                             <label htmlFor="timezone" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Timezone <span style={{ color: 'red' }}>*</span></label>
                             <Select
@@ -910,7 +980,20 @@ const ClientCreate = () => {
                               <div className="text-danger small mt-1">{validation.errors.timezone}</div>
                             )}
                           </div>
-                      ) : <div className="col-md-8 col-12"></div>}
+                      ) : (
+                          <div className="col-md-8 col-12">
+                            <label htmlFor="e_enq_comment" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Enquiry comment</label>
+                            <Input
+                              id="e_enq_comment"
+                              name="e_enq_comment"
+                              type="text"
+                              className="form-control rounded-pill px-3 py-2 reminder-input"
+                              placeholder="Enter enquiry comment..."
+                              value={validation.values.e_enq_comment}
+                              onChange={validation.handleChange}
+                            />
+                          </div>
+                      )}
                           <div className="col-md-4 col-12">
                             <label htmlFor="email" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Email</label>
                             <Input
@@ -931,15 +1014,16 @@ const ClientCreate = () => {
                         </div>
                       {/* Date & Remind Remark */}
                       <div className="row">
-                      {(location.state?.editType || formType === 'schedule') ? (
+                      {(formType === 'schedule') ? (
                         <div className="col-md-8 col-12">
                           <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Date <span style={{ color: 'red' }}>*</span></label>
                           <DatePicker
                             className="form-control rounded-pill px-3 py-2 reminder-input"
-                            selected={validation.values.date ? new Date(validation.values.date) : null}
+                            selected={toDate(validation.values.date)}
                             onChange={date => {
                               setstartDate(date);
-                              validation.setFieldValue('date', formatDateToYMDHMS(date));
+                              // Store raw Date object in form; format when submitting
+                              validation.setFieldValue('date', date);
                             }}
                             onBlur={validation.handleBlur}
                             dateFormat="dd/MM/yyyy h:mm aa"
@@ -1027,7 +1111,20 @@ const ClientCreate = () => {
                             </>
                           )}
                         </div>
-                      ) : <div className="col-md-8 col-12"></div>}
+                      ) : (
+                        // Enquiry: show read-only date/time (created date); not editable
+                        <div className="col-md-8 col-12">
+                          <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Date</label>
+                          <Input
+                            id="enquiry_date"
+                            name="date"
+                            type="text"
+                            className="form-control rounded-pill px-3 py-2 reminder-input"
+                            value={typeof validation.values.date === 'string' ? validation.values.date : formatDateToDMYHMS(validation.values.date)}
+                            readOnly
+                          />
+                        </div>
+                      )}
                         <div className="col-md-4 col-12">
                           <label htmlFor="remind_remark" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Remind remark</label>
                           <Input
@@ -1045,7 +1142,7 @@ const ClientCreate = () => {
                         <div className={`col-lg-12 d-flex align-items-center gap-2 ${location.state?.from === 'invoice' ? 'flex-nowrap' : 'justify-content-center'}`}>
                           {location.state && location.state.editType && (
                             <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
-                              Save Schedule
+                              {location.state.editType === 'enquiry' && formType === 'enquiry' ? 'Save Enquiry' : 'Save Schedule'}
                             </Button>
                           )}
                           {!location.state?.editType && formType === 'schedule' && (

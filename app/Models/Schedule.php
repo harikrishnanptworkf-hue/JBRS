@@ -17,6 +17,7 @@ class Schedule extends Model
     protected $fillable = [
         's_agent_id',
         's_user_id',
+        's_enq_id',
         's_group_name',
         's_bill_to',
         's_exam_code',

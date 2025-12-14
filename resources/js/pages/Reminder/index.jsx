@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import TableContainer from '../../components/Common/TableContainer';
 import api from '../../helpers/api';
 import Spinners from "../../components/Common/Spinner";
@@ -7,7 +8,22 @@ import { Row, Col, Input, Label } from 'reactstrap';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+// Local date formatter for DD-MM-YYYY
+function formatDMY(input) {
+    if (!input) return '';
+    try {
+        const d = new Date(input);
+        if (isNaN(d.getTime())) return '';
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+    } catch (e) {
+        return '';
+    }
+}
 function ReminderList() {
+    const navigate = useNavigate();
     // Listen for filter button event from Navbar
     document.title = "Reminders";
 
@@ -51,6 +67,21 @@ function ReminderList() {
 
     // Show/hide filter section (like Examcode)
     const [showFullControls, setShowFullControls] = useState(false);
+
+    // Safe local formatter to avoid ReferenceError in cell renderers
+    const formatDMYLocal = (input) => {
+        if (!input) return '';
+        try {
+            const d = new Date(input);
+            if (isNaN(d.getTime())) return '';
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}-${mm}-${yyyy}`;
+        } catch (e) {
+            return '';
+        }
+    };
 
     // Fetch filter options on mount (simulate API call)
     useEffect(() => {
@@ -230,43 +261,59 @@ const columns = useMemo(() => {
                         const [_, year, month, day] = isoMatch;
                         return new Date(Number(year), Number(month) - 1, Number(day));
                     }
-                    return null;
-                }
-                function formatDMY(dateStr) {
-                    const d = parseDate(dateStr);
-                    if (!d) return '';
-                    const day = String(d.getDate()).padStart(2, '0');
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const year = d.getFullYear();
-                    return `${day}/${month}/${year}`;
                 }
 
-                if (editRowId === rowId) {
-                    let dateObj = null;
-                    if (editRemindDate instanceof Date && !isNaN(editRemindDate)) {
-                        dateObj = editRemindDate;
-                    } else if (typeof editRemindDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editRemindDate)) {
-                        const [year, month, day] = editRemindDate.split('-');
-                        dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-                    } else if (cellProps.row.original.s_remind_date_ist) {
-                        dateObj = parseDate(cellProps.row.original.s_remind_date_ist);
-                    }
-
-                    return (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <DatePicker
-                                className="reminder-input"
-                                selected={dateObj}
-                                onChange={(date) => setEditRemindDate(date)}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="Select remind date"
-                            />
-                        </div>
-                    );
-                }
-
-                return formatDMY(cellProps.row.original.s_remind_date_ist);
+                return formatDMYLocal(cellProps.row.original.s_remind_date_ist);
             },
+        },
+        {
+            header: 'Action',
+            accessorKey: 'action',
+            enableSorting: false,
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                // Determine type based on date fields to avoid normalized s_id on enquiries
+                const isEnquiry = !!row.e_id || (!row.s_date && !!row.e_date);
+                const isSchedule = !!row.s_date && !row.e_id;
+                // IDs: prefer native ids for each type, avoid cross-assigning
+                const enquiryId = isEnquiry ? (row.e_id || row.id) : null;
+                const scheduleId = isSchedule ? (row.s_id || row.id) : null;
+                return (
+                    <div className="d-flex align-items-center gap-2" style={{justifyContent:'center'}}>
+                        {isEnquiry && (
+                            <button
+                                type="button"
+                                className="examcode-action-btn"
+                                style={{ color: '#2ba8fb', background: '#e6f7ff' }}
+                                title="Convert to Schedule"
+                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry', forceSchedule: true } })}
+                            >
+                                <i className="mdi mdi-calendar-arrow-right" style={{ color: '#2ba8fb' }} />
+                            </button>
+                        )}
+                        {isEnquiry && (
+                            <button
+                                type="button"
+                                className="examcode-action-btn edit"
+                                title="Edit Enquiry"
+                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry' } })}
+                            >
+                                <i className="mdi mdi-pencil-outline"></i>
+                            </button>
+                        )}
+                        {isSchedule && (
+                            <button
+                                type="button"
+                                className="examcode-action-btn edit"
+                                title="Edit Schedule"
+                                onClick={() => navigate('/client-create', { state: { editId: scheduleId, editType: 'schedule' } })}
+                            >
+                                <i className="mdi mdi-pencil-outline"></i>
+                            </button>
+                        )}
+                    </div>
+                );
+            }
         },
         // {
         //     header: 'Action',

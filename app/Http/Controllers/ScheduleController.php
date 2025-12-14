@@ -215,6 +215,7 @@ class ScheduleController extends Controller
         $validated = $request->validate([
             'agent'           => 'required|integer',
             'user'            => 'nullable|integer',
+            's_enq_id'        => 'nullable|integer',
             'group_name'      => 'nullable|string|max:45',
             'bill_to'         => 'nullable|string|max:191',
             'exam_name'       => 'nullable|string|max:191',
@@ -248,6 +249,7 @@ class ScheduleController extends Controller
         $scheduleData = [
             's_agent_id'      => $validated['agent'],
             's_user_id'       => $validated['user'] ?? null,
+            's_enq_id'        => $validated['s_enq_id'] ?? null,
             's_group_name'    => $validated['group_name'] ?? null,
             's_bill_to'       => $validated['bill_to'] ?? ($validated['group_name'] ?? null),
             's_exam_name'     => $validated['exam_name'] ?? null,

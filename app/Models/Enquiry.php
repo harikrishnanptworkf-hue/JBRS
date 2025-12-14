@@ -4,11 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
 class Enquiry extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    // Use non-standard soft delete column name
+    const DELETED_AT = 'removed_at';
 
     protected $table = 'enquiries';
     protected $primaryKey = 'e_id';
@@ -30,7 +34,8 @@ class Enquiry extends Model
         'e_phone',
         'e_remind_date',
         'e_remind_remark',
-        'e_area'
+        'e_area',
+        'e_enq_comment'
     ];
 
     public function user()
