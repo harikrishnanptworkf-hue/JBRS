@@ -100,6 +100,7 @@ class ReminderController extends Controller
                 $item->s_exam_code = $item->e_exam_code;
                 $item->s_user_id = $item->e_user_id;
                 $item->s_agent_id = $item->e_agent_id;
+                $item->s_remind_remark = $item->e_remind_remark;
                 $item->s_id = $item->e_id; // use id for action handling
                 // No need to check current date against remind date; always include
                 return true;

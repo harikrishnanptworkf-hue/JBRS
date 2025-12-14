@@ -267,6 +267,14 @@ const columns = useMemo(() => {
             },
         },
         {
+            header: 'Remind Remark',
+            accessorKey: 'remindremark',
+            enableSorting: false,
+            cell: (cellProps) => (
+                <span>{cellProps.row.original.s_remind_remark || cellProps.row.original.e_remind_remark || ''}</span>
+            ),
+        },
+        {
             header: 'Action',
             accessorKey: 'action',
             enableSorting: false,
