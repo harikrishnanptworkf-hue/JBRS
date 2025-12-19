@@ -32,6 +32,11 @@ function ScheduleList() {
     const [showFullControls, setShowFullControls] = useState(false);
     document.title = "Schedule";
 
+    // On full page refresh, reset Today Schedule mode to false in localStorage
+    useEffect(() => {
+        try { localStorage.setItem('todaySchedule', 'false'); } catch (e) {}
+    }, []);
+
 
     const handleStatusUpdated = (e) => {
         const eventId = e.id ?? e.s_id;
@@ -60,6 +65,28 @@ function ScheduleList() {
 
     const handleClientChange = () => {
         // If this computer has "Today Schedule" mode enabled, auto-focus to today's range
+        let isToday = false;
+        try { isToday = localStorage.getItem('todaySchedule') === 'true'; } catch (e) { isToday = false; }
+        if (isToday) {
+            const today = new Date();
+            setFilterAgent('');
+            setFilterUser('');
+            setFilterGroup('');
+            setFilterExamCode('');
+            setFilterStatus('');
+            setSearch("");
+            setFilterStartDate(today);
+            setFilterEndDate(today);
+            setCurrentPage(1);
+            // fetchSchedules will be triggered by filter state change
+            return;
+        }
+        // Otherwise, keep current filters and just refresh
+        fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder, search);
+    };
+
+    // On delete: if Today Schedule mode is active, focus to today's range; else refresh with current filters
+    const handleClientDelete = () => {
         let isToday = false;
         try { isToday = localStorage.getItem('todaySchedule') === 'true'; } catch (e) { isToday = false; }
         if (isToday) {
@@ -132,7 +159,7 @@ function ScheduleList() {
             { channel: 'schedulechange', event: '.StatusUpdated', handler: handleStatusUpdated },
             { channel: 'clientcreate', event: '.ClientCreated', handler: handleClientChange },
             { channel: 'clientupdate', event: '.ClientUpdated', handler: handleClientChange },
-            { channel: 'clientdelete', event: '.ClientDeleted', handler: handleClientChange }
+            { channel: 'clientdelete', event: '.ClientDeleted', handler: handleClientDelete }
         ];
 
         channelMap.forEach(({ channel, event, handler }) => {
