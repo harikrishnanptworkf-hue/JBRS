@@ -149,6 +149,33 @@ function ScheduleList() {
         return () => window.removeEventListener('forcePageRefresh', handleRefresh);
     }, []);
 
+
+    const [search, setSearch] = useState("");
+    const [filterAgent, setFilterAgent] = useState("");
+    const [filterUser, setFilterUser] = useState("");
+    const [filterGroup, setFilterGroup] = useState("");
+    const [filterExamCode, setFilterExamCode] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterStartDate, setFilterStartDate] = useState(null);
+    const [filterEndDate, setFilterEndDate] = useState(null);
+    const [groupOptions, setGroupOptions] = useState([]);
+    const [examCodeOptions, setExamCodeOptions] = useState([]);
+    const [agentOptions, setAgentOptions] = useState([]);
+    const [userOptions, setUserOptions] = useState([]);
+    const [roleId, setRoleId] = useState(null);
+    const [exportLoading, setExportLoading] = useState(false);
+
+    const location = useLocation();
+    const navigate = useNavigate();
+
+
+    useEffect(() => {
+        const obj = JSON.parse(sessionStorage.getItem("authUser"));
+        if (obj && obj.role_id) {
+            setRoleId(obj.role_id);
+        }
+    }, []);
+
     useEffect(() => {
         if (!window.Echo) {
             console.error('window.Echo is not defined!');
@@ -180,34 +207,8 @@ function ScheduleList() {
             });
         };
 
-    }, [currentPage, customPageSize, sortState]);
-
-    // Filter/search state
-    const [search, setSearch] = useState("");
-    const [filterAgent, setFilterAgent] = useState("");
-    const [filterUser, setFilterUser] = useState("");
-    const [filterGroup, setFilterGroup] = useState("");
-    const [filterExamCode, setFilterExamCode] = useState("");
-    const [filterStatus, setFilterStatus] = useState("");
-    const [filterStartDate, setFilterStartDate] = useState(null);
-    const [filterEndDate, setFilterEndDate] = useState(null);
-    const [groupOptions, setGroupOptions] = useState([]);
-    const [examCodeOptions, setExamCodeOptions] = useState([]);
-    const [agentOptions, setAgentOptions] = useState([]);
-    const [userOptions, setUserOptions] = useState([]);
-    const [roleId, setRoleId] = useState(null);
-    const [exportLoading, setExportLoading] = useState(false);
-
-    const location = useLocation();
-    const navigate = useNavigate();
-
-
-    useEffect(() => {
-        const obj = JSON.parse(sessionStorage.getItem("authUser"));
-        if (obj && obj.role_id) {
-            setRoleId(obj.role_id);
-        }
-    }, []);
+        // Include filter/search dependencies so the event handlers always capture the latest filter state
+    }, [currentPage, customPageSize, sortState, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStatus, filterStartDate, filterEndDate]);
 
     // Fetch filter options for dropdowns
     useEffect(() => {
