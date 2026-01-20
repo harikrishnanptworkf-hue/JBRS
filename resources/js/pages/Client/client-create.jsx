@@ -454,7 +454,7 @@ const ClientCreate = () => {
         }
         // Account optional: backend will use default if missing
         if (blocked) {
-          // Field-specific errors already set; no generic banner needed
+          // Field-specific errors already set; rely on inline messages under fields
           return;
         }
       }
@@ -530,7 +530,6 @@ const ClientCreate = () => {
         validation.setFieldTouched('amount', true, false);
         validation.setFieldError('amount', 'Amount must be greater than 0');
         return;
-                                <label htmlFor="exam_name" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Exam Name <span style={{ color: 'red' }}>*</span></label>
       }
 
       // First generate and persist the PDF; backend returns metadata including invoice number
@@ -547,8 +546,8 @@ const ClientCreate = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-  // After generating, go back to Invoice page Pending tab and trigger success toast
-  navigate('/invoice?tab=pending&invoiceGenerated=1', { state: { activeTab: 'pending', invoiceGenerated: true } });
+  // After generating, go back to Invoice page Completed tab and trigger success toast
+  navigate('/invoice?tab=completed&invoiceGenerated=1', { state: { activeTab: 'completed', invoiceGenerated: true } });
     } catch (e) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to generate invoice PDF';
       setInvoiceGeneralError(msg);
@@ -595,7 +594,7 @@ const ClientCreate = () => {
       }
       // Account optional for preview as well
       if (blocked) {
-        // Field-specific errors already set; no generic banner needed for view action
+        // Field-specific errors already set; rely on inline messages under fields
         return;
       }
 
@@ -792,7 +791,12 @@ const ClientCreate = () => {
                               <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>
                                 Type <span style={{ color: 'red'}}>*</span>
                               </label>
-                              {location.state?.editType === 'enquiry' ? (
+                              {location.state?.from === 'invoice' ? (
+                                // From Pending Invoice edit: force Schedule only, no type change
+                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'schedule'} disabled>
+                                  <option value="schedule">Schedule</option>
+                                </select>
+                              ) : location.state?.editType === 'enquiry' ? (
                                 <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'enquiry'} disabled>
                                   <option value="enquiry">Enquiry</option>
                                 </select>
@@ -1062,6 +1066,9 @@ const ClientCreate = () => {
                                   value={validation.values.exam_name}
                                   onChange={validation.handleChange}
                                 />
+                                {validation.touched.exam_name && validation.errors.exam_name && (
+                                  <div className="text-danger small mt-1">{validation.errors.exam_name}</div>
+                                )}
                               </div>
                             </>
                           )}

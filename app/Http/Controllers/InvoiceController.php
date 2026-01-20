@@ -259,6 +259,11 @@ class InvoiceController extends Controller
             $defaultId = Settings::where('s_name', 'default_account')->value('s_value');
             if (!empty($defaultId)) {
                 $bankAccount = BankAccount::find((int)$defaultId);
+                // If schedule has no account holder set, persist the default account id for future use
+                if ($bankAccount && empty($schedule->s_account_holder)) {
+                    $schedule->s_account_holder = (string) $defaultId;
+                    $schedule->save();
+                }
             }
         }
 
