@@ -70,24 +70,43 @@ class ReminderController extends Controller
         $merged = $schedules->get();
         $enqList = $enquiries->get();
         $nowUtc = Carbon::now('UTC')->startOfDay();
-        // Calculate s_remind_date as s_date + ex_remind_year + ex_remind_month, always include
+        // Calculate s_remind_date for schedules:
+        // - If s_remind_date exists, use it
+        // - Else if examcode has ex_remind_year & ex_remind_month, compute s_date + offsets
+        // - Else set empty strings to avoid defaulting to current date
         $merged = $merged->filter(function($item) use ($nowUtc) {
             if ($item->s_date && $item->examcode) {
                 $sDate = Carbon::parse($item->s_date, 'UTC');
                 $remindYear = (int)($item->examcode->ex_remind_year ?? 0);
                 $remindMonth = (int)($item->examcode->ex_remind_month ?? 0);
-                $remindDate = Carbon::parse($item->s_remind_date)  ?? $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
-                $item->s_remind_date =  $remindDate->toDateTimeString();
-                $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
-                // No need to check current date against remind date; always include
+
+                $remindDate = null;
+                if (!empty($item->s_remind_date)) {
+                    try {
+                        $remindDate = Carbon::parse($item->s_remind_date, 'UTC');
+                    } catch (\Exception $e) {
+                        $remindDate = null;
+                    }
+                } elseif ($remindYear && $remindMonth) {
+                    $remindDate = $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
+                }
+
+                if ($remindDate) {
+                    $item->s_remind_date = $remindDate->toDateTimeString();
+                    $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+                } else {
+                    // Explicitly set empty strings when no reminder offsets are present
+                    $item->s_remind_date = '';
+                    $item->s_remind_date_ist = '';
+                }
+                // Always include
                 return true;
             } else {
-                $item->s_remind_date = null;
-                $item->s_remind_date_ist = null;
+                $item->s_remind_date = '';
+                $item->s_remind_date_ist = '';
                 return false;
             }
         })->values();
-
         // Enquiry reminders: use e_enq_remind_date ONLY; do not fallback so clears remain cleared
         $enqReminders = $enqList->filter(function($item) use ($nowUtc, $reminddate) {
             if ($item->e_date) {
