@@ -896,10 +896,10 @@ React.useEffect(() => {
             <select
               className="form-select d-inline-block w-auto examcode-input"
               value={pageSize}
-              onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              onChange={e => { const val = e.target.value; setPageSize(val === 'All' ? 'All' : Number(val)); setCurrentPage(1); }}
               style={{ minWidth: 80 }}
             >
-              {[5, 10, 20, 50, 100].map(size => (
+              {['All', 5, 10, 20, 50, 100].map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
@@ -931,13 +931,13 @@ React.useEffect(() => {
                 tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
                 pagination="pagination"
                 paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
-                customPageSize={pageSize}
+                customPageSize={pageSize === 'All' ? totalRecords : pageSize}
                 currentPage={currentPage}
                 totalRecords={totalRecords}
                 onPageSizeChange={setPageSize}
                 onPageChange={setCurrentPage}
-                fromRecord={(currentPage - 1) * pageSize + 1}
-                toRecord={Math.min(currentPage * pageSize, totalRecords)}
+                fromRecord={pageSize === 'All' ? (totalRecords > 0 ? 1 : 0) : (currentPage - 1) * pageSize + 1}
+                toRecord={pageSize === 'All' ? totalRecords : Math.min(currentPage * pageSize, totalRecords)}
                 onSortChange={handleSortChange}
                 sortBy={sortBy}
                 sortDirection={sortDirection}

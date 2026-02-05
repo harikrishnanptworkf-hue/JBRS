@@ -385,40 +385,60 @@ function ScheduleList() {
         }));
     };
 
-    const handleFieldCommit = async (s_id, field, value, rowData) => {
-        // If nothing changed or already committed skip
-        const existing = rowEdits[s_id]?.[field];
-        if (existing === undefined || schedules.find(r => r.s_id === s_id)?.[field] === value) {
-            // Clean dirty flag if present
-            setRowEdits(prev => {
-                if (!prev[s_id]) return prev;
-                const clone = { ...prev };
-                delete clone[s_id][field];
-                if (Object.keys(clone[s_id]).filter(k => k !== '__dirty').length === 0) delete clone[s_id];
-                else if (clone[s_id].__dirty && Object.keys(clone[s_id]).length === 1) delete clone[s_id];
-                return clone;
-            });
-            return;
-        }
-        try {
-            await api.patch(`/schedule/${s_id}/fields`, { [field]: value });
-            setSchedules(prev => prev.map(row => row.s_id === s_id ? { ...row, [field]: value } : row));
-            setRowEdits(prev => {
-                if (!prev[s_id]) return prev;
-                const clone = { ...prev };
-                delete clone[s_id][field];
-                // Remove dirty marker if no other pending fields
-                if (clone[s_id].__dirty) {
-                    const keysLeft = Object.keys(clone[s_id]).filter(k => k !== '__dirty');
-                    if (keysLeft.length === 0) delete clone[s_id];
-                    else if (keysLeft.length > 0 && keysLeft.every(k => schedules.find(r => r.s_id === s_id)?.[k] === clone[s_id][k])) delete clone[s_id].__dirty;
-                }
-                return clone;
-            });
-        } catch (e) {
-            toast.error('Failed to update field.');
-        }
-    };
+const handleFieldCommit = async (s_id, field, value) => {
+    const currentValue =
+        schedules.find(r => r.s_id === s_id)?.[field];
+
+    // ✅ Skip ONLY if value truly unchanged
+    if (currentValue === value) {
+        setRowEdits(prev => {
+            if (!prev[s_id]) return prev;
+            const clone = { ...prev };
+            delete clone[s_id][field];
+
+            const keysLeft = Object.keys(clone[s_id] || {}).filter(k => k !== '__dirty');
+            if (keysLeft.length === 0) delete clone[s_id];
+            else delete clone[s_id].__dirty;
+
+            return clone;
+        });
+        return;
+    }
+
+    try {
+        await api.patch(`/schedule/${s_id}/fields`, {
+            [field]: value
+        });
+
+        // ✅ Update schedules FIRST (single source of truth)
+        setSchedules(prev =>
+            prev.map(row =>
+                row.s_id === s_id
+                    ? { ...row, [field]: value }
+                    : row
+            )
+        );
+
+        // ✅ Clean rowEdits safely
+        setRowEdits(prev => {
+            if (!prev[s_id]) return prev;
+
+            const clone = { ...prev };
+            delete clone[s_id][field];
+
+            const keysLeft = Object.keys(clone[s_id] || {}).filter(k => k !== '__dirty');
+            if (keysLeft.length === 0) delete clone[s_id];
+            else if (keysLeft.every(
+                k => schedules.find(r => r.s_id === s_id)?.[k] === clone[s_id][k]
+            )) delete clone[s_id].__dirty;
+
+            return clone;
+        });
+    } catch (e) {
+        toast.error('Failed to update field.');
+    }
+};
+
 
     const [statusChangeModal, setStatusChangeModal] = useState(false);
     const [statusChangeData, setStatusChangeData] = useState({});
@@ -537,68 +557,69 @@ function ScheduleList() {
     };
 
     // Inline editable cell
-    const EditableCell = React.memo(({ value: initialValue, cellKey, isFocused, onFocusCell, onDraft, onCommit, rowId, field }) => {
-        const [value, setValue] = React.useState(initialValue);
-        const prevCellKey = React.useRef(cellKey);
-        const inputRef = React.useRef(null);
+const EditableCell = React.memo(
+  ({
+    value: initialValue,
+    cellKey,
+    isFocused,
+    onFocusCell,
+    onCommit,
+    rowId,
+    field
+  }) => {
+    const [value, setValue] = React.useState(initialValue);
+    const inputRef = React.useRef(null);
+    const isEditingRef = React.useRef(false);
 
-        React.useEffect(() => {
-            if (prevCellKey.current !== cellKey) {
-                setValue(initialValue);
-                prevCellKey.current = cellKey;
-            }
-        }, [cellKey, initialValue]);
+    // 🔒 Sync from parent ONLY when not editing
+    React.useEffect(() => {
+      if (!isEditingRef.current) {
+        setValue(initialValue);
+      }
+    }, [initialValue]);
 
-        React.useEffect(() => {
-            if (isFocused && inputRef.current) {
-                inputRef.current.focus();
-                inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
-            }
-        }, [isFocused]);
+    // Focus control
+    React.useEffect(() => {
+      if (isFocused && inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, [isFocused]);
 
-        const commit = () => {
-            onCommit(rowId, field, value);
-        };
-        const handleChange = e => {
-            const v = e.target.value;
-            setValue(v);
-            onDraft(rowId, field, v);
-        };
-        const handleKeyDown = e => {
-            if (e.key === 'Enter') {
-                commit();
-            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                commit();
-                onFocusCell(prev => {
-                    // prev not used; compute next cell key based on direction
-                    const currentIndex = schedules.findIndex(r => r.s_id === rowId);
-                    if (currentIndex === -1) return cellKey;
-                    const delta = e.key === 'ArrowDown' ? 1 : -1;
-                    const nextIndex = currentIndex + delta;
-                    if (nextIndex < 0 || nextIndex >= schedules.length) return cellKey;
-                    const nextId = schedules[nextIndex].s_id;
-                    return `${nextId}-${field}`;
-                });
-            }
-        };
-        const handleBlur = () => commit();
-        const handleFocus = () => onFocusCell(cellKey);
-        // Unsaved styling
-        const dirty = rowEdits[rowId]?.__dirty && (rowEdits[rowId]?.[field] !== undefined);
-        return (
-            <input
-                ref={inputRef}
-                key={cellKey}
-                type="text"
-                className={`form-control form-control-sm reminder-input ${dirty ? 'unsaved-draft' : ''}`}
-                value={value}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-                onBlur={handleBlur}
-                onFocus={handleFocus}
-            />
-        );
-    }, (prev, next) => prev.value === next.value && prev.isFocused === next.isFocused && prev.rowId === next.rowId);
+    const handleChange = (e) => {
+      isEditingRef.current = true;
+      setValue(e.target.value);
+    };
+
+    const handleBlur = () => {
+    if (!isEditingRef.current) return;
+    isEditingRef.current = false;
+    onCommit(rowId, field, value);
+    };
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        className="form-control form-control-sm reminder-input"
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onFocus={() => onFocusCell(cellKey)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur(); // triggers save
+          }
+          if (e.key === "Escape") {
+            isEditingRef.current = false;
+            setValue(initialValue); // revert
+            e.currentTarget.blur();
+          }
+        }}
+      />
+    );
+  }
+);
+
+
 const handleSortChange = columnId => {
     setSortState(prev => {
         if (prev.sortBy === columnId) {

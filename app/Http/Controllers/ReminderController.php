@@ -76,8 +76,8 @@ class ReminderController extends Controller
                 $sDate = Carbon::parse($item->s_date, 'UTC');
                 $remindYear = (int)($item->examcode->ex_remind_year ?? 0);
                 $remindMonth = (int)($item->examcode->ex_remind_month ?? 0);
-                $remindDate = $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
-                $item->s_remind_date = $remindDate->toDateTimeString();
+                $remindDate = Carbon::parse($item->s_remind_date)  ?? $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
+                $item->s_remind_date =  $remindDate->toDateTimeString();
                 $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
                 // No need to check current date against remind date; always include
                 return true;
@@ -88,21 +88,32 @@ class ReminderController extends Controller
             }
         })->values();
 
-        // Enquiry reminders: remind date = e_date + 3 days
-        $enqReminders = $enqList->filter(function($item) use ($nowUtc) {
+        // Enquiry reminders: use e_enq_remind_date ONLY; do not fallback so clears remain cleared
+        $enqReminders = $enqList->filter(function($item) use ($nowUtc, $reminddate) {
             if ($item->e_date) {
                 $eDate = Carbon::parse($item->e_date, 'UTC');
-                $remindDate = $eDate->copy()->addDays(3);
+                // Prefer explicitly set enquiry reminder date when available; if missing, keep null
+                $remindDate = null;
+                if (!empty($item->e_enq_remind_date)) {
+                    try {
+                        $remindDate = Carbon::parse($item->e_enq_remind_date, 'UTC');
+                    } catch (\Exception $e) {
+                        $remindDate = null;
+                    }
+                }
                 // Normalize fields to resemble schedule structure for frontend reuse
-                $item->s_remind_date = $remindDate->toDateTimeString();
-                $item->s_remind_date_ist = $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+                $item->s_remind_date = $remindDate ? $remindDate->toDateTimeString() : null;
+                $item->s_remind_date_ist = $remindDate ? $remindDate->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null;
                 $item->s_group_name = $item->e_group_name;
                 $item->s_exam_code = $item->e_exam_code;
                 $item->s_user_id = $item->e_user_id;
                 $item->s_agent_id = $item->e_agent_id;
                 $item->s_remind_remark = $item->e_remind_remark;
                 $item->s_id = $item->e_id; // use id for action handling
-                // No need to check current date against remind date; always include
+                // If a reminddate filter is applied, include only matching enquiries
+                if ($reminddate) {
+                    return $remindDate && $remindDate->isSameDay(Carbon::parse($reminddate));
+                }
                 return true;
             }
             return false;
@@ -191,10 +202,12 @@ class ReminderController extends Controller
     {
         $schedule = Schedule::findOrFail($id);
         $remindDate = $request->input('remind_date');
-        if (!$remindDate) {
-            return response()->json(['message' => 'remind_date is required'], 422);
+        // Allow clearing remind date when empty/null; otherwise set to provided value
+        if ($remindDate === null || $remindDate === '' ) {
+            $schedule->s_remind_date = null;
+        } else {
+            $schedule->s_remind_date = $remindDate;
         }
-        $schedule->s_remind_date = $remindDate;
         $schedule->save();
         return response()->json(['message' => 'Remind date updated', 'data' => $schedule]);
     }

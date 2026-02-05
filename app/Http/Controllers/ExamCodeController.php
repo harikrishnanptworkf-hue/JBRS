@@ -9,9 +9,9 @@ class ExamCodeController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        $sortBy = $request->input('sortBy', 'id');
-        $sortDirection = $request->input('sortDirection', 'desc');
+    $search = $request->input('search');
+    $sortByInput = $request->input('sortBy');
+    $sortDirectionInput = $request->input('sortDirection');
         $pageSizeParam = $request->input('pageSize', 10);
         $query = ExamCode::query();
         if ($search) {
@@ -19,10 +19,14 @@ class ExamCodeController extends Controller
         }
         // Only allow sorting by known columns
         $allowedSorts = ['id', 'ex_code', 'ex_validity', 'ex_remind_year', 'ex_remind_month'];
-        if (!in_array($sortBy, $allowedSorts)) {
+        if (!in_array($sortByInput, $allowedSorts)) {
+            // Default to id DESC when no valid sortBy provided
             $sortBy = 'id';
+            $sortDirection = 'desc';
+        } else {
+            $sortBy = $sortByInput;
+            $sortDirection = strtolower((string)$sortDirectionInput) === 'asc' ? 'asc' : 'desc';
         }
-        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
         // If pageSize is 'All' (case-insensitive), return all records without pagination
         if (strtolower((string)$pageSizeParam) === 'all') {
             $all = $query->orderBy($sortBy, $sortDirection)->get();

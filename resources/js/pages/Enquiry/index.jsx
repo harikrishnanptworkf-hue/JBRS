@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { isEmpty } from "lodash";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -15,6 +15,35 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function EnquiryList() {
+    // Helpers for date conversion
+    const toDate = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) return isNaN(value) ? null : value;
+        if (typeof value === 'string') {
+            const isoLike = value.includes('T') ? value : value.replace(' ', 'T');
+            const d = new Date(isoLike);
+            return isNaN(d) ? null : d;
+        }
+        try {
+            const d = new Date(value);
+            return isNaN(d) ? null : d;
+        } catch {
+            return null;
+        }
+    };
+    const formatDateToYMD = (date) => {
+        if (!date) return '';
+        let d = date;
+        if (typeof d === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+            d = new Date(d);
+        }
+        if (!(d instanceof Date) || isNaN(d)) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
     // Listen for filter button event from Navbar
     useEffect(() => {
         const handler = () => setShowFullControls(v => !v);
@@ -41,6 +70,7 @@ function EnquiryList() {
     const [sortOrder, setSortOrder] = useState('desc');
     const [users, setUsers] = useState([]);
     const [agents, setAgents] = useState([]);
+    const [focusedCell, setFocusedCell] = useState(null);
 
     // Add filter/search state for modern UI
     const [search, setSearch] = useState("");
@@ -107,6 +137,27 @@ function EnquiryList() {
             })
             .catch(() => setLoading(false));
     };
+
+    // Generic partial field update for enquiries
+    const commitFieldUpdate = async (enquiryId, field, value) => {
+        try {
+            // Skip save if unchanged
+            const currentRow = enquiries.find(r => (r.e_id || r.id) === enquiryId);
+            const currentValue = (currentRow ? currentRow[field] : undefined);
+            if ((currentValue ?? '') === (value ?? '')) {
+                return;
+            }
+            await api.patch(`/enquiries/${enquiryId}/fields`, { [field]: value });
+            setEnquiries(prev => prev.map(r => {
+                const rid = r.e_id || r.id;
+                return rid === enquiryId ? { ...r, [field]: value } : r;
+            }));
+        } catch (e) {
+            toast.error('Failed to save field');
+        }
+    };
+
+    // Legacy debounced change handler removed in favor of local-controlled input like Schedule page
 
     // Only one useEffect for all dependencies
     useEffect(() => {
@@ -350,10 +401,47 @@ function EnquiryList() {
             cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
         },
         {
+            header: 'Remind Date',
+            accessorKey: 'e_enq_remind_date',
+            enableSorting: false,
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                const enquiryId = row.e_id || row.id;
+                const cellKey = `${enquiryId}-e_enq_remind_date`;
+                return (
+                    <EditableCell
+                        value={row.e_enq_remind_date ?? ''}
+                        rowId={enquiryId}
+                        field="e_enq_remind_date"
+                        onCommit={(id, _f, v) => commitFieldUpdate(id, 'e_enq_remind_date', v)}
+                        cellKey={cellKey}
+                        isFocused={focusedCell === cellKey}
+                        onFocusCell={(key) => setFocusedCell(prev => (prev === key ? prev : key))}
+                        inputType="date"
+                    />
+                );
+            }
+        },
+        {
             header: 'Enquiry Comment',
             accessorKey: 'e_enq_comment',
             enableSorting: false,
-            cell: (cellProps) => <span>{cellProps.row.original.e_enq_comment || ''}</span>
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                const enquiryId = row.e_id || row.id;
+                const cellKey = `${enquiryId}-e_enq_comment`;
+                return (
+                    <EditableCell
+                        value={row.e_enq_comment ?? ''}
+                        rowId={enquiryId}
+                        field="e_enq_comment"
+                        onCommit={(id, _f, v) => commitFieldUpdate(id, 'e_enq_comment', v)}
+                        cellKey={cellKey}
+                        isFocused={focusedCell === cellKey}
+                        onFocusCell={(key) => setFocusedCell(prev => (prev === key ? prev : key))}
+                    />
+                );
+            }
         },
         {
             header: 'Action',
@@ -410,7 +498,7 @@ function EnquiryList() {
         }
     );
     return cols;
-}, [roleId,sortBy, sortOrder, handleEditEnquiry]);
+}, [roleId,sortBy, sortOrder, handleEditEnquiry, focusedCell]);
 
     // Fix: Sorting logic should only update state, let useEffect handle API call
     const handleSortChange = (columnId) => {
@@ -440,6 +528,96 @@ function EnquiryList() {
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
     };
+
+        // Inline editable cell (mirrors Schedule page behavior)
+            const EditableCell = React.memo(
+            ({
+                value: initialValue,
+                cellKey,
+                isFocused,
+                onFocusCell,
+                onCommit,
+                rowId,
+                field,
+                inputType = 'text'
+            }) => {
+                const [value, setValue] = React.useState(initialValue);
+                const inputRef = React.useRef(null);
+                const isEditingRef = React.useRef(false);
+                const userFocusedRef = React.useRef(false);
+
+                // Sync from parent ONLY when not editing
+                React.useEffect(() => {
+                    if (!isEditingRef.current) {
+                        setValue(initialValue);
+                    }
+                }, [initialValue]);
+
+                // Focus control
+                React.useEffect(() => {
+                    if (isFocused && inputRef.current && !userFocusedRef.current) {
+                        inputRef.current.focus();
+                    }
+                }, [isFocused]);
+
+                        const handleChange = (e) => {
+                    isEditingRef.current = true;
+                    setValue(e.target.value);
+                };
+
+                const handleBlur = () => {
+                    if (!isEditingRef.current) return;
+                    isEditingRef.current = false;
+                    userFocusedRef.current = false;
+                    onCommit(rowId, field, value);
+                };
+
+                // Special rendering for date picker with dd/MM/yyyy display
+                if (inputType === 'date') {
+                    const selectedDate = toDate(value);
+                    return (
+                        <DatePicker
+                            selected={selectedDate}
+                            onChange={(date) => {
+                                isEditingRef.current = true;
+                                const ymd = date ? formatDateToYMD(date) : null;
+                                setValue(ymd || '');
+                                // Commit immediately on selection
+                                onCommit(rowId, field, ymd);
+                                isEditingRef.current = false;
+                            }}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="dd/mm/yyyy"
+                            className="form-control form-control-sm reminder-input"
+                            onFocus={() => { userFocusedRef.current = true; onFocusCell(cellKey); }}
+                            isClearable
+                        />
+                    );
+                }
+
+                return (
+                    <input
+                        ref={inputRef}
+                        type={inputType}
+                        className="form-control form-control-sm reminder-input" style={{maxWidth:'1000px'}}
+                        value={value}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={() => { userFocusedRef.current = true; onFocusCell(cellKey); }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.currentTarget.blur(); // triggers save
+                            }
+                            if (e.key === "Escape") {
+                                isEditingRef.current = false;
+                                setValue(initialValue); // revert
+                                e.currentTarget.blur();
+                            }
+                        }}
+                    />
+                );
+            }
+        );
 
     useEffect(() => {
         if (location.state && location.state.created) {

@@ -335,9 +335,18 @@ class ScheduleController extends Controller
             's_comment'       => $validated['comment'] ?? $schedule->s_comment,
             's_email'         => $validated['email'] ?? $schedule->s_email,
             's_phone'         => $validated['phone'] ?? $schedule->s_phone,
-            's_remind_date'   => $validated['remind_date'] ?? $schedule->s_remind_date,
+            // Handle remind_date: allow explicit clearing when key is present
+            // Use array_key_exists to differentiate between "not provided" and "provided as null/empty"
             's_remind_remark' => $validated['remind_remark'] ?? $schedule->s_remind_remark,
         ];
+
+        if (array_key_exists('remind_date', $validated)) {
+            // Set to provided value (including null) when present
+            $scheduleData['s_remind_date'] = $validated['remind_date'] ?? null;
+        } else {
+            // Keep existing value when not provided
+            $scheduleData['s_remind_date'] = $schedule->s_remind_date;
+        }
 
         if ($schedule->s_status == "RESCHEDULE" && !empty($validated['date'])) {
             $oldDate = $schedule->s_date ? Carbon::parse($schedule->s_date) : null;

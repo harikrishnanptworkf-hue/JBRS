@@ -44,6 +44,22 @@ function formatDateToYMDHMS(date) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }
 
+// Format Date to YYYY-MM-DD (date-only)
+function formatDateToYMD(date) {
+  if (!date) return '';
+  let d = date;
+  if (typeof d === 'string') {
+    // If already in correct format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    d = new Date(d);
+  }
+  if (!(d instanceof Date) || isNaN(d)) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // For enquiry display: DD-MM-YYYY HH:MM:SS
 function formatDateToDMYHMS(date) {
   if (!date) return '';
@@ -68,6 +84,17 @@ function toDate(value) {
   if (!value) return null;
   if (value instanceof Date) return isNaN(value) ? null : value;
   if (typeof value === 'string') {
+    // Support "DD-MM-YYYY HH:MM:SS"
+    if (/^\d{2}-\d{2}-\d{4}(\s\d{2}:\d{2}:\d{2})?$/.test(value)) {
+      const [datePart, timePart] = value.split(' ');
+      const [dd, mm, yyyy] = datePart.split('-');
+      const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+      if (timePart && /^\d{2}:\d{2}:\d{2}$/.test(timePart)) {
+        const [hh, mi, ss] = timePart.split(':');
+        d.setHours(Number(hh), Number(mi), Number(ss), 0);
+      }
+      return isNaN(d) ? null : d;
+    }
     // Support "YYYY-MM-DD HH:MM:SS" by converting to ISO-like
     const isoLike = value.includes('T') ? value : value.replace(' ', 'T');
     const d = new Date(isoLike);
@@ -204,6 +231,8 @@ const ClientCreate = () => {
       comment: '',
       // New: enquiry specific comment field
       e_enq_comment: '',
+  // New: enquiry specific remind date
+  e_enq_remind_date: '',
       remind_date: '',
       remind_remark: '',
     },
@@ -243,7 +272,9 @@ const ClientCreate = () => {
   }),
     onSubmit: async (values) => {
       try {
-        const formattedDate = formatDateToYMDHMS(values.date);
+        // Only format and send 'date' when saving a Schedule. For Enquiry, backend sets e_date itself.
+        const isSchedule = formType === 'schedule';
+        const formattedDate = isSchedule ? formatDateToYMDHMS(values.date) : undefined;
         const redirectToInvoicePending = () => {
           // Prefer query param (more universal), also pass state for pages reading from state
           navigate('/invoice?tab=pending', { state: { activeTab: 'pending' } });
@@ -275,8 +306,18 @@ const ClientCreate = () => {
             }
           }
         }
-    // Prepare payload with normalized date and exam_code_id
-    const payload = { ...values, date: formattedDate, exam_code_id, exam_code: exam_code_text };
+    // Prepare payload; include 'date' only for schedule to avoid failing enquiry validation with display strings
+    const payload = { ...values, exam_code_id, exam_code: exam_code_text };
+        if (isSchedule && formattedDate) {
+          payload.date = formattedDate;
+        } else {
+          // Ensure we do not send a non-parseable enquiry display date back to API
+          delete payload.date;
+          // For enquiries: set e_remind_date (remind_date) to current date + 3 days
+          const now = new Date();
+          const threeDaysAhead = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+          payload.remind_date = formatDateToYMD(threeDaysAhead);
+        }
         // Convert enquiry to schedule
         if (location.state?.editType === 'enquiry' && formType === 'schedule') {
           // Include source enquiry id for linkage
@@ -650,6 +691,9 @@ const ClientCreate = () => {
       if (!location.state?.editType) {
         const now = new Date();
         validation.setFieldValue('date', formatDateToDMYHMS(now), false);
+        // Default Enquiry Remind Date: date + 3 days
+        const threeDaysAhead = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+        validation.setFieldValue('e_enq_remind_date', formatDateToYMD(threeDaysAhead), false);
       }
       // Always clear timezone in enquiry mode
       validation.setFieldValue('timezone', '', false);
@@ -735,9 +779,21 @@ const ClientCreate = () => {
                 location: data.e_location || '',
                 comment: data.e_comment || '',
                 e_enq_comment: data.e_enq_comment || '',
+                e_enq_remind_date: data.e_enq_remind_date ? String(data.e_enq_remind_date).slice(0, 10) : '',
                 remind_date: data.e_remind_date || '',
                 remind_remark: data.e_remind_remark || '',
               });
+              // If Enquiry Remind Date is empty, default to base date + 3 days
+              try {
+                if (!data.e_enq_remind_date) {
+                  const baseStr = data.e_date || data.formatted_e_date || '';
+                  const baseDate = toDate(baseStr);
+                  if (baseDate) {
+                    const threeDaysAhead = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + 3);
+                    validation.setFieldValue('e_enq_remind_date', formatDateToYMD(threeDaysAhead), false);
+                  }
+                }
+              } catch (e) {}
               // For enquiry context, also respect an account holder value if present
               if (!data?.e_account_id && !data?.account_id && data?.e_account_holder) {
                 setPendingAccountHolder(data.e_account_holder);
@@ -796,11 +852,18 @@ const ClientCreate = () => {
                                 <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'schedule'} disabled>
                                   <option value="schedule">Schedule</option>
                                 </select>
+                              ) : location.state?.forceSchedule ? (
+                                // From Convert to Schedule: force Schedule only, no type change
+                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'schedule'} disabled>
+                                  <option value="schedule">Schedule</option>
+                                </select>
                               ) : location.state?.editType === 'enquiry' ? (
+                                // Regular Enquiry edit: lock to Enquiry
                                 <select className="form-control rounded-pill px-3 py-2 reminder-input" value={'enquiry'} disabled>
                                   <option value="enquiry">Enquiry</option>
                                 </select>
                               ) : (
+                                // New create flow: allow switching
                                 <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
                                   <option value="schedule">Schedule</option>
                                   <option value="enquiry">Enquiry</option>
@@ -1119,7 +1182,7 @@ const ClientCreate = () => {
                           )}
                         </div>
                       ) : (
-                        // Enquiry: show read-only date/time (created date); not editable
+                        // Enquiry: show read-only date/time (created date) and allow setting Enquiry Remind Date
                         <div className="col-md-8 col-12">
                           <label className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Date</label>
                           <Input
@@ -1130,6 +1193,20 @@ const ClientCreate = () => {
                             value={typeof validation.values.date === 'string' ? validation.values.date : formatDateToDMYHMS(validation.values.date)}
                             readOnly
                           />
+                          <div className="mt-3">
+                            <label htmlFor="e_enq_remind_date" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Enquiry Remind Date</label>
+                            <DatePicker
+                              id="e_enq_remind_date"
+                              selected={toDate(validation.values.e_enq_remind_date)}
+                              onChange={date => {
+                                const ymd = formatDateToYMD(date);
+                                validation.setFieldValue('e_enq_remind_date', ymd);
+                              }}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Select remind date (dd/mm/yyyy)"
+                              className="form-control rounded-pill px-3 py-2 reminder-input"
+                            />
+                          </div>
                         </div>
                       )}
                         <div className="col-md-4 col-12">

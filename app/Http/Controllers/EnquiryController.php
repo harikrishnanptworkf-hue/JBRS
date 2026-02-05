@@ -137,6 +137,8 @@ class EnquiryController extends Controller
             'comment'         => 'nullable|string',
             // New enquiry comment field
             'e_enq_comment'   => 'nullable|string',
+            // New: enquiry remind date
+            'e_enq_remind_date' => 'nullable|date',
             'email'           => 'nullable|email|max:255',
             'phone'           => 'nullable|string|max:20',
             'remind_date'     => 'nullable|date',
@@ -151,6 +153,9 @@ class EnquiryController extends Controller
         }
         if (!empty($validated['remind_date'])) {
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
+        }
+        if (!empty($validated['e_enq_remind_date'])) {
+            $validated['e_enq_remind_date'] = Carbon::parse($validated['e_enq_remind_date'])->format('Y-m-d');
         }
         // Always set enquiry date on the server side (UTC now) to prevent client-side manipulation
         $nowUtc = Carbon::now('UTC')->format('Y-m-d H:i:s');
@@ -172,6 +177,7 @@ class EnquiryController extends Controller
             'e_phone'         => $validated['phone'] ?? null,
             'e_remind_date'   => $validated['remind_date'] ?? null,
             'e_remind_remark' => $validated['remind_remark'] ?? null,
+            'e_enq_remind_date' => $validated['e_enq_remind_date'] ?? null,
         ];
 
         $enquiry = Enquiry::create($enquiryData);
@@ -207,6 +213,7 @@ class EnquiryController extends Controller
             'voucher_fee'     => 'nullable|numeric',
             'comment'         => 'nullable|string',
             'e_enq_comment'   => 'nullable|string',
+            'e_enq_remind_date' => 'nullable|date',
             'email'           => 'nullable|email|max:255',
             'phone'           => 'nullable|string|max:20',
             'remind_date'     => 'nullable|date',
@@ -221,6 +228,9 @@ class EnquiryController extends Controller
         }
         if (!empty($validated['remind_date'])) {
             $validated['remind_date'] = Carbon::parse($validated['remind_date'])->format('Y-m-d');
+        }
+        if (!empty($validated['e_enq_remind_date'])) {
+            $validated['e_enq_remind_date'] = Carbon::parse($validated['e_enq_remind_date'])->format('Y-m-d');
         }
 
         // Resolve exam code: prefer ID, fallback to text lookup
@@ -246,12 +256,51 @@ class EnquiryController extends Controller
             'e_phone'         => $validated['phone'] ?? $enquiry->e_phone,
             'e_remind_date'   => $validated['remind_date'] ?? $enquiry->e_remind_date,
             'e_remind_remark' => $validated['remind_remark'] ?? $enquiry->e_remind_remark,
+            'e_enq_remind_date' => $validated['e_enq_remind_date'] ?? $enquiry->e_enq_remind_date,
         ];
-
+        // dd($enquiryData);
         $enquiry->update($enquiryData);
 
         return response()->json([
             'message' => 'Enquiry updated successfully',
+            'data'    => $enquiry,
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Partially update specific fields of an enquiry (e.g., inline edits).
+     */
+    public function updateFields(Request $request, Enquiry $enquiry)
+    {
+        // Allow only whitelisted fields to be updated via this endpoint
+        $allowed = [
+            'e_enq_comment',
+            'e_enq_remind_date',
+        ];
+
+        $validated = $request->validate([
+            'e_enq_comment' => 'nullable|string',
+            'e_enq_remind_date' => 'nullable|date',
+        ]);
+
+        if (!empty($validated['e_enq_remind_date'])) {
+            $validated['e_enq_remind_date'] = Carbon::parse($validated['e_enq_remind_date'])->format('Y-m-d');
+        }
+
+        $payload = collect($validated)
+            ->only($allowed)
+            ->toArray();
+
+        if (empty($payload)) {
+            return response()->json([
+                'message' => 'No valid fields provided',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $enquiry->update($payload);
+
+        return response()->json([
+            'message' => 'Enquiry fields updated successfully',
             'data'    => $enquiry,
         ], Response::HTTP_OK);
     }

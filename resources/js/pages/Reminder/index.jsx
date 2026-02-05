@@ -44,6 +44,103 @@ function ReminderList() {
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState("");
     const [sortDirection, setSortDirection] = useState("asc");
+    // Inline edit focus management (match Schedule page behavior: commit on blur/Enter only)
+    const [focusedCell, setFocusedCell] = useState(null);
+    // Helpers
+    const toDate = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) return isNaN(value) ? null : value;
+        if (typeof value === 'string') {
+            // Support 'DD/MM/YYYY'
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+                const [dd, mm, yyyy] = value.split('/');
+                const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+                return isNaN(d) ? null : d;
+            }
+            // Support 'DD-MM-YYYY'
+            if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+                const [dd, mm, yyyy] = value.split('-');
+                const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+                return isNaN(d) ? null : d;
+            }
+            // Normalize 'YYYY-MM-DD HH:MM:SS' to ISO-like by replacing space with 'T'
+            const isoLike = value.includes('T') ? value : value.replace(' ', 'T');
+            const d = new Date(isoLike);
+            return isNaN(d) ? null : d;
+        }
+        try {
+            const d = new Date(value);
+            return isNaN(d) ? null : d;
+        } catch { return null; }
+    };
+    const formatDateToYMD = (date) => {
+        if (!date) return '';
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+    const commitRemindDate = async (row, pickedDate) => {
+        try {
+            const ymd = pickedDate ? formatDateToYMD(pickedDate) : null;
+            const isEnquiry = !!row.e_id || (!row.s_date && !!row.e_date);
+            if (isEnquiry) {
+                const eid = row.e_id || row.id;
+                // Update enquiry-specific remind date field and reflect locally
+                await api.put(`/enquiries/${eid}`, { e_enq_remind_date: ymd });
+                setReminders(prev => prev.map(r => {
+                    const rid = r.id ?? r.s_id ?? r.e_id;
+                    if (rid === (row.id || row.s_id || row.e_id)) {
+                        const ist = pickedDate ? `${String(pickedDate.getDate()).padStart(2,'0')}/${String(pickedDate.getMonth()+1).padStart(2,'0')}/${pickedDate.getFullYear()}` : '';
+                        return { ...r, s_remind_date: ymd, s_remind_date_ist: ist };
+                    }
+                    return r;
+                }));
+                return;
+            }
+            const sid = row.s_id || row.id;
+            // Save schedule remind date directly to schedule endpoint
+            await api.put(`/schedule/${sid}`, { remind_date: ymd });
+            setReminders(prev => prev.map(r => {
+                const rid = r.id ?? r.s_id ?? r.e_id;
+                if (rid === (row.id || row.s_id || row.e_id)) {
+                    const ist = pickedDate ? `${String(pickedDate.getDate()).padStart(2,'0')}/${String(pickedDate.getMonth()+1).padStart(2,'0')}/${pickedDate.getFullYear()}` : '';
+                    return { ...r, s_remind_date: ymd, s_remind_date_ist: ist };
+                }
+                return r;
+            }));
+        } catch (e) {
+            toast.error('Failed to update remind date');
+        }
+    };
+
+    const commitRemindRemark = async (rowId, value) => {
+        try {
+            // Find row to detect type
+            const row = reminders.find(r => (r.id === rowId || r.s_id === rowId || r.e_id === rowId));
+            const isEnquiry = !!row?.e_id || (!row?.s_date && !!row?.e_date);
+            const currentValue = (row?.s_remind_remark ?? row?.e_remind_remark ?? '').trim();
+            const nextValue = String(value ?? '').trim();
+            // Skip if nothing changed
+            if (currentValue === nextValue) {
+                return;
+            }
+            if (isEnquiry) {
+                const eid = row?.e_id || rowId;
+                await api.put(`/enquiries/${eid}`, { remind_remark: nextValue });
+            } else {
+                const sid = row?.s_id || rowId;
+                await api.put(`/schedule/${sid}`, { remind_remark: nextValue });
+            }
+            // Update local state
+            setReminders(prev => prev.map(r => {
+                const rid = r.id ?? r.s_id ?? r.e_id;
+                return rid === rowId ? { ...r, s_remind_remark: nextValue, e_remind_remark: nextValue } : r;
+            }));
+        } catch (e) {
+            toast.error('Failed to save remind remark');
+        }
+    };
 
     // Filter state for each column
     const [filterAgent, setFilterAgent] = useState('');
@@ -126,12 +223,16 @@ function ReminderList() {
             setCustomPageSize(res.data.pageSize || pageSize);
             setFromRecord((res.data.page - 1) * res.data.pageSize + 1);
             setToRecord(((res.data.page - 1) * res.data.pageSize) + (res.data.data ? res.data.data.length : 0));
-            setReminders((res.data.data || []).map(r => ({
-                ...r,
-                id: r.s_id,
-                remind_date_ist: r.s_remind_date_ist,
-                remind_date_utc: r.s_remind_date
-            })));
+            setReminders((res.data.data || []).map(r => {
+                const isEnquiry = !!r.e_id || (!r.s_date && !!r.e_date);
+                return {
+                    ...r,
+                    id: r.s_id,
+                    type: isEnquiry ? 'enquiry' : 'schedule',
+                    remind_date_ist: r.s_remind_date_ist,
+                    remind_date_utc: r.s_remind_date
+                };
+            }));
             setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -248,31 +349,56 @@ const columns = useMemo(() => {
             accessorKey: 'reminddate',
             enableSorting: true,
             cell: (cellProps) => {
-                const rowId = cellProps.row.original.id;
-                // Use s_remind_date_ist for display, s_remind_date for UTC
-                function parseDate(str) {
-                    if (!str) return null;
-                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-                        const [day, month, year] = str.split('/');
-                        return new Date(Number(year), Number(month) - 1, Number(day));
-                    }
-                    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                    if (isoMatch) {
-                        const [_, year, month, day] = isoMatch;
-                        return new Date(Number(year), Number(month) - 1, Number(day));
-                    }
-                }
-
-                return formatDMYLocal(cellProps.row.original.s_remind_date_ist);
+                const row = cellProps.row.original;
+                const cellKey = `${(row.id || row.s_id || row.e_id)}-s_remind_date`;
+                const selected = toDate(row.s_remind_date_ist);
+                const isEnquiry = row.type ? row.type === 'enquiry' : (!!row.e_id || (!row.s_date && !!row.e_date));
+                return (
+                    <DatePicker
+                        selected={selected}
+                        onChange={(date) => {
+                            // Allow clearing via isClearable: when date is null, commit clear
+                            if (!date) {
+                                commitRemindDate(row, null);
+                                return;
+                            }
+                            if (!(date instanceof Date) || isNaN(date)) {
+                                return;
+                            }
+                            commitRemindDate(row, date);
+                        }}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="dd/mm/yyyy"
+                        className="form-control form-control-sm reminder-input"
+                        onFocus={() => setFocusedCell(cellKey)}
+                        isClearable
+                        disabled={false}
+                    />
+                );
             },
         },
         {
             header: 'Remind Remark',
             accessorKey: 'remindremark',
             enableSorting: false,
-            cell: (cellProps) => (
-                <span>{cellProps.row.original.s_remind_remark || cellProps.row.original.e_remind_remark || ''}</span>
-            ),
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                const rowId = row.id || row.s_id || row.e_id;
+                const cellKey = `${rowId}-s_remind_remark`;
+                const initial = row.s_remind_remark ?? row.e_remind_remark ?? '';
+                return (
+                    <EditableCell
+                        value={initial}
+                        rowId={rowId}
+                        field="s_remind_remark"
+                        onCommit={(id, _f, v) => commitRemindRemark(id, v)}
+                        cellKey={cellKey}
+                        isFocused={focusedCell === cellKey}
+                        onFocusCell={(key) => setFocusedCell(prev => (prev === key ? prev : key))}
+                        inputType="text"
+                    />
+                );
+            },
         },
         {
             header: 'Action',
@@ -281,7 +407,7 @@ const columns = useMemo(() => {
             cell: (cellProps) => {
                 const row = cellProps.row.original;
                 // Determine type based on date fields to avoid normalized s_id on enquiries
-                const isEnquiry = !!row.e_id || (!row.s_date && !!row.e_date);
+                const isEnquiry = row.type ? row.type === 'enquiry' : (!!row.e_id || (!row.s_date && !!row.e_date));
                 const isSchedule = !!row.s_date && !row.e_id;
                 // IDs: prefer native ids for each type, avoid cross-assigning
                 const enquiryId = isEnquiry ? (row.e_id || row.id) : null;
@@ -359,7 +485,7 @@ const columns = useMemo(() => {
     );
 
     return cols;
-}, [roleId, sortBy, sortDirection, currentPage, customPageSize, editRowId, editRemindDate]);
+}, [roleId, sortBy, sortDirection, currentPage, customPageSize, editRowId, editRemindDate, focusedCell]);
 
     const handlePageSizeChange = (newPageSize) => {
         setCustomPageSize(newPageSize);
@@ -369,6 +495,67 @@ const columns = useMemo(() => {
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
     };
+
+    // Inline editable cell component (mirrors Enquiry page behavior)
+    const EditableCell = React.memo(({ 
+        value: initialValue,
+        cellKey,
+        isFocused,
+        onFocusCell,
+        onCommit,
+        rowId,
+        field,
+        inputType = 'text'
+    }) => {
+        const [value, setValue] = React.useState(initialValue);
+        const inputRef = React.useRef(null);
+        const isEditingRef = React.useRef(false);
+        const userFocusedRef = React.useRef(false);
+
+        React.useEffect(() => {
+            if (!isEditingRef.current) setValue(initialValue);
+        }, [initialValue]);
+
+        React.useEffect(() => {
+            // Only programmatically focus when requested by parent and not from user click
+            if (isFocused && inputRef.current && !userFocusedRef.current) {
+                inputRef.current.focus();
+            }
+        }, [isFocused]);
+
+        const handleChange = (e) => {
+            isEditingRef.current = true;
+            setValue(e.target.value);
+        };
+
+        const handleBlur = () => {
+            if (!isEditingRef.current) return;
+            isEditingRef.current = false;
+            userFocusedRef.current = false;
+            onCommit(rowId, field, value);
+        };
+
+        return (
+            <input
+                ref={inputRef}
+                type={inputType}
+                className="form-control form-control-sm reminder-input"
+                style = {{maxWidth:'1000px'}}
+                value={value}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={() => { userFocusedRef.current = true; onFocusCell(cellKey); }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                    if (e.key === 'Escape') {
+                        isEditingRef.current = false;
+                        setValue(initialValue);
+                        e.currentTarget.blur();
+                    }
+                }}
+            />
+        );
+    });
 
     const handleSortChange = (columnId) => {
         setSortBy(columnId);

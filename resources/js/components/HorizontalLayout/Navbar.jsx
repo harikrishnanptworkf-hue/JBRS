@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import withRouter from "../Common/withRouter";
 import ProfileMenu from "../CommonForBoth/TopbarDropdown/ProfileMenu";
 import NavbarDropdownButton from "./NavbarDropdownButton";
+import { MENU_MAP } from "../../config/menuConfig";
 
 //i18n
 import { withTranslation } from "react-i18next";
@@ -30,22 +31,8 @@ const Navbar = props => {
   // Detect current route and set menu name on mount and route change
   useEffect(() => {
     const path = window.location.pathname;
-    const menuMap = {
-      '/schedule': 'Scheduled',
-      '/enquiry': 'Enquiry',
-      '/reminders': 'Reminder',
-      '/client-create': 'Client Create',
-      '/report': 'Report',
-      '/dashboard': 'Dashboard',
-      '/examcode': 'Examcode',
-      '/accounts': 'Accounts',
-      '/accounts/create': 'Accounts',
-      '/settings': 'Settings',
-      '/invoices': 'Invoice',
-      '/invoice': 'Invoice',
-    };
-    if (menuMap[path]) {
-      setSelectedMenu(menuMap[path]);
+    if (MENU_MAP[path]) {
+      setSelectedMenu(MENU_MAP[path]);
     } else {
       setSelectedMenu('');
     }

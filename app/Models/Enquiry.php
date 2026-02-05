@@ -35,7 +35,8 @@ class Enquiry extends Model
         'e_remind_date',
         'e_remind_remark',
         'e_area',
-        'e_enq_comment'
+        'e_enq_comment',
+        'e_enq_remind_date'
     ];
 
     public function user()

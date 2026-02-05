@@ -124,7 +124,7 @@ const ProfileMenu = props => {
                 }}
               >
                 <i className="mdi mdi-bank-outline me-2" style={{ fontSize: '1.2rem' }}></i>
-                <span>{props.t("Accounts")}</span>
+                <span>{props.t("Bank Accounts")}</span>
               </Link>
 
               <Link
