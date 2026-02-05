@@ -54,6 +54,7 @@ Route::middleware(['auth:sanctum', 'ensure.user.session'])->group(function () {
         Route::post('/', [EnquiryController::class, 'store'])->name('store');
         Route::get('/{enquiry}', [EnquiryController::class, 'show'])->name('show');
         Route::put('/{enquiry}', [EnquiryController::class, 'update'])->name('update');
+        Route::patch('/{enquiry}/fields', [EnquiryController::class, 'updateFields']);
         Route::delete('/{enquiry}', [EnquiryController::class, 'destroy'])->name('destroy');
     });
 
