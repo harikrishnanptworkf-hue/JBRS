@@ -5,7 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import withRouter from "../Common/withRouter";
 import ProfileMenu from "../CommonForBoth/TopbarDropdown/ProfileMenu";
 import NavbarDropdownButton from "./NavbarDropdownButton";
-import { MENU_MAP } from "../../config/menuConfig";
+// Explicit extension to help Vite/Rollup resolve correctly in production builds
+import { MENU_MAP } from "../../config/menuConfig.js";
 
 //i18n
 import { withTranslation } from "react-i18next";
