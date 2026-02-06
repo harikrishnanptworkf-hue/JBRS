@@ -67,12 +67,12 @@ class EnquiryController extends Controller
         if ($request->filled('examcode_id')) {
             $query->where('e_exam_code', $request->input('examcode_id'));
         }
-        // if ($request->filled('startdate')) {
-        //     $query->whereDate('e_date', '>=', $request->input('startdate'));
-        // }
-        // if ($request->filled('enddate')) {
-        //     $query->whereDate('e_date', '<=', $request->input('enddate'));
-        // }
+        if ($request->filled('startdate')) {
+            $query->whereDate('e_date', '>=', $request->input('startdate'));
+        }
+        if ($request->filled('enddate')) {
+            $query->whereDate('e_date', '<=', $request->input('enddate'));
+        }
 
         if ($request->filled('search')) {
             $search = $request->input('search');

@@ -176,6 +176,17 @@ function ScheduleList() {
         }
     }, []);
 
+    // Enquiry results (to show under Schedule when filters/search are applied)
+    const [enqLoading, setEnqLoading] = useState(false);
+    const [enquiries, setEnquiries] = useState([]);
+    const [enqTotalRecords, setEnqTotalRecords] = useState(0);
+    const [enqCurrentPage, setEnqCurrentPage] = useState(1);
+    const [enqPageSize, setEnqPageSize] = useState(10);
+    const [enqFromRecord, setEnqFromRecord] = useState(0);
+    const [enqToRecord, setEnqToRecord] = useState(0);
+    const [enqSortBy, setEnqSortBy] = useState('e_id');
+    const [enqSortOrder, setEnqSortOrder] = useState('desc');
+
     useEffect(() => {
         if (!window.Echo) {
             console.error('window.Echo is not defined!');
@@ -219,6 +230,46 @@ function ScheduleList() {
             setUserOptions(res.data.users || []);
         });
     }, []);
+
+    // Fetch enquiries matching current Schedule filters/search
+    const fetchEnquiriesForSchedule = (page = enqCurrentPage, pageSize = enqPageSize, sortField = enqSortBy, sortDir = enqSortOrder, searchVal = search) => {
+        // Only fetch when some filter/search is applied to avoid loading full list always
+        const hasAnyFilter = !!(searchVal || filterAgent || filterUser || filterGroup || filterExamCode || filterStartDate || filterEndDate);
+        if (!hasAnyFilter) {
+            setEnquiries([]);
+            setEnqTotalRecords(0);
+            setEnqFromRecord(0);
+            setEnqToRecord(0);
+            return;
+        }
+        setEnqLoading(true);
+        const formatDate = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        api.get('/enquiries', {
+            params: {
+                page,
+                pageSize,
+                search: searchVal,
+                sortBy: sortField,
+                sortOrder: sortDir,
+                agent_id: filterAgent,
+                user_id: filterUser,
+                group_id: filterGroup,
+                examcode_id: filterExamCode,
+                startdate: formatDate(filterStartDate),
+                enddate: formatDate(filterEndDate)
+            }
+        })
+        .then(res => {
+            setEnqTotalRecords(res.data.total || 0);
+            setEnqCurrentPage(res.data.current_page || 1);
+            setEnqPageSize(res.data.per_page || pageSize);
+            setEnqFromRecord(res.data.from || 0);
+            setEnqToRecord(res.data.to || 0);
+            setEnquiries(res.data.data || []);
+            setEnqLoading(false);
+        })
+        .catch(() => setEnqLoading(false));
+    };
 
     // Fetch timezones
     useEffect(() => {
@@ -300,7 +351,15 @@ function ScheduleList() {
     // Refetch on filter/search change
     useEffect(() => {
         fetchSchedules(currentPage, customPageSize, sortState.sortBy, sortState.sortOrder, search);
+        // Also fetch matching enquiries using the same filters/search
+        fetchEnquiriesForSchedule(enqCurrentPage, enqPageSize, enqSortBy, enqSortOrder, search);
     }, [currentPage, customPageSize, sortState, search, filterAgent, filterUser, filterGroup, filterExamCode, filterStatus, filterStartDate, filterEndDate]);
+
+    // Keep enquiry pagination/sort independent
+    useEffect(() => {
+        fetchEnquiriesForSchedule(enqCurrentPage, enqPageSize, enqSortBy, enqSortOrder, search);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enqCurrentPage, enqPageSize, enqSortBy, enqSortOrder]);
 
     // Formik for modal
     const validation = useFormik({
@@ -370,6 +429,41 @@ function ScheduleList() {
                 toast.error('Failed to delete schedule.');
             }
             setDeleteModal(false);
+        }
+    };
+
+    // Enquiry actions (edit, convert, delete) re-used here
+    const handleEditEnquiry = async (row) => {
+        try {
+            const res = await api.get(`/enquiries/${row.id}`);
+            navigate('/client-create', { state: { editId: row.id, editType: 'enquiry', enquiryData: res.data } });
+        } catch (err) {
+            toast.error('Failed to fetch enquiry details.');
+        }
+    };
+
+    const handleConvertToSchedule = async (row) => {
+        try {
+            const res = await api.get(`/enquiries/${row.id}`);
+            navigate('/client-create', { state: { editId: row.id, editType: 'enquiry', enquiryData: res.data, forceSchedule: true } });
+        } catch (err) {
+            toast.error('Failed to open convert-to-schedule view.');
+        }
+    };
+
+    const [enqDeleteModal, setEnqDeleteModal] = useState(false);
+    const [enqToDelete, setEnqToDelete] = useState(null);
+    const handleDeleteEnquiry = async () => {
+        if (enqToDelete && enqToDelete.id) {
+            try {
+                await api.delete(`/enquiries/${enqToDelete.id}`);
+                toast.success('Enquiry deleted successfully!');
+                fetchEnquiriesForSchedule(enqCurrentPage, enqPageSize, enqSortBy, enqSortOrder, search);
+            } catch {
+                toast.error('Failed to delete enquiry.');
+            }
+            setEnqDeleteModal(false);
+            setEnqToDelete(null);
         }
     };
 
@@ -619,6 +713,132 @@ const EditableCell = React.memo(
   }
 );
 
+// Separate editable cell for enquiries to support date type
+const EnquiryEditableCell = React.memo(
+    ({
+        value: initialValue,
+        cellKey,
+        isFocused,
+        onFocusCell,
+        onCommit,
+        rowId,
+        field,
+        inputType = 'text'
+    }) => {
+        const [value, setValue] = React.useState(initialValue);
+        const inputRef = React.useRef(null);
+        const isEditingRef = React.useRef(false);
+        const userFocusedRef = React.useRef(false);
+
+        React.useEffect(() => {
+            if (!isEditingRef.current) {
+                setValue(initialValue);
+            }
+        }, [initialValue]);
+
+        React.useEffect(() => {
+            if (isFocused && inputRef.current && !userFocusedRef.current) {
+                inputRef.current.focus();
+            }
+        }, [isFocused]);
+
+        const handleChange = (e) => {
+            isEditingRef.current = true;
+            setValue(e.target.value);
+        };
+
+        const handleBlur = () => {
+            if (!isEditingRef.current) return;
+            isEditingRef.current = false;
+            userFocusedRef.current = false;
+            onCommit(rowId, field, value);
+        };
+
+        // Date variant
+        if (inputType === 'date') {
+            const toDate = (val) => {
+                if (!val) return null;
+                if (val instanceof Date) return isNaN(val) ? null : val;
+                if (typeof val === 'string') {
+                    const isoLike = val.includes('T') ? val : val.replace(' ', 'T');
+                    const d = new Date(isoLike);
+                    return isNaN(d) ? null : d;
+                }
+                try { const d = new Date(val); return isNaN(d) ? null : d; } catch { return null; }
+            };
+            const formatDateToYMD = (date) => {
+                if (!date) return '';
+                let d = date;
+                if (typeof d === 'string') {
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                    d = new Date(d);
+                }
+                if (!(d instanceof Date) || isNaN(d)) return '';
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            };
+            const selectedDate = toDate(value);
+            return (
+                <DatePicker
+                    selected={selectedDate}
+                    onChange={(date) => {
+                        isEditingRef.current = true;
+                        const ymd = date ? formatDateToYMD(date) : null;
+                        setValue(ymd || '');
+                        onCommit(rowId, field, ymd);
+                        isEditingRef.current = false;
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="dd/mm/yyyy"
+                    className="form-control form-control-sm reminder-input"
+                    onFocus={() => { userFocusedRef.current = true; onFocusCell(cellKey); }}
+                    isClearable
+                />
+            );
+        }
+
+        return (
+            <input
+                ref={inputRef}
+                type={inputType}
+                className="form-control form-control-sm reminder-input"
+                value={value}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={() => { userFocusedRef.current = true; onFocusCell(cellKey); }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        e.currentTarget.blur();
+                    }
+                    if (e.key === "Escape") {
+                        isEditingRef.current = false;
+                        setValue(initialValue);
+                        e.currentTarget.blur();
+                    }
+                }}
+            />
+        );
+    }
+);
+
+// Commit enquiry field update
+const commitEnquiryFieldUpdate = async (enquiryId, field, value) => {
+        try {
+                const currentRow = enquiries.find(r => (r.e_id || r.id) === enquiryId);
+                const currentValue = (currentRow ? currentRow[field] : undefined);
+                if ((currentValue ?? '') === (value ?? '')) return;
+                await api.patch(`/enquiries/${enquiryId}/fields`, { [field]: value });
+                setEnquiries(prev => prev.map(r => {
+                        const rid = r.e_id || r.id;
+                        return rid === enquiryId ? { ...r, [field]: value } : r;
+                }));
+        } catch (e) {
+                toast.error('Failed to save field');
+        }
+};
+
 
 const handleSortChange = columnId => {
     setSortState(prev => {
@@ -849,6 +1069,192 @@ const columns = useMemo(() => [
         )
     },  
 ], [sortState, handleEditSchedule, rowEdits, focusedCell, handleSortChange]);
+
+const handleEnqSortChange = (columnId) => {
+    let newOrder = 'asc';
+    if (enqSortBy === columnId) {
+        newOrder = enqSortOrder === 'asc' ? 'desc' : 'asc';
+    }
+    setEnqSortBy(columnId);
+    setEnqSortOrder(newOrder);
+    setEnqCurrentPage(1);
+};
+
+// Enquiry columns (same as Enquiry page)
+const enqColumns = useMemo(() => {
+    const cols = [];
+    if (roleId !== 2) {
+        cols.push({
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEnqSortChange('agent')}>
+                    Agent
+                    {enqSortBy === 'agent' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {enqSortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'agent',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.agent?.name || ''}</span>
+        });
+    }
+    cols.push(
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEnqSortChange('user')}>
+                    User
+                    {enqSortBy === 'user' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {enqSortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'user',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.user?.name || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEnqSortChange('groupname')}>
+                    Group Name
+                    {enqSortBy === 'groupname' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {enqSortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'groupname',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.e_group_name || ''}</span>
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEnqSortChange('examcode')}>
+                    Exam Code
+                    {enqSortBy === 'examcode' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {enqSortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'examcode',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.examcode?.ex_code || ''}</span>
+
+        },
+        {
+            header: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEnqSortChange('date')}>
+                    Date
+                    {enqSortBy === 'date' && (
+                        <span style={{ marginLeft: 6, fontSize: 16, color: '#ffffffff' }}>
+                            {enqSortOrder === 'asc' ? '▲' : '▼'}
+                        </span>
+                    )}
+                </span>
+            ),
+            accessorKey: 'date',
+            enableSorting: true,
+            cell: (cellProps) => <span>{cellProps.row.original.formatted_e_date || ''}</span>
+        },
+        {
+            header: 'Remind Date',
+            accessorKey: 'e_enq_remind_date',
+            enableSorting: false,
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                const enquiryId = row.e_id || row.id;
+                const cellKey = `${enquiryId}-e_enq_remind_date`;
+                return (
+                    <EnquiryEditableCell
+                        value={row.e_enq_remind_date ?? ''}
+                        rowId={enquiryId}
+                        field="e_enq_remind_date"
+                        onCommit={(id, _f, v) => commitEnquiryFieldUpdate(id, 'e_enq_remind_date', v)}
+                        cellKey={cellKey}
+                        isFocused={focusedCell === cellKey}
+                        onFocusCell={setFocusedCell}
+                        inputType="date"
+                    />
+                );
+            }
+        },
+        {
+            header: 'Enquiry Comment',
+            accessorKey: 'e_enq_comment',
+            enableSorting: false,
+            cell: (cellProps) => {
+                const row = cellProps.row.original;
+                const enquiryId = row.e_id || row.id;
+                const cellKey = `${enquiryId}-e_enq_comment`;
+                return (
+                    <EnquiryEditableCell
+                        value={row.e_enq_comment ?? ''}
+                        rowId={enquiryId}
+                        field="e_enq_comment"
+                        onCommit={(id, _f, v) => commitEnquiryFieldUpdate(id, 'e_enq_comment', v)}
+                        cellKey={cellKey}
+                        isFocused={focusedCell === cellKey}
+                        onFocusCell={setFocusedCell}
+                    />
+                );
+            }
+        },
+        {
+            header: 'Action',
+            accessorKey: 'action',
+            enableSorting: false,
+            cell: (cellProps) => {
+                const enquiryId = cellProps.row.original.e_id || cellProps.row.original.id;
+                return (
+                    <ul className="list-unstyled hstack gap-1 mb-0" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                        <li>
+                            <button
+                                type="button"
+                                className="examcode-action-btn"
+                                style={{ color: '#2ba8fb', background: '#e6f7ff' }}
+                                onClick={() => handleConvertToSchedule({ ...cellProps.row.original, id: enquiryId })}
+                                id={`converttoschedule-${enquiryId}`}
+                                title="Convert to Schedule"
+                            >
+                                <i className="mdi mdi-calendar-arrow-right" style={{ color: '#2ba8fb' }} />
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                className="examcode-action-btn edit"
+                                style={{ color: '#1a8cff', background: '#e6f2ff' }}
+                                onClick={() => handleEditEnquiry({ ...cellProps.row.original, id: enquiryId })}
+                                id={`edittooltip-${enquiryId}`}
+                                title="Edit Enquiry"
+                            >
+                                <i className="mdi mdi-pencil-outline" style={{ color: '#1a8cff' }} />
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                className="examcode-action-btn"
+                                style={{ color: '#ff4d4f', background: '#fff1f0' }}
+                                onClick={() => { setEnqToDelete({ ...cellProps.row.original, id: enquiryId }); setEnqDeleteModal(true); }}
+                                id={`deletetooltip-${enquiryId}`}
+                            >
+                                <i className="mdi mdi-delete-outline" style={{ color: '#ff4d4f' }} />
+                            </button>
+                        </li>
+                    </ul>
+                );
+            },
+        }
+    );
+    return cols;
+}, [roleId, enqSortBy, enqSortOrder, focusedCell]);
 
     const handlePageSizeChange = (newPageSizeRaw) => {
         if (newPageSizeRaw === 'All') {
@@ -1365,6 +1771,22 @@ useEffect(() => {
                 reason={revokeReason}
                 setReason={setRevokeReason}
             />
+            {/* Enquiry Delete Modal */}
+            {enqDeleteModal && (
+                <div className="examcode-modal-backdrop">
+                    <div className="examcode-modal">
+                        <div className="examcode-modal-icon">
+                            <i className="mdi mdi-alert-circle-outline"></i>
+                        </div>
+                        <div className="examcode-modal-title">Delete Enquiry?</div>
+                        <div className="examcode-modal-message">Are you sure you want to delete this enquiry? This action cannot be undone.</div>
+                        <div className="examcode-modal-btns">
+                            <button className="examcode-cancel-btn" onClick={() => setEnqDeleteModal(false)} type="button">Cancel</button>
+                            <button className="examcode-delete-btn" onClick={handleDeleteEnquiry} type="button">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
                 <div className="page-content" style={{  background: '#fff', padding: 0, width: '100vw', overflowX: 'hidden', marginTop: "0px" }}>
                 {/* Header Bar */}
                 {/* <div className="reminder-header-bar"> */}
@@ -1541,6 +1963,45 @@ useEffect(() => {
                                     />
                                 </Col>
                             </Row>
+                            {/* Matching Enquiries Section (shown when filters/search applied) */}
+                            {(search || filterAgent || filterUser || filterGroup || filterExamCode || filterStartDate || filterEndDate) && (
+                                <div style={{ marginTop: 32 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                        <span className="reminder-title-text" style={{ fontSize: '1.4rem' }}>Matching Enquiries</span>
+                                        <div className="reminder-title-divider" style={{ width: 40, marginTop: 0 }}></div>
+                                    </div>
+                                    {enqLoading ? (
+                                        <Spinners setLoading={setEnqLoading} />
+                                    ) : (
+                                        <Row>
+                                            <Col xs={12} className="reminder-table-shadow">
+                                                <TableContainer
+                                                    columns={enqColumns}
+                                                    data={enquiries || []}
+                                                    isCustomPageSize={false}
+                                                    isGlobalFilter={false}
+                                                    isJobListGlobalFilter={false}
+                                                    isPagination={true}
+                                                    tableClass="align-middle table-nowrap dt-responsive nowrap w-100 table-check dataTable no-footer dtr-inline mt-4 border-top"
+                                                    pagination="pagination"
+                                                    paginationWrapper="dataTables_paginate paging_simple_numbers pagination-rounded"
+                                                    customPageSize={enqPageSize}
+                                                    currentPage={enqCurrentPage}
+                                                    totalRecords={enqTotalRecords}
+                                                    onPageSizeChange={(size) => setEnqPageSize(size === 'All' ? 10000 : Number(size) || 10)}
+                                                    onPageChange={(p) => setEnqCurrentPage(p)}
+                                                    fromRecord={enqFromRecord}
+                                                    toRecord={enqToRecord}
+                                                    onSortChange={handleEnqSortChange}
+                                                    sortBy={enqSortBy}
+                                                    sortDirection={enqSortOrder}
+                                                    noDataComponent={<tr><td colSpan={5} className="text-center">No matching enquiries</td></tr>}
+                                                />
+                                            </Col>
+                                        </Row>
+                                    )}
+                                </div>
+                            )}
                         </>
                     }
                 </div>
