@@ -487,9 +487,17 @@ const columns = useMemo(() => {
     return cols;
 }, [roleId, sortBy, sortDirection, currentPage, customPageSize, editRowId, editRemindDate, focusedCell]);
 
-    const handlePageSizeChange = (newPageSize) => {
-        setCustomPageSize(newPageSize);
-        setCurrentPage(1);
+    const handlePageSizeChange = (newPageSizeRaw) => {
+        // Support 'All' option similar to Schedule page
+        if (newPageSizeRaw === 'All') {
+            const allSize = 10000;
+            setCustomPageSize(allSize);
+            setCurrentPage(1);
+        } else {
+            const newPageSize = Number(newPageSizeRaw) || 100;
+            setCustomPageSize(newPageSize);
+            setCurrentPage(1);
+        }
     };
 
     const handlePageChange = (newPage) => {
@@ -847,12 +855,13 @@ const columns = useMemo(() => {
                         <Label className="me-2 fw-semibold">Page size</Label>
                         <select
                             className="form-select d-inline-block w-auto reminder-input"
-                            value={customPageSize}
-                            onChange={e => handlePageSizeChange(Number(e.target.value))}
+                            value={String(customPageSize)}
+                            onChange={e => handlePageSizeChange(e.target.value)}
                             style={{ minWidth: 80 }}
                         >
+                            <option key={'All'} value={'All'}>All</option>
                             {[5, 10, 20, 50, 100].map(size => (
-                                <option key={size} value={size}>{size}</option>
+                                <option key={size} value={String(size)}>{size}</option>
                             ))}
                         </select>
                     </div>

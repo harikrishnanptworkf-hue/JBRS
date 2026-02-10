@@ -87,7 +87,7 @@ class ReminderController extends Controller
                     } catch (\Exception $e) {
                         $remindDate = null;
                     }
-                } elseif ($remindYear && $remindMonth) {
+                } elseif ($remindYear || $remindMonth) {
                     $remindDate = $sDate->copy()->addYears($remindYear)->addMonths($remindMonth);
                 }
 
