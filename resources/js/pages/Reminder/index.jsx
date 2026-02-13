@@ -328,9 +328,10 @@ const columns = useMemo(() => {
             ),
             accessorKey: 'examcode',
             enableSorting: true,
-            cell: (cellProps) => (
-                <span>{cellProps.row.original.examcode.ex_code || ''}</span>
-            ),
+            cell: (cellProps) => {
+                const exCode = cellProps.row.original.examcode?.ex_code ?? '';
+                return <span>{exCode}</span>;
+            },
         },
         {
             header: (
