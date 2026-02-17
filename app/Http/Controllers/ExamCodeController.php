@@ -43,7 +43,7 @@ class ExamCodeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'exam_code' => 'required|string|max:255',
+            'exam_code' => 'required|string|max:250',
             'validity' => 'nullable|numeric', // validity is now a number
             'ex_remind_year' => 'nullable|numeric',
             'ex_remind_month' => 'nullable|numeric',
@@ -67,7 +67,7 @@ class ExamCodeController extends Controller
     {
         $examcode = ExamCode::findOrFail($id);
         $request->validate([
-            'exam_code' => 'required|string|max:255',
+            'exam_code' => 'required|string|max:250',
             'validity' => 'nullable|numeric',
             'ex_remind_year' => 'nullable|numeric',
             'ex_remind_month' => 'nullable|numeric',

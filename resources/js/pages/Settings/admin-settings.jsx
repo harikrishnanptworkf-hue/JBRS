@@ -94,6 +94,14 @@ const Settings = () => {
   const [editRowId, setEditRowId] = useState(null);
   const [editDate, setEditDate] = useState(null);
   const [editReason, setEditReason] = useState('');
+  // Edit input refs to preserve caret/focus like Examcode
+  const editReasonRef = React.useRef(null);
+  const lastFocusedEditInputRef = React.useRef('');
+  const editCursorPosRef = React.useRef({ field: '', pos: 0 });
+  // Always-current value ref to avoid stale closures when columns are memoized
+  const editReasonValueRef = React.useRef('');
+  // Prevent duplicate update submissions
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
 
@@ -311,36 +319,56 @@ const Settings = () => {
     }
     setEditDate(rawDate ? new Date(rawDate) : null);
     setEditReason(row.ch_reason || '');
+    editReasonValueRef.current = row.ch_reason || '';
+    lastFocusedEditInputRef.current = 'reason';
   };
 
   const handleEditCancel = () => {
     setEditRowId(null);
     setEditDate(null);
     setEditReason('');
+    editReasonValueRef.current = '';
   };
 
   const handleEditSave = async (id) => {
-    if (!editDate || !editReason) {
+    // Guard against duplicate calls while a save is in progress
+    if (isSavingEdit) return;
+    const reasonToSave = editReasonValueRef.current ?? editReason;
+    if (!editDate || !reasonToSave) {
       showNotification('Please select a date and enter a reason.', 'warning');
       return;
     }
     try {
+      setIsSavingEdit(true);
       const payload = {
         date: format(editDate, 'yyyy-MM-dd'),
-        reason: editReason
+        reason: reasonToSave
       };
       console.log('PUT /settings/custom-holidays/' + id, payload); // DEBUG
       await api.put(`/settings/custom-holidays/${id}`, payload);
       setEditRowId(null);
       setEditDate(null);
       setEditReason('');
+      editReasonValueRef.current = '';
       await fetchCustomHolidays(customCurrentPage, customPageSize, customSortBy, customSortOrder, customSearch);
       showNotification('Custom holiday updated!');
     } catch (e) {
       showNotification('Failed to update custom holiday', 'error');
       console.error('Failed to update custom holiday', e);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
+
+  // Restore focus only when entering edit mode to avoid caret jumps during typing
+  useEffect(() => {
+    if (editRowId !== null && lastFocusedEditInputRef.current === 'reason') {
+      const ref = editReasonRef.current;
+      if (ref && typeof ref.focus === 'function') {
+        try { ref.focus(); } catch (e) {}
+      }
+    }
+  }, [editRowId]);
 
   const handleDeleteCustomHoliday = async (id) => {
     setShowDeleteModal(false);
@@ -354,7 +382,38 @@ const Settings = () => {
   };
 
   // --- Fix: Defensive TableContainer columns for custom holidays ---
-  const columns = [
+  // Stable editable input to prevent caret jumping (like Examcode)
+  const ReasonEditableCell = React.memo(({ value }) => {
+    const [localVal, setLocalVal] = React.useState(value || '');
+    // Sync local state when switching edit rows or external value changes
+    useEffect(() => {
+      setLocalVal(value || '');
+    }, [value, editRowId]);
+
+    return (
+      <Input
+        type="text"
+        value={localVal}
+        onChange={e => {
+          const v = e.target.value;
+          setLocalVal(v);
+          setEditReason(v);
+          editReasonValueRef.current = v;
+          lastFocusedEditInputRef.current = 'reason';
+          editCursorPosRef.current = { field: 'reason', pos: e.target.selectionStart };
+        }}
+        placeholder="Enter reason"
+        className="form-control"
+        innerRef={editReasonRef}
+        onFocus={e => {
+          lastFocusedEditInputRef.current = 'reason';
+          editCursorPosRef.current = { field: 'reason', pos: e.target.selectionStart };
+        }}
+      />
+    );
+  });
+
+  const columns = React.useMemo(() => [
     {
       header: 'Date',
       accessorKey: 'ch_date',
@@ -381,13 +440,7 @@ const Settings = () => {
       cell: row => {
         if (editRowId === row.row.original.id) {
           return (
-            <Input
-              type="text"
-              value={editReason}
-              onChange={e => setEditReason(e.target.value)}
-              placeholder="Enter reason"
-              autoFocus
-            />
+            <ReasonEditableCell value={editReason} />
           );
         }
         return row.row.original.ch_reason || '';
@@ -402,7 +455,13 @@ const Settings = () => {
         if (editRowId === rowId) {
           return (
             <div className="d-flex gap-2">
-              <button className="examcode-update-btn"  onClick={() => handleEditSave(rowId)}>Update</button>
+              <button
+                className="examcode-update-btn"
+                onClick={() => handleEditSave(rowId)}
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? 'Saving…' : 'Update'}
+              </button>
               <button className="examcode-cancel-btn" onClick={handleEditCancel}>Cancel</button>
             </div>
           );
@@ -437,7 +496,7 @@ const Settings = () => {
         );
       },
     },
-  ];
+  ], [editRowId]);
 
   // Notification state and handlers
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });

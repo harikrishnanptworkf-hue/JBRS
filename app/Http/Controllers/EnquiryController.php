@@ -126,9 +126,9 @@ class EnquiryController extends Controller
         $validated = $request->validate([
             'agent'           => 'required|integer',
             'user'            => 'nullable|integer',
-            'group_name'      => 'nullable|string|max:45',
+            'group_name'      => 'nullable|string|max:250',
             'exam_code_id'    => 'nullable|integer',
-            'exam_code'       => 'nullable|string|max:45',
+            'exam_code'       => 'nullable|string|max:250',
             // Frontend sends date but for enquiries we will override to now on server
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:255',
@@ -204,9 +204,9 @@ class EnquiryController extends Controller
         $validated = $request->validate([
             'agent'           => 'sometimes|required|integer',
             'user'            => 'nullable|integer',
-            'group_name'      => 'nullable|string|max:45',
+            'group_name'      => 'nullable|string|max:250',
             'exam_code_id'    => 'nullable|integer',
-            'exam_code'       => 'nullable|string|max:45',
+            'exam_code'       => 'nullable|string|max:250',
             'date'            => 'nullable|date',
             'location'        => 'nullable|string|max:255',
             'support_fee'     => 'nullable|numeric',

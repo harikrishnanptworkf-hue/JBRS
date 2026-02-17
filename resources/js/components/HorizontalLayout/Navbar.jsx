@@ -143,28 +143,57 @@ const Navbar = props => {
         boxShadow: "0 4px 24px rgba(44,62,80,0.10)",
         fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
       }}>
-        {/* Top left selected menu name - modern pill style */}
+        {/* Top left area: separate Dashboard icon then title pill */}
         <div style={{
           position: 'absolute',
           left: 24,
-          top: 'calc(50% - 18px)',
-          minWidth: 140,
-          minHeight: 36,
+          top: 'calc(50% - 19px)',
           display: 'flex',
           alignItems: 'center',
-          fontWeight: 700,
-          fontSize: '1.45rem',
-          color: '#fff',
-          letterSpacing: '0.01em',
+          gap: 12,
           zIndex: 10,
-          background: 'rgba(255,255,255,0.08)',
-          borderRadius: '24px',
-          boxShadow: '0 2px 8px rgba(44,62,80,0.08)',
-          padding: '0 24px',
-          transition: 'background 0.2s',
-          fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
         }}>
-          <span style={{flex: 'none'}}>{selectedMenu ? selectedMenu : ''}</span>
+          {/* Dashboard icon-only button */}
+          <button
+            type="button"
+            aria-label="Go to Dashboard"
+            className="btn btn-light d-inline-flex align-items-center justify-content-center"
+            onClick={() => navigate('/dashboard')}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.35)',
+              borderRadius: '50%',
+              width: 38,
+              height: 38,
+              padding: 0,
+              boxShadow: '0 2px 8px rgba(44,62,80,0.10)',
+            }}
+            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            <i className="mdi mdi-view-dashboard-outline" style={{ fontSize: '1.2rem' }}></i>
+          </button>
+
+          {/* Title pill */}
+          <div style={{
+            minWidth: 140,
+            minHeight: 36,
+            display: 'flex',
+            alignItems: 'center',
+            fontWeight: 700,
+            fontSize: '1.45rem',
+            color: '#fff',
+            letterSpacing: '0.01em',
+            background: 'rgba(255,255,255,0.08)',
+            borderRadius: '24px',
+            boxShadow: '0 2px 8px rgba(44,62,80,0.08)',
+            padding: '0 24px',
+            transition: 'background 0.2s',
+            fontFamily: "'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif",
+          }}>
+            <span style={{flex: 'none'}}>{selectedMenu ? selectedMenu : ''}</span>
+          </div>
         </div>
 
         <nav

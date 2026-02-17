@@ -123,6 +123,38 @@ const Examcode = () => {
     setSnackbar({ open: true, message: finalMessage, severity });
   };
 
+  // Stable editable input for Exam Code to prevent caret jumping
+  const CodeEditableCell = React.memo(({ value }) => {
+    const [localVal, setLocalVal] = React.useState(value || '');
+    const inputRef = editCodeRef;
+    // Sync only when edit row changes
+    React.useEffect(() => {
+      setLocalVal(value || '');
+    }, [value, editRowId]);
+
+    return (
+      <Input
+        type="text"
+        value={localVal}
+        onChange={e => {
+          const v = e.target.value;
+          setLocalVal(v);
+          setEditCode(v);
+          lastFocusedEditInputRef.current = 'code';
+          editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
+        }}
+        placeholder="Enter exam code"
+        className="examcode-input"
+        style={{ height: 44, textAlign: 'center' }}
+        innerRef={inputRef}
+        onFocus={e => {
+          lastFocusedEditInputRef.current = 'code';
+          editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
+        }}
+      />
+    );
+  });
+
   const columns = React.useMemo(() => [
     {
       id: 'ex_code',
@@ -142,23 +174,7 @@ const Examcode = () => {
         if (editRowId === row.row.original.id) {
           return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Input
-                type="text"
-                value={editCode}
-                onChange={e => {
-                  setEditCode(e.target.value);
-                  lastFocusedEditInputRef.current = 'code';
-                  editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
-                }}
-                placeholder="Enter exam code"
-                className="examcode-input"
-                style={{ height: 44, textAlign: 'center' }}
-                innerRef={editCodeRef}
-                onFocus={e => {
-                  lastFocusedEditInputRef.current = 'code';
-                  editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
-                }}
-              />
+              <CodeEditableCell value={editCode} />
             </div>
           );
         }
@@ -338,27 +354,21 @@ const Examcode = () => {
         );
       },
     },
-  ], [editRowId, editCode, editValidity, editReminderYear, editReminderMonth, sortBy, sortDirection]);
+  ], [editRowId, editValidity, editReminderYear, editReminderMonth, sortBy, sortDirection]);
 
-  // Restore focus and cursor position after each render in edit mode
-React.useEffect(() => {
-  if (editRowId !== null) {
-    let ref = null;
-    if (lastFocusedEditInputRef.current === 'code') ref = editCodeRef.current;
-    else if (lastFocusedEditInputRef.current === 'validity') ref = editValidityRef.current;
-    else if (lastFocusedEditInputRef.current === 'reminderYear') ref = editReminderYearRef.current;
-    else if (lastFocusedEditInputRef.current === 'reminderMonth') ref = editReminderMonthRef.current;
-    if (ref) {
-      ref.focus();
-      if (
-        editCursorPosRef.current &&
-        typeof editCursorPosRef.current.pos === 'number'
-      ) {
-        ref.setSelectionRange(editCursorPosRef.current.pos, editCursorPosRef.current.pos);
+  // Restore focus only when entering edit mode to avoid caret jumps during typing
+  React.useEffect(() => {
+    if (editRowId !== null) {
+      let ref = null;
+      if (lastFocusedEditInputRef.current === 'code') ref = editCodeRef.current;
+      else if (lastFocusedEditInputRef.current === 'validity') ref = editValidityRef.current;
+      else if (lastFocusedEditInputRef.current === 'reminderYear') ref = editReminderYearRef.current;
+      else if (lastFocusedEditInputRef.current === 'reminderMonth') ref = editReminderMonthRef.current;
+      if (ref) {
+        try { ref.focus(); } catch (e) {}
       }
     }
-  }
-}, [editRowId, editCode, editValidity, editReminderYear, editReminderMonth]);
+  }, [editRowId]);
   // Memoize table data
   const memoExamcodes = React.useMemo(() => examcodes, [examcodes]);
 

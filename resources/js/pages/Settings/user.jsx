@@ -57,6 +57,13 @@ const UserCore = () => {
 	const editAgentRef = useRef(null);
 	const lastFocusedEditInputRef = useRef('');
 	const editCursorPosRef = useRef(null);
+	// Prevent duplicate update submissions specifically for edit mode
+	const [isSavingEdit, setIsSavingEdit] = useState(false);
+	// Always-current value refs to avoid stale closures when columns are memoized
+	const editNameValueRef = useRef('');
+	const editUsernameValueRef = useRef('');
+	const editPasswordValueRef = useRef('');
+	const editAgentIdValueRef = useRef('');
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [deleteRowId, setDeleteRowId] = useState(null);
 	const [sortBy, setSortBy] = useState('name');
@@ -68,7 +75,89 @@ const UserCore = () => {
 		setSnackbar({ open: true, message, severity });
 	};
 
-	const columns = [
+	// Stable editable inputs to prevent caret jumping (like Examcode)
+	const NameEditableCell = React.memo(({ value }) => {
+		const [localVal, setLocalVal] = useState(value || '');
+		useEffect(() => { setLocalVal(value || ''); }, [value, editRowId]);
+		return (
+			<Input
+				type="text"
+				value={localVal}
+				innerRef={editNameRef}
+				onChange={e => {
+					const v = e.target.value;
+					setLocalVal(v);
+					setEditName(v);
+					editNameValueRef.current = v;
+					lastFocusedEditInputRef.current = 'name';
+					editCursorPosRef.current = { field: 'name', pos: e.target.selectionStart };
+				}}
+				placeholder="Enter name"
+				className="examcode-input"
+				style={{ height: 44, textAlign: 'center' }}
+				onFocus={e => {
+					lastFocusedEditInputRef.current = 'name';
+					editCursorPosRef.current = { field: 'name', pos: e.target.selectionStart };
+				}}
+			/>
+		);
+	});
+
+	const UsernameEditableCell = React.memo(({ value }) => {
+		const [localVal, setLocalVal] = useState(value || '');
+		useEffect(() => { setLocalVal(value || ''); }, [value, editRowId]);
+		return (
+			<Input
+				type="text"
+				value={localVal}
+				innerRef={editUsernameRef}
+				onChange={e => {
+					const v = e.target.value;
+					setLocalVal(v);
+					setEditUsername(v);
+					editUsernameValueRef.current = v;
+					lastFocusedEditInputRef.current = 'username';
+					editCursorPosRef.current = { field: 'username', pos: e.target.selectionStart };
+				}}
+				placeholder="Enter username"
+				className="examcode-input"
+				style={{ height: 44, textAlign: 'center' }}
+				onFocus={e => {
+					lastFocusedEditInputRef.current = 'username';
+					editCursorPosRef.current = { field: 'username', pos: e.target.selectionStart };
+				}}
+			/>
+		);
+	});
+
+	const PasswordEditableCell = React.memo(({ value }) => {
+		const [localVal, setLocalVal] = useState(value || '');
+		useEffect(() => { setLocalVal(value || ''); }, [value, editRowId]);
+		return (
+			<Input
+				type="text"
+				value={localVal}
+				innerRef={editPasswordRef}
+				onChange={e => {
+					const v = e.target.value;
+					setLocalVal(v);
+					setEditPassword(v);
+					editPasswordValueRef.current = v;
+					lastFocusedEditInputRef.current = 'password';
+					editCursorPosRef.current = { field: 'password', pos: e.target.selectionStart };
+				}}
+				placeholder="Enter password"
+				className="examcode-input"
+				style={{ height: 44, textAlign: 'center' }}
+				onFocus={e => {
+					lastFocusedEditInputRef.current = 'password';
+					editCursorPosRef.current = { field: 'password', pos: e.target.selectionStart };
+				}}
+			/>
+		);
+	});
+
+	const columns = React.useMemo(() => [
 		{
 			id: 'name',
 			header: (
@@ -85,25 +174,7 @@ const UserCore = () => {
 			enableSorting: true,
 			cell: row => {
 				if (editRowId === row.row.original.id) {
-					return (
-						<Input
-							type="text"
-							value={editName}
-							innerRef={editNameRef}
-							onChange={e => {
-								setEditName(e.target.value);
-								lastFocusedEditInputRef.current = 'name';
-								editCursorPosRef.current = { field: 'name', pos: e.target.selectionStart };
-							}}
-							placeholder="Enter name"
-							className="examcode-input"
-							style={{ height: 44, textAlign: 'center' }}
-							onFocus={e => {
-								lastFocusedEditInputRef.current = 'name';
-								editCursorPosRef.current = { field: 'name', pos: e.target.selectionStart };
-							}}
-						/>
-					);
+					return (<NameEditableCell value={editName} />);
 				}
 				return row.row.original.name || '';
 			},
@@ -124,25 +195,7 @@ const UserCore = () => {
 			enableSorting: true,
 			cell: row => {
 				if (editRowId === row.row.original.id) {
-					return (
-						<Input
-							type="text"
-							value={editUsername}
-							innerRef={editUsernameRef}
-							onChange={e => {
-								setEditUsername(e.target.value);
-								lastFocusedEditInputRef.current = 'username';
-								editCursorPosRef.current = { field: 'username', pos: e.target.selectionStart };
-							}}
-							placeholder="Enter username"
-							className="examcode-input"
-							style={{ height: 44, textAlign: 'center' }}
-							onFocus={e => {
-								lastFocusedEditInputRef.current = 'username';
-								editCursorPosRef.current = { field: 'username', pos: e.target.selectionStart };
-							}}
-						/>
-					);
+					return (<UsernameEditableCell value={editUsername} />);
 				}
 				return row.row.original.username || '';
 			},
@@ -163,25 +216,7 @@ const UserCore = () => {
 				enableSorting: true,
 				cell: row => {
 					if (editRowId === row.row.original.id) {
-						return (
-							<Input
-								type="text"
-								value={editPassword}
-								innerRef={editPasswordRef}
-								onChange={e => {
-									setEditPassword(e.target.value);
-									lastFocusedEditInputRef.current = 'password';
-									editCursorPosRef.current = { field: 'password', pos: e.target.selectionStart };
-								}}
-								placeholder="Enter password"
-								className="examcode-input"
-								style={{ height: 44, textAlign: 'center' }}
-								onFocus={e => {
-									lastFocusedEditInputRef.current = 'password';
-									editCursorPosRef.current = { field: 'password', pos: e.target.selectionStart };
-								}}
-							/>
-						);
+						return (<PasswordEditableCell value={editPassword} />);
 					}
 					// Truncate long password hashes for display
 					const val = row.row.original.password || '';
@@ -202,20 +237,21 @@ const UserCore = () => {
 							return (
 								<Input
 									type="select"
-									value={editAgentId}
+									value={String(editAgentId || '')}
 									innerRef={editAgentRef}
-									onChange={e => setEditAgentId(e.target.value)}
+									onChange={e => { const v = e.target.value; setEditAgentId(v); editAgentIdValueRef.current = v; }}
 									className="examcode-input"
 									style={{ height: 44, textAlign: 'center', minWidth: 120 }}
+									onFocus={() => { lastFocusedEditInputRef.current = 'agent_id'; }}
 								>
 									<option value="">Select agent</option>
 									{agents.map(agent => (
-										<option key={agent.id} value={agent.id}>{agent.name}</option>
+										<option key={agent.id} value={String(agent.id)}>{agent.name}</option>
 									))}
 								</Input>
 							);
 						}
-						const agent = agents.find(a => a.id === row.row.original.agent_id);
+						const agent = agents.find(a => String(a.id) === String(row.row.original.agent_id));
 						return (
 							<div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 								{agent ? agent.name : <span style={{ color: '#aaa' }}>-</span>}
@@ -232,7 +268,7 @@ const UserCore = () => {
 				if (editRowId === rowId) {
 					return (
 						<div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-							<button type="button" className="examcode-update-btn" onClick={() => handleEditSave(rowId)} disabled={loading} style={{ minWidth: 100 }}>Update</button>
+							<button type="button" className="examcode-update-btn" onClick={() => handleEditSave(rowId)} disabled={isSavingEdit} style={{ minWidth: 100 }}>{isSavingEdit ? 'Saving…' : 'Update'}</button>
 							<button type="button" className="examcode-cancel-btn" onClick={handleEditCancel} style={{ minWidth: 100 }}>Cancel</button>
 						</div>
 					);
@@ -249,7 +285,7 @@ const UserCore = () => {
 				);
 			},
 		},
-	];
+	], [editRowId, sortBy, sortDirection, agents, editAgentId]);
 
 	useEffect(() => {
 		// Fetch agents for dropdown
@@ -266,14 +302,11 @@ const UserCore = () => {
 			else if (lastFocusedEditInputRef.current === 'username') ref = editUsernameRef.current;
 			else if (lastFocusedEditInputRef.current === 'password') ref = editPasswordRef.current;
 			else if (lastFocusedEditInputRef.current === 'agent_id') ref = editAgentRef.current;
-			if (ref) {
-				ref.focus();
-				if (editCursorPosRef.current && typeof editCursorPosRef.current.pos === 'number') {
-					ref.setSelectionRange(editCursorPosRef.current.pos, editCursorPosRef.current.pos);
-				}
+			if (ref && typeof ref.focus === 'function') {
+				try { ref.focus(); } catch (e) {}
 			}
 		}
-	}, [editRowId, editName, editUsername, editPassword, editAgentId]);
+	}, [editRowId]);
 
 	useEffect(() => {
 		setLoading(true);
@@ -339,7 +372,11 @@ const UserCore = () => {
 		setEditName(row.name);
 		setEditUsername(row.username);
 		setEditPassword(row.password);
-		setEditAgentId(row.agent_id || '');
+		setEditAgentId(row.agent_id != null ? String(row.agent_id) : '');
+		editNameValueRef.current = row.name || '';
+		editUsernameValueRef.current = row.username || '';
+		editPasswordValueRef.current = row.password || '';
+		editAgentIdValueRef.current = row.agent_id || '';
 		lastFocusedEditInputRef.current = 'name';
 		editCursorPosRef.current = { field: 'name', pos: 0 };
 	};
@@ -350,29 +387,42 @@ const UserCore = () => {
 		setEditUsername('');
 		setEditPassword('');
 		setEditAgentId('');
+		editNameValueRef.current = '';
+		editUsernameValueRef.current = '';
+		editPasswordValueRef.current = '';
+		editAgentIdValueRef.current = '';
 	};
 
 	const handleEditSave = async (id) => {
-		if (!editName.trim() || !editUsername.trim() || !editPassword.trim() || !editAgentId) {
+		if (isSavingEdit) return;
+		const nameToSave = editNameValueRef.current ?? editName;
+		const usernameToSave = editUsernameValueRef.current ?? editUsername;
+		const passwordToSave = editPasswordValueRef.current ?? editPassword;
+		const agentIdToSave = editAgentIdValueRef.current ?? editAgentId;
+		if (!nameToSave.trim() || !usernameToSave.trim() || !passwordToSave.trim() || !agentIdToSave) {
 			showSnackbar('Please enter all fields', 'error');
 			return;
 		}
-		setLoading(true);
+		setIsSavingEdit(true);
 		try {
-			await api.put(`/users/${id}`, { name: editName, username: editUsername, password: editPassword, agent_id: editAgentId });
+			await api.put(`/users/${id}`, { name: nameToSave, username: usernameToSave, password: passwordToSave, agent_id: Number(agentIdToSave) });
 			showSnackbar('User updated', 'success');
 			setEditRowId(null);
 			setEditName('');
 			setEditUsername('');
 			setEditPassword('');
 			setEditAgentId('');
-			const res = await api.get('/users', { params: { page: currentPage, pageSize, search } });
+			editNameValueRef.current = '';
+			editUsernameValueRef.current = '';
+			editPasswordValueRef.current = '';
+			editAgentIdValueRef.current = '';
+			const res = await api.get('/users', { params: { page: currentPage, pageSize, search, sortBy, sortDirection } });
 			setUsers(res.data.data || []);
 			setTotalRecords(res.data.total || (res.data.data ? res.data.data.length : 0));
 		} catch (err) {
 			showSnackbar('Failed to update user', 'error');
 		}
-		setLoading(false);
+		setIsSavingEdit(false);
 	};
 
 	const handleSortChange = (columnId) => {
