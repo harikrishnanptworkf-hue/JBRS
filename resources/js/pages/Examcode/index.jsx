@@ -108,6 +108,12 @@ const Examcode = () => {
   // Track last focused input and cursor position using ref
   const lastFocusedEditInputRef = React.useRef('');
   const editCursorPosRef = React.useRef(null);
+  // Prevent duplicate update submissions and keep always-current values
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const editCodeValueRef = React.useRef('');
+  const editValidityValueRef = React.useRef('');
+  const editReminderYearValueRef = React.useRef('');
+  const editReminderMonthValueRef = React.useRef('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
   const [sortBy, setSortBy] = useState('');
@@ -140,6 +146,7 @@ const Examcode = () => {
           const v = e.target.value;
           setLocalVal(v);
           setEditCode(v);
+          editCodeValueRef.current = v;
           lastFocusedEditInputRef.current = 'code';
           editCursorPosRef.current = { field: 'code', pos: e.target.selectionStart };
         }}
@@ -154,6 +161,9 @@ const Examcode = () => {
       />
     );
   });
+
+  // Stable editable input for Validity to prevent caret jumping (mirror agent.jsx)
+  // Revert Validity and Reminder cells to pre-change simple controlled inputs (as requested)
 
   const columns = React.useMemo(() => [
     {
@@ -205,11 +215,13 @@ const Examcode = () => {
                 max={10}
                 value={editValidity}
                 onChange={e => {
-                  const val = e.target.value;
-                  if (/^\d*$/.test(val)) setEditValidity(val);
+                  const val = e.target.value.replace(/\D/g, '');
+                  setEditValidity(val);
+                  editValidityValueRef.current = val;
                   lastFocusedEditInputRef.current = 'validity';
                   editCursorPosRef.current = { field: 'validity', pos: e.target.selectionStart };
                 }}
+                onKeyDown={e => { if (['e','E','+','-','.'].includes(e.key)) e.preventDefault(); }}
                 placeholder="Enter validity (1-10)"
                 className="examcode-input"
                 style={{ height: 44, minWidth: 100, maxWidth: 120, textAlign: 'center' }}
@@ -244,11 +256,13 @@ const Examcode = () => {
                   max={10}
                   value={editReminderYear}
                   onChange={e => {
-                    const val = e.target.value;
-                    if (/^\d*$/.test(val)) setEditReminderYear(val);
+                    const val = e.target.value.replace(/\D/g, '');
+                    setEditReminderYear(val);
+                    editReminderYearValueRef.current = val;
                     lastFocusedEditInputRef.current = 'reminderYear';
                     editCursorPosRef.current = { field: 'reminderYear', pos: e.target.selectionStart };
                   }}
+                  onKeyDown={e => { if (['e','E','+','-','.'].includes(e.key)) e.preventDefault(); }}
                   placeholder="Year"
                   className="examcode-input"
                   style={{ height: 44, minWidth: 80, maxWidth: 100, textAlign: 'center' }}
@@ -267,11 +281,14 @@ const Examcode = () => {
                   max={12}
                   value={editReminderMonth}
                   onChange={e => {
-                    const val = e.target.value;
-                    if (/^\d*$/.test(val) && Number(val) >= 0 && Number(val) <= 12) setEditReminderMonth(val);
+                    const val = e.target.value.replace(/\D/g, '');
+                    const bounded = val === '' ? '' : String(Math.min(12, Number(val)));
+                    setEditReminderMonth(bounded);
+                    editReminderMonthValueRef.current = bounded;
                     lastFocusedEditInputRef.current = 'reminderMonth';
                     editCursorPosRef.current = { field: 'reminderMonth', pos: e.target.selectionStart };
                   }}
+                  onKeyDown={e => { if (['e','E','+','-','.'].includes(e.key)) e.preventDefault(); }}
                   placeholder="Month"
                   className="examcode-input"
                   style={{ height: 44, minWidth: 80, maxWidth: 100, textAlign: 'center' }}
@@ -279,7 +296,6 @@ const Examcode = () => {
                   onFocus={e => {
                     lastFocusedEditInputRef.current = 'reminderMonth';
                     editCursorPosRef.current = { field: 'reminderMonth', pos: e.target.selectionStart };
-
                   }}
                 />
                 <span style={{ fontWeight: 500, color: '#1a2942', fontSize: 15, marginLeft: 4 }}>Month</span>
@@ -308,10 +324,10 @@ const Examcode = () => {
                 type="button"
                 className="examcode-update-btn"
                 onClick={() => handleEditSave(rowId)}
-                disabled={loading}
+                disabled={isSavingEdit}
                 style={{ minWidth: 100 }}
               >
-                Update
+                {isSavingEdit ? 'Saving…' : 'Update'}
               </button>
               <button
                 type="button"
@@ -354,7 +370,7 @@ const Examcode = () => {
         );
       },
     },
-  ], [editRowId, editValidity, editReminderYear, editReminderMonth, sortBy, sortDirection]);
+  ], [editRowId, sortBy, sortDirection, editValidity, editReminderYear, editReminderMonth]);
 
   // Restore focus only when entering edit mode to avoid caret jumps during typing
   React.useEffect(() => {
@@ -475,54 +491,77 @@ const Examcode = () => {
   setEditValidity((row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '');
   setEditReminderYear((row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '');
   setEditReminderMonth((row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '');
+  editCodeValueRef.current = row.ex_code || '';
+  editValidityValueRef.current = (row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '';
+  editReminderYearValueRef.current = (row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '';
+  editReminderMonthValueRef.current = (row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '';
   };
 
   const handleEditCancel = () => {
   setEditRowId(null);
   setEditCode('');
+  setEditValidity('');
+  setEditReminderYear('');
+  setEditReminderMonth('');
+  editCodeValueRef.current = '';
+  editValidityValueRef.current = '';
+  editReminderYearValueRef.current = '';
+  editReminderMonthValueRef.current = '';
   };
 
   const handleEditSave = async (id) => {
-    if (!editCode.trim()) {
+    if (isSavingEdit) return;
+    const codeToSave = editCodeValueRef.current ?? editCode;
+    const validityToSave = editValidityValueRef.current ?? editValidity;
+    const remindYearToSave = editReminderYearValueRef.current ?? editReminderYear;
+    const remindMonthToSave = editReminderMonthValueRef.current ?? editReminderMonth;
+    if (!String(codeToSave).trim()) {
       showSnackbar('Please enter exam code', 'error');
       return;
     }
-    if (!editValidity.match(/^[1-9]$|^10$/)) {
+    if (!String(validityToSave).match(/^[1-9]$|^10$/)) {
       showSnackbar('Please enter validity between 1 and 10', 'error');
       return;
     }
 
-    if (editReminderYear && (!/^\d+$/.test(editReminderYear) || Number(editReminderYear) < 0)) {
+    if (String(remindYearToSave).length > 0 && (!/^\d+$/.test(String(remindYearToSave)) || Number(remindYearToSave) < 0)) {
       showSnackbar('Reminder year must be a number >= 0', 'error');
       return;
     }  
 
-    if (editReminderMonth && (!/^\d+$/.test(editReminderMonth) || Number(editReminderMonth) < 0 || Number(editReminderMonth) > 12)) {
+    if (String(remindMonthToSave).length > 0 && (!/^\d+$/.test(String(remindMonthToSave)) || Number(remindMonthToSave) < 0 || Number(remindMonthToSave) > 12)) {
       showSnackbar('Reminder month must be a number between 0 and 12', 'error');
       return;
     }
 
-    setLoading(true);
+    setIsSavingEdit(true);
     try {
       // Check if exam code exists in backend (excluding current row)
       const checkRes = await api.get('/examcodes', {
-        params: { search: editCode }
+        params: { search: codeToSave }
       });
-      const exists = Array.isArray(checkRes.data.data) && checkRes.data.data.some(e => e.ex_code === editCode && e.id !== id);
+      const exists = Array.isArray(checkRes.data.data) && checkRes.data.data.some(e => e.ex_code === codeToSave && e.id !== id);
       if (exists) {
-        setLoading(false);
+        setIsSavingEdit(false);
         showSnackbar('Exam code already exists', 'error');
         return;
       }
       await api.put(`/examcodes/${id}`, {
-        exam_code: editCode,
-        validity: editValidity,
-        ex_remind_year: editReminderYear === '' ? 0 : Number(editReminderYear),
-        ex_remind_month: editReminderMonth === '' ? 0 : Number(editReminderMonth)
+        exam_code: codeToSave,
+        validity: Number(validityToSave),
+        ex_remind_year: String(remindYearToSave).length === 0 ? 0 : Number(remindYearToSave),
+        ex_remind_month: String(remindMonthToSave).length === 0 ? 0 : Number(remindMonthToSave)
       });
   showSnackbar('Exam code updated', 'success');
   setEditRowId(null);
   setEditCode('');
+      setEditValidity('');
+      setEditReminderYear('');
+      setEditReminderMonth('');
+      editCodeValueRef.current = '';
+      editValidityValueRef.current = '';
+      editReminderYearValueRef.current = '';
+      editReminderMonthValueRef.current = '';
       // Always refetch from backend for latest data
       const res = await api.get('/examcodes', {
         params: { page: currentPage, pageSize, search }
@@ -532,7 +571,7 @@ const Examcode = () => {
     } catch (err) {
       showSnackbar('Failed to update exam code', 'error');
     }
-    setLoading(false);
+    setIsSavingEdit(false);
   };
 
   const handleSortChange = (columnId) => {
