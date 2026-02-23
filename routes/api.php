@@ -113,6 +113,7 @@ Route::middleware(['auth:sanctum', 'ensure.user.session'])->group(function () {
     });
 
     Route::prefix('examcodes')->name('examcodes.')->group(function () {
+        Route::get('/check-usage', [ExamCodeController::class, 'checkUsage']);
         Route::get('/', [ExamCodeController::class, 'index'])->name('index');
         Route::post('/', [ExamCodeController::class, 'store'])->name('store');
         Route::get('/{examcode}', [ExamCodeController::class, 'show'])->name('show');

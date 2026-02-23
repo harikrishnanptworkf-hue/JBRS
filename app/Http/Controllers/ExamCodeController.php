@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ExamCode;
+use App\Models\Enquiry;
+use App\Models\Schedule;
 
 class ExamCodeController extends Controller
 {
@@ -86,5 +88,22 @@ class ExamCodeController extends Controller
         $examcode = ExamCode::findOrFail($id);
         $examcode->delete();
         return response()->json(['message' => 'Deleted']);
+    }
+
+    public function checkUsage(Request $request)
+    {
+        $examcodeId = $request->input('examcode_id');
+        if (!$examcodeId) {
+            return response()->json(['error' => 'examcode_id required', 'received' => $examcodeId], 400);
+        }
+
+        $enquiryCount = Enquiry::where('e_exam_code', $examcodeId)->count();
+        $scheduleCount = Schedule::where('s_exam_code', $examcodeId)->count();
+        return response()->json([
+            'examcode_id' => $examcodeId,
+            'enquiry_count' => $enquiryCount,
+            'schedule_count' => $scheduleCount,
+            'used' => ($enquiryCount + $scheduleCount) > 0
+        ]);
     }
 }

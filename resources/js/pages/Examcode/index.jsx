@@ -75,6 +75,10 @@ const CustomAlert = ({ open, message, severity, onClose, duration = 3000 }) => {
 };
 
 const Examcode = () => {
+  // Modal for usage confirmation
+  const [showUsageModal, setShowUsageModal] = useState(false);
+  const [pendingEditRow, setPendingEditRow] = useState(null);
+  const [usageModalMsg, setUsageModalMsg] = useState('');
   // Listen for filter button event from Navbar
   useEffect(() => {
     const handler = () => setShowFullControls(v => !v);
@@ -116,6 +120,17 @@ const Examcode = () => {
   const editReminderMonthValueRef = React.useRef('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
+  const [deleteUsedWarning, setDeleteUsedWarning] = useState(false);
+  // (removed duplicate declarations)
+  // Check if exam code is used in Enquiry or Schedule (via backend API)
+  const checkExamcodeUsage = async (Id) => {
+    try {
+      const res = await api.get('/examcodes/check-usage', { params: { examcode_id: Id } });
+      return res.data.used;
+    } catch (err) {
+      return false;
+    }
+  };
   const [sortBy, setSortBy] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   const [totalRecords, setTotalRecords] = useState(0);
@@ -348,7 +363,20 @@ const Examcode = () => {
                 className="examcode-action-btn edit"
                 style={{ color: '#1a8cff', background: '#e6f2ff' }}
                 title="Edit"
-                onClick={() => handleEditClick(row.row.original)}
+                onClick={async () => {
+                  console.log('Edit button clicked for ID:', row.row.original.id);
+                  const used = await checkExamcodeUsage(row.row.original.id);
+                  console.log('checkExamcodeUsage result:', used);
+                  if (used) {
+                    setUsageModalMsg('This exam code is already used. Do you want to edit it?');
+                    setShowUsageModal(true);
+                    setPendingEditRow(row.row.original);
+                    console.log('Usage modal should show now');
+                  } else {
+                    console.log('Proceeding to edit mode');
+                    handleEditClick(row.row.original);
+                  }
+                }}
                 id={`edit-tooltip-${rowId}`}
               >
                 <i className="mdi mdi-pencil-outline" />
@@ -360,7 +388,12 @@ const Examcode = () => {
                 className="examcode-action-btn delete"
                 style={{ color: '#ff4d4f', background: '#fff1f0' }}
                 title="Delete"
-                onClick={() => { setDeleteRowId(rowId); setShowDeleteModal(true); }}
+                onClick={async () => {
+                  const used = await checkExamcodeUsage(rowId);
+                  setDeleteRowId(rowId);
+                  setDeleteUsedWarning(!!used);
+                  setShowDeleteModal(true);
+                }}
                 id={`delete-tooltip-${rowId}`}
               >
                 <i className="mdi mdi-delete-outline" />
@@ -485,16 +518,48 @@ const Examcode = () => {
     setLoading(false);
   };
 
-  const handleEditClick = (row) => {
-  setEditRowId(row.id);
-  setEditCode(row.ex_code);
-  setEditValidity((row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '');
-  setEditReminderYear((row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '');
-  setEditReminderMonth((row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '');
-  editCodeValueRef.current = row.ex_code || '';
-  editValidityValueRef.current = (row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '';
-  editReminderYearValueRef.current = (row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '';
-  editReminderMonthValueRef.current = (row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '';
+  const handleEditClick = async (row) => {
+    // Check usage before allowing edit
+    const used = await checkExamcodeUsage(row.id);
+    if (used) {
+      setUsageModalMsg('This exam code is already used. Do you want to edit it?');
+      setShowUsageModal(true);
+      setPendingEditRow(row);
+      return;
+    }
+    // Not used, proceed to edit
+    setEditRowId(row.id);
+    setEditCode(row.ex_code);
+    setEditValidity((row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '');
+    setEditReminderYear((row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '');
+    setEditReminderMonth((row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '');
+    editCodeValueRef.current = row.ex_code || '';
+    editValidityValueRef.current = (row.ex_validity !== undefined && row.ex_validity !== null) ? String(row.ex_validity) : '';
+    editReminderYearValueRef.current = (row.ex_remind_year !== undefined && row.ex_remind_year !== null) ? String(row.ex_remind_year) : '';
+    editReminderMonthValueRef.current = (row.ex_remind_month !== undefined && row.ex_remind_month !== null) ? String(row.ex_remind_month) : '';
+  };
+  // Confirm edit if exam code is used
+  const handleUsageModalConfirm = () => {
+    if (pendingEditRow) {
+      setEditRowId(pendingEditRow.id);
+      setEditCode(pendingEditRow.ex_code);
+      setEditValidity((pendingEditRow.ex_validity !== undefined && pendingEditRow.ex_validity !== null) ? String(pendingEditRow.ex_validity) : '');
+      setEditReminderYear((pendingEditRow.ex_remind_year !== undefined && pendingEditRow.ex_remind_year !== null) ? String(pendingEditRow.ex_remind_year) : '');
+      setEditReminderMonth((pendingEditRow.ex_remind_month !== undefined && pendingEditRow.ex_remind_month !== null) ? String(pendingEditRow.ex_remind_month) : '');
+      editCodeValueRef.current = pendingEditRow.ex_code || '';
+      editValidityValueRef.current = (pendingEditRow.ex_validity !== undefined && pendingEditRow.ex_validity !== null) ? String(pendingEditRow.ex_validity) : '';
+      editReminderYearValueRef.current = (pendingEditRow.ex_remind_year !== undefined && pendingEditRow.ex_remind_year !== null) ? String(pendingEditRow.ex_remind_year) : '';
+      editReminderMonthValueRef.current = (pendingEditRow.ex_remind_month !== undefined && pendingEditRow.ex_remind_month !== null) ? String(pendingEditRow.ex_remind_month) : '';
+    }
+    setShowUsageModal(false);
+    setPendingEditRow(null);
+    setUsageModalMsg('');
+  };
+
+  const handleUsageModalCancel = () => {
+    setShowUsageModal(false);
+    setPendingEditRow(null);
+    setUsageModalMsg('');
   };
 
   const handleEditCancel = () => {
@@ -1001,9 +1066,32 @@ const Examcode = () => {
       <DeleteModal
         section="exam code"
         show={showDeleteModal}
-        onDeleteClick={() => { handleDelete(deleteRowId); setShowDeleteModal(false); setDeleteRowId(null); }}
-        onCloseClick={() => { setShowDeleteModal(false); setDeleteRowId(null); }}
-      />
+        onDeleteClick={() => { handleDelete(deleteRowId); setShowDeleteModal(false); setDeleteRowId(null); setDeleteUsedWarning(false); }}
+        onCloseClick={() => { setShowDeleteModal(false); setDeleteRowId(null); setDeleteUsedWarning(false); }}
+      >
+        {deleteUsedWarning && (
+          <div style={{ color: '#ff4d4f', fontWeight: 600, marginBottom: 12, borderRadius: 8, padding: '8px 16px', textAlign: 'center' }}>
+             Exam code is already in use.
+          </div>
+        )}
+      </DeleteModal>
+
+      {/* Usage Confirmation Modal */}
+      {showUsageModal && (
+        <div className="examcode-modal-backdrop">
+          <div className="examcode-modal">
+            <span className="examcode-modal-icon">
+              <i className="mdi mdi-alert-circle-outline" />
+            </span>
+            <div className="examcode-modal-title">Exam Code In Use</div>
+            <div className="examcode-modal-message">{usageModalMsg}</div>
+            <div className="examcode-modal-btns">
+              <button className="examcode-save-btn" onClick={handleUsageModalConfirm}>Edit Anyway</button>
+              <button className="examcode-cancel-btn" onClick={handleUsageModalCancel}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CustomAlert open={snackbar.open} message={snackbar.message} severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} />
     </div>

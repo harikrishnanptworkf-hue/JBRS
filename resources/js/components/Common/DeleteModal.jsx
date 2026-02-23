@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import React from "react";
 
-const DeleteModal = ({ section, show, onDeleteClick, onCloseClick }) => {
+const DeleteModal = ({ section, show, onDeleteClick, onCloseClick, children }) => {
   if (!show) return null;
   return (
     <div className="examcode-modal-backdrop" style={{zIndex: 2000, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(44,62,80,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -83,8 +83,9 @@ const DeleteModal = ({ section, show, onDeleteClick, onCloseClick }) => {
         <div className="examcode-modal-icon" style={{fontSize: 48, color: '#ff4d4f', marginBottom: 12}}>
           <i className="mdi mdi-alert-circle-outline"></i>
         </div>
-        <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Delete {section ? section.charAt(0).toUpperCase() + section.slice(1) : 'Item'}?</div>
-        <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 24, textAlign: 'center'}}>Are you sure you want to delete this {section || 'item'}? This action cannot be undone.</div>
+  <div className="examcode-modal-title" style={{fontWeight: 700, fontSize: 22, color: '#1a2942', marginBottom: 8}}>Delete {section ? section.charAt(0).toUpperCase() + section.slice(1) : 'Item'}?</div>
+  <div className="examcode-modal-message" style={{fontSize: 16, color: '#1a2942', marginBottom: 24, textAlign: 'center'}}>Are you sure you want to delete this {section || 'item'}? This action cannot be undone.</div>
+  {children}
         <div className="examcode-modal-btns" style={{display: 'flex', gap: 16}}>
           <button className="examcode-cancel-btn" onClick={onCloseClick} type="button">Cancel</button>
           <button className="examcode-save-btn" onClick={onDeleteClick} type="button">Delete</button>
