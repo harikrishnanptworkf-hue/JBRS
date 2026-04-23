@@ -750,7 +750,20 @@ const ClientCreate = () => {
                 timezone: timezone,
                 location: data.s_location || '',
                 comment: data.s_comment || '',
-                remind_date: data.s_remind_date || '',
+                remind_date: data.s_remind_date ? String(data.s_remind_date).slice(0, 10) : (() => {
+                  if (data.s_date && data.examcode) {
+                    const remindYear = parseInt(data.examcode.ex_remind_year || 0);
+                    const remindMonth = parseInt(data.examcode.ex_remind_month || 0);
+                    if (remindYear || remindMonth) {
+                      const sDate = new Date(data.s_date);
+                      const calcDate = new Date(sDate);
+                      calcDate.setFullYear(calcDate.getFullYear() + remindYear);
+                      calcDate.setMonth(calcDate.getMonth() + remindMonth);
+                      return formatDateToYMD(calcDate);
+                    }
+                  }
+                  return '';
+                })(),
                 remind_remark: data.s_remind_remark || '',
               });
               // If we have only the account holder name, preselect matching account once list loads
@@ -1101,6 +1114,20 @@ const ClientCreate = () => {
                           {validation.touched.date && validation.errors.date && (
                             <div className="text-danger small mt-1">{validation.errors.date}</div>
                           )}
+                          <div className="mt-3">
+                            <label htmlFor="remind_date" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Remind Date</label>
+                            <DatePicker
+                              id="remind_date"
+                              selected={toDate(validation.values.remind_date)}
+                              onChange={date => {
+                                const ymd = formatDateToYMD(date);
+                                validation.setFieldValue('remind_date', ymd);
+                              }}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Select remind date (dd/mm/yyyy)"
+                              className="form-control rounded-pill px-3 py-2 reminder-input"
+                            />
+                          </div>
                           {location.state?.from === 'invoice' && (
                             <>
                               <div className="mt-3">
