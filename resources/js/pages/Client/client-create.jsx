@@ -327,6 +327,8 @@ const ClientCreate = () => {
           await api.delete(`/enquiries/${location.state.editId}`);
           if (location.state?.from === 'invoice') {
             redirectToInvoicePending();
+          } else if (location.state?.from === 'reminder') {
+            navigate('/reminders');
           } else {
             navigate('/schedule');
           }
@@ -334,7 +336,11 @@ const ClientCreate = () => {
         } else if (!location.state?.editType && formType === 'enquiry') {
           try {
             const res = await api.post('/enquiries', payload);
-            navigate('/enquiry', { state: { created: true } });
+            if (location.state?.from === 'reminder') {
+              navigate('/reminders');
+            } else {
+              navigate('/enquiry', { state: { created: true } });
+            }
           } catch (err) {
             alert('Failed to save enquiry: ' + (err?.message || 'Unknown error'));
           }
@@ -342,7 +348,11 @@ const ClientCreate = () => {
         } else if (location.state?.editType === 'enquiry' && formType === 'enquiry') {
           try {
             await api.put(`/enquiries/${location.state.editId}`, payload);
-            navigate('/enquiry', { state: { updated: true } });
+            if (location.state?.from === 'reminder') {
+              navigate('/reminders');
+            } else {
+              navigate('/enquiry', { state: { updated: true } });
+            }
           } catch (err) {
             alert('Failed to update enquiry: ' + (err?.message || 'Unknown error'));
           }
@@ -350,6 +360,8 @@ const ClientCreate = () => {
           await api.post('/schedule', payload);
           if (location.state?.from === 'invoice') {
             redirectToInvoicePending();
+          } else if (location.state?.from === 'reminder') {
+            navigate('/reminders');
           } else {
             navigate('/schedule');
           }
@@ -358,6 +370,8 @@ const ClientCreate = () => {
           await api.put(`/schedule/${location.state.editId}`, payload);
           if (location.state?.from === 'invoice') {
             redirectToInvoicePending();
+          } else if (location.state?.from === 'reminder') {
+            navigate('/reminders');
           } else {
             navigate('/schedule');
           }

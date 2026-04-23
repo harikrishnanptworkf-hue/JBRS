@@ -421,7 +421,7 @@ const columns = useMemo(() => {
                                 className="examcode-action-btn"
                                 style={{ color: '#2ba8fb', background: '#e6f7ff' }}
                                 title="Convert to Schedule"
-                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry', forceSchedule: true } })}
+                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry', forceSchedule: true, from: 'reminder' } })}
                             >
                                 <i className="mdi mdi-calendar-arrow-right" style={{ color: '#2ba8fb' }} />
                             </button>
@@ -431,7 +431,7 @@ const columns = useMemo(() => {
                                 type="button"
                                 className="examcode-action-btn edit"
                                 title="Edit Enquiry"
-                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry' } })}
+                                onClick={() => navigate('/client-create', { state: { editId: enquiryId, editType: 'enquiry', from: 'reminder' } })}
                             >
                                 <i className="mdi mdi-pencil-outline"></i>
                             </button>
@@ -441,7 +441,7 @@ const columns = useMemo(() => {
                                 type="button"
                                 className="examcode-action-btn edit"
                                 title="Edit Schedule"
-                                onClick={() => navigate('/client-create', { state: { editId: scheduleId, editType: 'schedule' } })}
+                                onClick={() => navigate('/client-create', { state: { editId: scheduleId, editType: 'schedule', from: 'reminder' } })}
                             >
                                 <i className="mdi mdi-pencil-outline"></i>
                             </button>
