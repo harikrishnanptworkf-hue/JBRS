@@ -40,7 +40,8 @@ class Schedule extends Model
         's_access_code',
         's_done_by',
         's_exam_name',
-        's_invoice_number'
+        's_invoice_number',
+        's_is_deleted'
     ];
 
     protected $appends = ['formatted_created_at', 'formatted_updated_at', 'formatted_s_date','formatted_s_date_original'];

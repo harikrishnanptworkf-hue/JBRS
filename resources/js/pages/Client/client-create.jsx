@@ -318,63 +318,39 @@ const ClientCreate = () => {
           const threeDaysAhead = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
           payload.remind_date = formatDateToYMD(threeDaysAhead);
         }
-        // Convert enquiry to schedule
-        if (location.state?.editType === 'enquiry' && formType === 'schedule') {
-          // Include source enquiry id for linkage
-          const schedulePayload = { ...payload, s_enq_id: location.state.editId };
-          await api.post('/schedule', schedulePayload);
-          // Soft delete the enquiry
-          await api.delete(`/enquiries/${location.state.editId}`);
-          if (location.state?.from === 'invoice') {
-            redirectToInvoicePending();
-          } else if (location.state?.from === 'reminder') {
-            navigate('/reminders');
-          } else {
-            navigate('/schedule');
-          }
-        // Create new enquiry
-        } else if (!location.state?.editType && formType === 'enquiry') {
-          try {
-            const res = await api.post('/enquiries', payload);
-            if (location.state?.from === 'reminder') {
-              navigate('/reminders');
-            } else {
-              navigate('/enquiry', { state: { created: true } });
-            }
-          } catch (err) {
-            alert('Failed to save enquiry: ' + (err?.message || 'Unknown error'));
-          }
-        // Edit existing enquiry
-        } else if (location.state?.editType === 'enquiry' && formType === 'enquiry') {
-          try {
+        // Handle Save Logic
+        if (location.state?.editId) {
+          if (location.state.editType === 'enquiry' && formType === 'schedule') {
+            // Switch Enquiry to Schedule
+            const schedulePayload = { ...payload, s_enq_id: location.state.editId };
+            await api.post('/schedule', schedulePayload);
+            await api.delete(`/enquiries/${location.state.editId}`);
+          } else if (location.state.editType === 'schedule' && formType === 'enquiry') {
+            // Switch Schedule to Enquiry
+            await api.post('/enquiries', payload);
+            await api.delete(`/schedule/${location.state.editId}`);
+          } else if (formType === 'enquiry') {
+            // Edit Enquiry (backend handles versioning via PUT)
             await api.put(`/enquiries/${location.state.editId}`, payload);
-            if (location.state?.from === 'reminder') {
-              navigate('/reminders');
-            } else {
-              navigate('/enquiry', { state: { updated: true } });
-            }
-          } catch (err) {
-            alert('Failed to update enquiry: ' + (err?.message || 'Unknown error'));
-          }
-        } else if (!location.state?.editType && formType === 'schedule') {
-          await api.post('/schedule', payload);
-          if (location.state?.from === 'invoice') {
-            redirectToInvoicePending();
-          } else if (location.state?.from === 'reminder') {
-            navigate('/reminders');
           } else {
-            navigate('/schedule');
+            // Edit Schedule (backend handles versioning via PUT)
+            await api.put(`/schedule/${location.state.editId}`, payload);
           }
-        } else if (location.state?.editType === 'schedule') {
-          // Use PUT to update existing schedule instead of POST
-          await api.put(`/schedule/${location.state.editId}`, payload);
-          if (location.state?.from === 'invoice') {
-            redirectToInvoicePending();
-          } else if (location.state?.from === 'reminder') {
-            navigate('/reminders');
+        } else {
+          // Create New
+          if (formType === 'enquiry') {
+            await api.post('/enquiries', payload);
           } else {
-            navigate('/schedule');
+            await api.post('/schedule', payload);
           }
+        }
+
+        // Redirection Logic
+        if (location.state?.from === 'invoice') {
+          redirectToInvoicePending();
+        } else {
+          // Redirect to specific index page as requested
+          navigate(`/${formType}`, { state: { [location.state?.editId ? 'updated' : 'created']: true } });
         }
       } catch (err) {
         alert('Error: ' + (err?.message || 'Unknown error'));
@@ -891,7 +867,17 @@ const ClientCreate = () => {
                                 </select>
                               ) : (
                                 // New create flow: allow switching
-                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => setFormType(e.target.value)}>
+                                <select className="form-control rounded-pill px-3 py-2 reminder-input" value={formType} onChange={e => {
+                                  const newType = e.target.value;
+                                  setFormType(newType);
+                                  if (newType === 'enquiry') {
+                                    const now = new Date();
+                                    validation.setFieldValue('date', formatDateToDMYHMS(now));
+                                    // Default Enquiry Remind Date: date + 3 days
+                                    const threeDaysAhead = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+                                    validation.setFieldValue('e_enq_remind_date', formatDateToYMD(threeDaysAhead));
+                                  }
+                                }}>
                                   <option value="schedule">Schedule</option>
                                   <option value="enquiry">Enquiry</option>
                                 </select>
@@ -1265,21 +1251,9 @@ const ClientCreate = () => {
                       </div>
                       <div className="row justify-content-center mt-4">
                         <div className={`col-lg-12 d-flex align-items-center gap-2 ${location.state?.from === 'invoice' ? 'flex-nowrap' : 'justify-content-center'}`}>
-                          {location.state && location.state.editType && (
-                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
-                              {location.state.editType === 'enquiry' && formType === 'enquiry' ? 'Save Enquiry' : 'Save Schedule'}
-                            </Button>
-                          )}
-                          {!location.state?.editType && formType === 'schedule' && (
-                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
-                              Save Schedule
-                            </Button>
-                          )}
-                          {!location.state?.editType && formType === 'enquiry' && (
-                            <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
-                              Save Enquiry
-                            </Button>
-                          )}
+                          <Button type="submit" className="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                            {formType === 'enquiry' ? 'Save Enquiry' : 'Save Schedule'}
+                          </Button>
                           {location.state?.from === 'invoice' && (
                             <>
                               <Button type="button" style={{backgroundColor:'#2ba8fb'}} onClick={() => setShowInvoiceConfirm(true)} className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">

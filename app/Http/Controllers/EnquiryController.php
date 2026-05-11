@@ -258,12 +258,15 @@ class EnquiryController extends Controller
             'e_remind_remark' => $validated['remind_remark'] ?? $enquiry->e_remind_remark,
             'e_enq_remind_date' => $validated['e_enq_remind_date'] ?? $enquiry->e_enq_remind_date,
         ];
-        // dd($enquiryData);
-        $enquiry->update($enquiryData);
+        // Mark the old record as deleted using the custom BIT flag
+        $enquiry->update(['e_is_deleted' => 1]);
+
+        // Create a new enquiry record with the updated data
+        $newEnquiry = Enquiry::create($enquiryData);
 
         return response()->json([
             'message' => 'Enquiry updated successfully',
-            'data'    => $enquiry,
+            'data'    => $newEnquiry,
         ], Response::HTTP_OK);
     }
 
@@ -310,6 +313,7 @@ class EnquiryController extends Controller
      */
     public function destroy(Enquiry $enquiry)
     {
+        $enquiry->update(['e_is_deleted' => 1]);
         $enquiry->delete();
 
         return response()->json([

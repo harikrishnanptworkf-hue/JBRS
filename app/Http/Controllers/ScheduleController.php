@@ -206,6 +206,7 @@ class ScheduleController extends Controller
     // Show a single schedule
     public function show(Schedule $schedule)
     {
+        $schedule->load(['user', 'agent', 'examcode']);
         return response()->json($schedule, Response::HTTP_OK);
     }
 
@@ -348,20 +349,17 @@ class ScheduleController extends Controller
             $scheduleData['s_remind_date'] = $schedule->s_remind_date;
         }
 
-        if ($schedule->s_status == "RESCHEDULE" && !empty($validated['date'])) {
-            $oldDate = $schedule->s_date ? Carbon::parse($schedule->s_date) : null;
-            $newDate = Carbon::parse($validated['date']);
-            if ($oldDate && !$oldDate->equalTo($newDate)) {
-                $scheduleData['s_status'] = null;
-            }
-        }
+        // Mark the old record as deleted using the custom BIT flag
+        $schedule->update(['s_is_deleted' => 1]);
 
-        $schedule->update($scheduleData);
-        broadcast(new ClientUpdated($schedule));
+        // Create a new schedule record with the updated data
+        $newSchedule = Schedule::create($scheduleData);
+
+        broadcast(new ClientUpdated($newSchedule));
 
         return response()->json([
             'message' => 'Schedule updated successfully',
-            'data'    => $schedule,
+            'data'    => $newSchedule,
         ], Response::HTTP_OK);
     }
 
@@ -417,6 +415,7 @@ class ScheduleController extends Controller
     // Delete a schedule
     public function destroy(Schedule $schedule)
     {
+        $schedule->update(['s_is_deleted' => 1]);
         $schedule->delete();
         broadcast(new ClientDeleted());
         return response()->json(['message' => 'Schedule deleted successfully'], Response::HTTP_OK);
