@@ -320,7 +320,19 @@ const ClientCreate = () => {
         }
         // Handle Save Logic
         if (location.state?.editId) {
-          if (location.state.editType === 'enquiry' && formType === 'schedule') {
+          if (location.state?.from === 'reminder') {
+            // Create New Entry from Reminder and Delete Old Entry
+            if (formType === 'enquiry') {
+              await api.post('/enquiries', payload);
+            } else {
+              await api.post('/schedule', payload);
+            }
+            if (location.state.editType === 'enquiry') {
+              await api.delete(`/enquiries/${location.state.editId}`);
+            } else {
+              await api.delete(`/schedule/${location.state.editId}`);
+            }
+          } else if (location.state.editType === 'enquiry' && formType === 'schedule') {
             // Switch Enquiry to Schedule
             const schedulePayload = { ...payload, s_enq_id: location.state.editId };
             await api.post('/schedule', schedulePayload);
@@ -330,10 +342,10 @@ const ClientCreate = () => {
             await api.post('/enquiries', payload);
             await api.delete(`/schedule/${location.state.editId}`);
           } else if (formType === 'enquiry') {
-            // Edit Enquiry (backend handles versioning via PUT)
+            // Edit Enquiry
             await api.put(`/enquiries/${location.state.editId}`, payload);
           } else {
-            // Edit Schedule (backend handles versioning via PUT)
+            // Edit Schedule
             await api.put(`/schedule/${location.state.editId}`, payload);
           }
         } else {
@@ -706,7 +718,10 @@ const ClientCreate = () => {
             if (location.state.editType === 'schedule') {
               let dateValue = '';
               let timezone = '';
-              if (data.s_date) {
+              if (location.state?.from === 'reminder') {
+                dateValue = new Date();
+                timezone = data.s_area || data.timezone || '';
+              } else if (data.s_date) {
                 dateValue = data.s_date;
                 timezone = data.s_area || data.timezone || '';
                 if (dateValue && timezone) {
@@ -768,7 +783,7 @@ const ClientCreate = () => {
                 exam_name: data.e_exam_name || data.exam_name || '',
                 exam_code: data.e_exam_code || '',
                 // For enquiry edit: display formatted date string if available, else keep blank
-                date: data.formatted_e_date || '',
+                date: location.state?.from === 'reminder' ? formatDateToDMYHMS(new Date()) : (data.formatted_e_date || ''),
                 support_fee: data.e_support_fee || '',
                 voucher_fee: data.e_voucher_fee || '',
                 total_fee: data.total_fee || '',
@@ -1114,20 +1129,6 @@ const ClientCreate = () => {
                           {validation.touched.date && validation.errors.date && (
                             <div className="text-danger small mt-1">{validation.errors.date}</div>
                           )}
-                          <div className="mt-3">
-                            <label htmlFor="remind_date" className="col-form-label fw-semibold form-label text-start" style={{fontWeight : '600', fontSize : '16px'}}>Remind Date</label>
-                            <DatePicker
-                              id="remind_date"
-                              selected={toDate(validation.values.remind_date)}
-                              onChange={date => {
-                                const ymd = formatDateToYMD(date);
-                                validation.setFieldValue('remind_date', ymd);
-                              }}
-                              dateFormat="dd/MM/yyyy"
-                              placeholderText="Select remind date (dd/mm/yyyy)"
-                              className="form-control rounded-pill px-3 py-2 reminder-input"
-                            />
-                          </div>
                           {location.state?.from === 'invoice' && (
                             <>
                               <div className="mt-3">

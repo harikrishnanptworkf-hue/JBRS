@@ -42,6 +42,12 @@ class EnquiryController extends Controller
             }
         }
 
+        // Exclude deleted versions of enquiries
+        $query->where(function ($q) {
+            $q->where('e_is_deleted', '!=', 1)
+              ->orWhereNull('e_is_deleted');
+        });
+
         if ($userObj && $userObj->role_id == 2) {
             $query->where('e_agent_id', $userObj->id);
         }else{
@@ -258,15 +264,12 @@ class EnquiryController extends Controller
             'e_remind_remark' => $validated['remind_remark'] ?? $enquiry->e_remind_remark,
             'e_enq_remind_date' => $validated['e_enq_remind_date'] ?? $enquiry->e_enq_remind_date,
         ];
-        // Mark the old record as deleted using the custom BIT flag
-        $enquiry->update(['e_is_deleted' => 1]);
-
-        // Create a new enquiry record with the updated data
-        $newEnquiry = Enquiry::create($enquiryData);
+        // Update the existing enquiry record with the updated data
+        $enquiry->update($enquiryData);
 
         return response()->json([
             'message' => 'Enquiry updated successfully',
-            'data'    => $newEnquiry,
+            'data'    => $enquiry,
         ], Response::HTTP_OK);
     }
 

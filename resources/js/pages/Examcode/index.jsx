@@ -1013,7 +1013,7 @@ const Examcode = () => {
               onChange={e => { const val = e.target.value; setPageSize(val === 'All' ? 'All' : Number(val)); setCurrentPage(1); }}
               style={{ minWidth: 80 }}
             >
-              {['All', 5, 10, 20, 50, 100].map(size => (
+              {['All', 5, 10, 20, 50, 100, 500].map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>

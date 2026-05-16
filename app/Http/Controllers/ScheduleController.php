@@ -70,6 +70,12 @@ class ScheduleController extends Controller
             ->orWhereNull('s_status');
         });
 
+        // Exclude deleted versions of schedules
+        $query->where(function ($q) {
+            $q->where('s_is_deleted', '!=', 1)
+              ->orWhereNull('s_is_deleted');
+        });
+
         if ($roleId && $roleId == 3) {
             $query->where('s_user_id', $sessionUser['id']);
         } else if($roleId && $roleId == 2){
@@ -349,17 +355,14 @@ class ScheduleController extends Controller
             $scheduleData['s_remind_date'] = $schedule->s_remind_date;
         }
 
-        // Mark the old record as deleted using the custom BIT flag
-        $schedule->update(['s_is_deleted' => 1]);
+        // Update the existing schedule record with the updated data
+        $schedule->update($scheduleData);
 
-        // Create a new schedule record with the updated data
-        $newSchedule = Schedule::create($scheduleData);
-
-        broadcast(new ClientUpdated($newSchedule));
+        broadcast(new ClientUpdated($schedule));
 
         return response()->json([
             'message' => 'Schedule updated successfully',
-            'data'    => $newSchedule,
+            'data'    => $schedule,
         ], Response::HTTP_OK);
     }
 
@@ -591,6 +594,10 @@ class ScheduleController extends Controller
             ->where(function ($q) {
                 $q->whereNotIn('s_status', ['DONE','REVOKE'])
                   ->orWhereNull('s_status');
+            })
+            ->where(function ($q) {
+                $q->where('s_is_deleted', '!=', 1)
+                  ->orWhereNull('s_is_deleted');
             });
 
         // Role scoping

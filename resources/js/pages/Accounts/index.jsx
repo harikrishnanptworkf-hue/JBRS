@@ -643,7 +643,7 @@ const Accounts = () => {
               onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
               style={{ minWidth: 80 }}
             >
-              {[5, 10, 20, 50, 100].map(size => (
+              {[5, 10, 20, 50, 100, 500].map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>

@@ -861,7 +861,7 @@ const columns = useMemo(() => {
                             style={{ minWidth: 80 }}
                         >
                             <option key={'All'} value={'All'}>All</option>
-                            {[5, 10, 20, 50, 100].map(size => (
+                            {[5, 10, 20, 50, 100, 500].map(size => (
                                 <option key={size} value={String(size)}>{size}</option>
                             ))}
                         </select>

@@ -480,7 +480,7 @@ const UserCore = () => {
 					<div>
 						<Label className="me-2 fw-semibold">Page size</Label>
 						<select className="form-select d-inline-block w-auto examcode-input" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} style={{ minWidth: 80 }}>
-							{[5, 10, 20, 50, 100].map(size => (
+							{[5, 10, 20, 50, 100, 500].map(size => (
 								<option key={size} value={size}>{size}</option>
 							))}
 						</select>

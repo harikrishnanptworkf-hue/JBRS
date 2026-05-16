@@ -805,7 +805,7 @@ function EnquiryList() {
                             onChange={e => handlePageSizeChange(Number(e.target.value))}
                             style={{ minWidth: 80 }}
                         >
-                            {[5, 10, 20, 50, 100].map(size => (
+                            {[5, 10, 20, 50, 100, 500].map(size => (
                                 <option key={size} value={size}>{size}</option>
                             ))}
                         </select>
